@@ -85,6 +85,24 @@ type SummaryAllResult struct {
 	RecentSuccessSeries map[string][]SuccessRatePoint `json:"recent_success_series,omitempty"`
 }
 
+// GroupSummary is the request-weighted health of one model group over the
+// query window. It is the group-level counterpart of ModelSummary.
+type GroupSummary struct {
+	Group        string        `json:"group"`
+	RequestCount int64         `json:"request_count"`
+	SuccessRate  float64       `json:"success_rate"`
+	AvgLatencyMs int64         `json:"avg_latency_ms"`
+	AvgTtftMs    int64         `json:"avg_ttft_ms"`
+	AvgTps       float64       `json:"avg_tps"`
+	Series       []BucketPoint `json:"series"`
+}
+
+type GroupSummaryAllResult struct {
+	WindowStart int64          `json:"window_start"`
+	WindowEnd   int64          `json:"window_end"`
+	Groups      []GroupSummary `json:"groups"`
+}
+
 type bucketKey struct {
 	model    string
 	group    string

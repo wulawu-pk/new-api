@@ -325,6 +325,136 @@ func QuerySummaryAll(hours int, groups []string, recentModels ...string) (Summar
 	}, nil
 }
 
+// maxGroupSeriesPoints bounds the per-group sparkline the status page renders;
+// a 7-day window would otherwise return 168 hourly points per group.
+const maxGroupSeriesPoints = 24
+
+// QueryGroupSummaryAll aggregates every model group over the same window and
+// with the same weighting as QuerySummaryAll, plus an hourly series per group.
+func QueryGroupSummaryAll(hours int, groups []string) (GroupSummaryAllResult, error) {
+	now := time.Now()
+	startTs, endTs := queryWindow(now, hours)
+	allowedGroups := allowedGroupSet(groups)
+
+	rows, err := model.GetPerfMetricsGroupBuckets(startTs, endTs, groups)
+	if err != nil {
+		return GroupSummaryAllResult{}, err
+	}
+
+	groupBuckets := map[string]map[int64]counters{}
+	for _, row := range rows {
+		mergeModelBucket(groupBuckets, row.Group, row.BucketTs, counters{
+			requestCount:   row.RequestCount,
+			successCount:   row.SuccessCount,
+			totalLatencyMs: row.TotalLatencyMs,
+			ttftSumMs:      row.TtftSumMs,
+			ttftCount:      row.TtftCount,
+			outputTokens:   row.OutputTokens,
+			generationMs:   row.GenerationMs,
+		})
+	}
+
+	// The active hour has not been flushed yet, so fold in the in-memory
+	// buckets that are still open.
+	hotBuckets.Range(func(key, value any) bool {
+		k := key.(bucketKey)
+		if k.bucketTs > endTs {
+			return true
+		}
+		if allowedGroups != nil {
+			if _, ok := allowedGroups[k.group]; !ok {
+				return true
+			}
+		}
+		snap := value.(*atomicBucket).snapshot()
+		if snap.requestCount == 0 {
+			return true
+		}
+		mergeModelBucket(groupBuckets, k.group, k.bucketTs, snap)
+		return true
+	})
+
+	summaries := make([]GroupSummary, 0, len(groupBuckets))
+	for group, buckets := range groupBuckets {
+		total := counters{}
+		timestamps := make([]int64, 0, len(buckets))
+		for bucketTs, value := range buckets {
+			if value.requestCount == 0 {
+				continue
+			}
+			total.requestCount += value.requestCount
+			total.successCount += value.successCount
+			total.totalLatencyMs += value.totalLatencyMs
+			total.ttftSumMs += value.ttftSumMs
+			total.ttftCount += value.ttftCount
+			total.outputTokens += value.outputTokens
+			total.generationMs += value.generationMs
+			timestamps = append(timestamps, bucketTs)
+		}
+		if total.requestCount == 0 {
+			continue
+		}
+		sort.Slice(timestamps, func(i, j int) bool {
+			return timestamps[i] < timestamps[j]
+		})
+		series := make([]BucketPoint, 0, maxGroupSeriesPoints)
+		if len(timestamps) <= maxGroupSeriesPoints {
+			for _, bucketTs := range timestamps {
+				series = append(series, bucketPoint(bucketTs, buckets[bucketTs]))
+			}
+		} else {
+			// A 7-day window has 168 hourly rows. Return the whole span as at
+			// most 24 wider buckets instead of silently trimming to the last
+			// day, which would make the strip contradict its own label.
+			chunk := (len(timestamps) + maxGroupSeriesPoints - 1) / maxGroupSeriesPoints
+			for i := 0; i < len(timestamps); i += chunk {
+				end := i + chunk
+				if end > len(timestamps) {
+					end = len(timestamps)
+				}
+				merged := counters{}
+				for _, bucketTs := range timestamps[i:end] {
+					value := buckets[bucketTs]
+					merged.requestCount += value.requestCount
+					merged.successCount += value.successCount
+					merged.totalLatencyMs += value.totalLatencyMs
+					merged.ttftSumMs += value.ttftSumMs
+					merged.ttftCount += value.ttftCount
+					merged.outputTokens += value.outputTokens
+					merged.generationMs += value.generationMs
+				}
+				series = append(series, bucketPoint(timestamps[i], merged))
+			}
+		}
+
+		avgTtft := int64(0)
+		if total.ttftCount > 0 {
+			avgTtft = avg(total.ttftSumMs, total.ttftCount)
+		}
+		summaries = append(summaries, GroupSummary{
+			Group:        group,
+			RequestCount: total.requestCount,
+			SuccessRate:  math.Round(successRate(total)*100) / 100,
+			AvgLatencyMs: avg(total.totalLatencyMs, total.requestCount),
+			AvgTtftMs:    avgTtft,
+			AvgTps:       math.Round(avgTps(total)*100) / 100,
+			Series:       series,
+		})
+	}
+
+	// Busiest groups first; group name keeps equal-volume groups stable.
+	sort.SliceStable(summaries, func(i, j int) bool {
+		if summaries[i].RequestCount != summaries[j].RequestCount {
+			return summaries[i].RequestCount > summaries[j].RequestCount
+		}
+		return summaries[i].Group < summaries[j].Group
+	})
+
+	return GroupSummaryAllResult{
+		WindowStart: startTs, WindowEnd: endTs, Groups: summaries,
+	}, nil
+}
+
 func mergeModelTotals(totals map[string]counters, modelName string, value counters) {
 	if value.requestCount == 0 {
 		return

@@ -79,6 +79,12 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({ title: t('Model Square'), href: '/pricing', requiresAuth })
   }
 
+  // Service status: per-group availability, public so customers can check an
+  // outage themselves instead of opening a ticket.
+  if (modules?.status !== false) {
+    links.push({ title: t('Service Status'), href: '/status' })
+  }
+
   // Rankings
   const rankings = modules?.rankings
   if (rankings && typeof rankings === 'object' && rankings.enabled) {
