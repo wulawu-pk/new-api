@@ -64,7 +64,8 @@ export default defineConfig(({ envMode }) => {
     },
     html: {
       template: './index.html',
-      favicon: './public/favicon.ico',
+      // peroai fork: brand favicon (upstream favicon.ico is kept in public/).
+      favicon: './public/peroai-logo.svg',
     },
     server: {
       host: '0.0.0.0',

@@ -21,8 +21,9 @@ For commercial licensing, please contact support@quantumnous.com
  */
 
 // System Configuration Defaults
-export const DEFAULT_SYSTEM_NAME = 'New API'
-export const DEFAULT_LOGO = '/logo.png'
+// peroai fork: brand defaults. Upstream attribution stays in the footer.
+export const DEFAULT_SYSTEM_NAME = 'peroai'
+export const DEFAULT_LOGO = '/peroai-logo.svg'
 
 // LocalStorage Keys
 export const STORAGE_KEYS = {

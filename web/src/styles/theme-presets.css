@@ -426,10 +426,11 @@ For commercial licensing, please contact support@quantumnous.com
  *   - `anthropic`: warm cream surfaces are a brand choice, NOT a primary-mix
  *     derivation (the Anthropic system deliberately uses warm neutrals for
  *     cards/borders rather than tinting them with the clay accent).
- *   - `simple-large`: keeps intentionally neutral, high-contrast surfaces. */
+ *   - `simple-large`: keeps intentionally neutral, high-contrast surfaces.
+ *   - `peroai`: paper canvas + white cards are brand tokens (peroai fork). */
 [data-theme-preset]:not([data-theme-preset='default']):not(
   [data-theme-preset='anthropic']
-):not([data-theme-preset='simple-large']) {
+):not([data-theme-preset='simple-large']):not([data-theme-preset='peroai']) {
   --card: color-mix(in oklch, var(--primary) 3%, var(--background));
   --popover: color-mix(in oklch, var(--primary) 5%, var(--background));
   --muted: color-mix(in oklch, var(--primary) 7%, var(--background));
@@ -454,7 +455,7 @@ For commercial licensing, please contact support@quantumnous.com
 .dark
   [data-theme-preset]:not([data-theme-preset='default']):not(
     [data-theme-preset='anthropic']
-  ):not([data-theme-preset='simple-large']) {
+  ):not([data-theme-preset='simple-large']):not([data-theme-preset='peroai']) {
   --card: color-mix(in oklch, var(--primary) 8%, var(--background));
   --popover: color-mix(in oklch, var(--primary) 12%, var(--background));
   --muted: color-mix(in oklch, var(--primary) 12%, var(--background));
@@ -610,6 +611,167 @@ For commercial licensing, please contact support@quantumnous.com
 
   --skeleton-base: oklch(0.305 0.004 60);
   --skeleton-highlight: oklch(0.41 0.004 60);
+}
+
+/* ── peroai (纸面 / paper) ────────────────────────────────────────────── */
+/*
+ * peroai brand theme (fork default). Mirrors the landing page tokens in
+ * deploy/site/landing/index.html:
+ *   bg #F6F5F0 · ink #15171A · muted #62666D · line #E1DFD7 · card #fff
+ *   single accent: deep green #1D6B53, light accent #E2EEE8
+ * Warm paper canvas, white cards, hairline warm-gray borders, one green
+ * accent, very light shadows, no gradients. Opted out of the semantic
+ * surface bridge (like Anthropic) so these neutral surfaces win.
+ *
+ * Fonts: IBM Plex Sans / Mono, loaded by a non-blocking stylesheet in
+ * index.html (media="print" swapped on load). Until it arrives, or if it is
+ * unreachable, system fallbacks render (PingFang SC / Microsoft YaHei for
+ * CJK), so rendering never waits on the remote font.
+ *
+ * peroai is the default preset in this fork. The provider writes no
+ * data-theme-preset attribute for the default preset (and none exists before
+ * React mounts), so the tokens also apply to a body without the attribute.
+ * `:where()` keeps that selector at zero specificity so the Font, Radius and
+ * Scale axes still override it. Choosing "default" restores upstream's look.
+ */
+[data-theme-preset='peroai'],
+:where(body:not([data-theme-preset])) {
+  --background: oklch(0.97 0.007 97.4); /* #F6F5F0 paper */
+  --foreground: oklch(0.204 0.007 258.4); /* #15171A ink */
+
+  --card: oklch(1 0 0); /* #fff */
+  --card-foreground: oklch(0.204 0.007 258.4);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.204 0.007 258.4);
+
+  --primary: oklch(0.474 0.084 168.2); /* #1D6B53 deep green */
+  --primary-foreground: oklch(1 0 0);
+
+  --secondary: oklch(0.948 0.008 95); /* paper, one step down */
+  --secondary-foreground: oklch(0.204 0.007 258.4);
+
+  --muted: oklch(0.948 0.008 95);
+  --muted-foreground: oklch(0.509 0.012 261.8); /* #62666D */
+  --accent: oklch(0.938 0.015 164.7); /* #E2EEE8 light green */
+  --accent-foreground: oklch(0.38 0.07 168);
+
+  --destructive: oklch(0.55 0.18 27);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.474 0.084 168.2);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.72 0.13 75);
+  --warning-foreground: oklch(0.204 0.007 258.4);
+  --info: oklch(0.55 0.08 240);
+  --info-foreground: oklch(0.985 0 0);
+  --neutral: oklch(0.509 0.012 261.8);
+  --neutral-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.903 0.011 95.2); /* #E1DFD7 hairline */
+  --input: oklch(0.903 0.011 95.2);
+  --ring: oklch(0.474 0.084 168.2);
+
+  /* Green-led, muted chart palette. */
+  --chart-1: oklch(0.474 0.084 168.2);
+  --chart-2: oklch(0.62 0.07 170);
+  --chart-3: oklch(0.509 0.012 261.8);
+  --chart-4: oklch(0.72 0.11 75);
+  --chart-5: oklch(0.6 0.08 240);
+
+  --sidebar: oklch(0.97 0.007 97.4);
+  --sidebar-foreground: oklch(0.204 0.007 258.4);
+  --sidebar-primary: oklch(0.474 0.084 168.2);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.938 0.015 164.7);
+  --sidebar-accent-foreground: oklch(0.38 0.07 168);
+  --sidebar-border: oklch(0.903 0.011 95.2);
+  --sidebar-ring: oklch(0.474 0.084 168.2);
+
+  --skeleton-base: oklch(0.94 0.008 95);
+  --skeleton-highlight: oklch(0.97 0.006 95);
+  --table-header: oklch(0.985 0.004 91.4); /* #FBFAF7, as on the landing table */
+  --overview-accent-1: var(--chart-1);
+  --overview-accent-2: var(--chart-2);
+  --overview-accent-3: var(--chart-3);
+
+  /* ≈ 9px base: radius-sm ≈ 5px, md ≈ 7px, lg ≈ 9px, xl ≈ 12px. */
+  --radius: 0.5625rem;
+
+  --font-ui-sans:
+    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-body: var(--font-ui-sans);
+  --font-mono:
+    'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'PingFang SC',
+    'Microsoft YaHei', monospace;
+  /* Tailwind preflight reads this for code/pre/kbd; re-declare it here so it
+   * resolves against the peroai --font-mono rather than the :root one. */
+  --default-mono-font-family: var(--font-mono);
+}
+.dark [data-theme-preset='peroai'],
+.dark :where(body:not([data-theme-preset])) {
+  /* Ink-like dark surfaces with a cool slate tint; the green lifts for
+   * contrast on dark backgrounds. */
+  --background: oklch(0.19 0.006 258); /* ≈ #121417 */
+  --foreground: oklch(0.955 0.006 97); /* paper-tinted text */
+  --card: oklch(0.225 0.007 258);
+  --card-foreground: oklch(0.955 0.006 97);
+  --popover: oklch(0.245 0.007 258);
+  --popover-foreground: oklch(0.955 0.006 97);
+
+  --primary: oklch(0.7 0.105 166); /* lifted #1D6B53 ≈ #4FB08D */
+  --primary-foreground: oklch(0.17 0.02 168);
+  --secondary: oklch(0.27 0.007 258);
+  --secondary-foreground: oklch(0.94 0.006 97);
+
+  --muted: oklch(0.255 0.007 258);
+  --muted-foreground: oklch(0.72 0.01 262);
+  --accent: oklch(0.3 0.04 168); /* dark green wash */
+  --accent-foreground: oklch(0.92 0.03 166);
+
+  --destructive: oklch(0.7 0.19 22);
+  --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.7 0.105 166);
+  --success-foreground: oklch(0.17 0.02 168);
+  --warning: oklch(0.78 0.13 75);
+  --warning-foreground: oklch(0.17 0.006 258);
+  --info: oklch(0.72 0.08 240);
+  --info-foreground: oklch(0.17 0.006 258);
+  --neutral: oklch(0.72 0.01 262);
+  --neutral-foreground: oklch(0.17 0.006 258);
+
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.7 0.105 166);
+
+  --chart-1: oklch(0.7 0.105 166);
+  --chart-2: oklch(0.78 0.08 170);
+  --chart-3: oklch(0.72 0.01 262);
+  --chart-4: oklch(0.78 0.12 75);
+  --chart-5: oklch(0.72 0.08 240);
+
+  --sidebar: oklch(0.175 0.006 258);
+  --sidebar-foreground: oklch(0.94 0.006 97);
+  --sidebar-primary: oklch(0.7 0.105 166);
+  --sidebar-primary-foreground: oklch(0.17 0.02 168);
+  --sidebar-accent: oklch(0.29 0.035 168);
+  --sidebar-accent-foreground: oklch(0.92 0.03 166);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.7 0.105 166);
+
+  --skeleton-base: oklch(0.27 0.007 258);
+  --skeleton-highlight: oklch(0.34 0.007 258);
+  --table-header: color-mix(in oklch, var(--foreground) 5%, var(--background));
+}
+/* Very light, flat elevation — matches the landing page cards. */
+[data-theme-preset='peroai'] [data-slot='card'],
+:where(body:not([data-theme-preset])) [data-slot='card'] {
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.03),
+    0 12px 32px -24px rgb(20 30 25 / 0.18);
+}
+.dark [data-theme-preset='peroai'] [data-slot='card'],
+.dark :where(body:not([data-theme-preset])) [data-slot='card'] {
+  box-shadow: none;
 }
 
 /* ── Font axis ────────────────────────────────────────────────────────────

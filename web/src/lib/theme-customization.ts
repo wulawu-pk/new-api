@@ -25,6 +25,13 @@ For commercial licensing, please contact support@quantumnous.com
 
 export const THEME_PRESETS = [
   {
+    // peroai fork default: paper canvas (#F6F5F0), ink (#15171A) and a
+    // single deep-green accent (#1D6B53), matching the peroai landing page.
+    value: 'peroai',
+    name: 'peroai',
+    swatches: ['oklch(0.97 0.007 97.4)', 'oklch(0.474 0.084 168.2)'],
+  },
+  {
     value: 'default',
     name: 'Default',
     swatches: ['oklch(0.72 0.18 250)', 'oklch(0.7 0.12 280)'],
@@ -112,7 +119,8 @@ export type ThemeCustomization = {
 }
 
 export const DEFAULT_THEME_CUSTOMIZATION: ThemeCustomization = {
-  preset: 'default',
+  // peroai fork: brand preset is the default; 'default' keeps upstream's look.
+  preset: 'peroai',
   font: 'default',
   radius: 'default',
   scale: 'default',
