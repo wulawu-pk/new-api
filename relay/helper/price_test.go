@@ -807,6 +807,8 @@ func (s *priceTestReservation) ReserveBeforeSubmit(quota int) error { return s.R
 // accepted and pre-consumes on its token fallback branch.
 func TestModelPriceHelperTieredAcceptsProviderUsageExpr(t *testing.T) {
 	gin.SetMode(gin.TestMode)
+	// The rejection branch builds a translated error message.
+	require.NoError(t, i18n.Init())
 	previousMultiplier := operation_setting.GetQuotaSetting().PreConsumeMultiplier
 	operation_setting.GetQuotaSetting().PreConsumeMultiplier = 1
 	t.Cleanup(func() { operation_setting.GetQuotaSetting().PreConsumeMultiplier = previousMultiplier })
