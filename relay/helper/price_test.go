@@ -806,6 +806,10 @@ func (s *priceTestReservation) ReserveBeforeSubmit(quota int) error { return s.R
 // peroai fork: a text-relay expression that reads provider usage facts is
 // accepted and pre-consumes on its token fallback branch.
 func TestModelPriceHelperTieredAcceptsProviderUsageExpr(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	previousMultiplier := operation_setting.GetQuotaSetting().PreConsumeMultiplier
+	operation_setting.GetQuotaSetting().PreConsumeMultiplier = 1
+	t.Cleanup(func() { operation_setting.GetQuotaSetting().PreConsumeMultiplier = previousMultiplier })
 	saved := map[string]string{}
 	require.NoError(t, config.GlobalConfig.SaveToDB(func(key, value string) error {
 		saved[key] = value
@@ -820,6 +824,7 @@ func TestModelPriceHelperTieredAcceptsProviderUsageExpr(t *testing.T) {
 
 	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
 	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	ctx.Set("group", "default")
 	info := &relaycommon.RelayInfo{OriginModelName: "kiro-test", UserGroup: "default", UsingGroup: "default", RelayFormat: types.RelayFormatClaude, BillingRequestInput: &billingexpr.RequestInput{}}
 	_, err := ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{})
 	require.NoError(t, err)
@@ -828,6 +833,7 @@ func TestModelPriceHelperTieredAcceptsProviderUsageExpr(t *testing.T) {
 
 	ctx, _ = gin.CreateTestContext(httptest.NewRecorder())
 	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	ctx.Set("group", "default")
 	info = &relaycommon.RelayInfo{OriginModelName: "task-usage-test", UserGroup: "default", UsingGroup: "default", RelayFormat: types.RelayFormatClaude, BillingRequestInput: &billingexpr.RequestInput{}}
 	_, err = ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{})
 	require.Error(t, err, "other u() keys still require task billing")

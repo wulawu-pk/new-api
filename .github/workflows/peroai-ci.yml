@@ -56,7 +56,7 @@ jobs:
             -run 'Kiro|ProviderUsage|TieredSettle|SmokeTestExpr|ModelPriceHelperTiered' \
             ./relay/channel/claude/... ./service/... ./pkg/billingexpr/... \
             ./relay/helper/... ./setting/billing_setting/... \
-            | grep -E '^\s*(--- (PASS|FAIL)|PASS|FAIL|ok|panic)'
+            | grep -E '^\s*(--- (PASS|FAIL)|PASS|FAIL|ok|panic)|_test\.go:[0-9]+|Error( Trace)?:|Messages:|expected|actual'
 
       - name: Full tests of touched packages
         run: >
