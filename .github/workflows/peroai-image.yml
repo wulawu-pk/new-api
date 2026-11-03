@@ -1,0 +1,93 @@
+# peroai fork: build the repo Dockerfile for linux/amd64 and push it to GHCR.
+# Upstream's docker workflows push to Docker Hub with secrets this fork does
+# not have, so this workflow uses the built-in GITHUB_TOKEN instead.
+name: peroai image
+
+on:
+  push:
+    branches: [peroai]
+    tags: ['peroai-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: peroai-image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/new-api
+
+jobs:
+  build:
+    name: Build & push (linux/amd64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+
+      - name: Resolve tags
+        id: tags
+        run: |
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          IMAGE=$(printf '%s' "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          TAGS="${IMAGE}:${SHORT_SHA}"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAGS="${TAGS},${IMAGE}:${GITHUB_REF_NAME}"
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            VERSION="peroai-${SHORT_SHA}"
+          fi
+          # peroai-latest follows the newest build of the peroai branch or a
+          # peroai-* tag.
+          TAGS="${TAGS},${IMAGE}:peroai-latest"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Tags: $TAGS"
+
+      - name: Write VERSION
+        run: echo "${{ steps.tags.outputs.version }}" > VERSION
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (labels)
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ steps.tags.outputs.image }}
+
+      - name: Build & push
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          {
+            echo '### Image'
+            echo '```'
+            echo "${{ steps.tags.outputs.tags }}" | tr ',' '\n'
+            echo "digest: ${{ steps.build.outputs.digest }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
