@@ -103,27 +103,33 @@ it('shows model mismatch evidence when tapping the mobile model badge', async ()
     logs: [
       {
         ...log,
+        // The diagnostic lives in admin_info, which the backend strips for
+        // non-admin viewers.
         other: JSON.stringify({
-          response_model: {
-            requested_model: longName,
-            upstream_model: 'mapped-model',
-            returned_model: 'unexpected-model',
+          admin_info: {
+            response_model: {
+              requested_model: longName,
+              upstream_model: 'mapped-model',
+              returned_model: 'unexpected-model',
+            },
           },
         }),
       },
     ],
   })
-  await user.click(
-    screen.getByRole('button', {
-      name: `Model: ${longName}, Response model: unexpected-model`,
-    })
-  )
+  // The card stays clean: the admin-only diagnostic never surfaces as a warning
+  // in the summary, only inside the detail dialog.
+  const modelButton = screen.getByRole('button', { name: `Model: ${longName}` })
+  expect(modelButton).toHaveTextContent(new RegExp(`^${longName}$`))
+  expect(screen.queryByText(/Response model/)).not.toBeInTheDocument()
+  await user.click(modelButton)
   const dialog = await screen.findByRole('dialog', { name: 'Model' })
-  expect(
-    within(dialog).getByText('Response model: unexpected-model')
-  ).toBeVisible()
+  expect(within(dialog).getByText('Request Model')).toBeVisible()
+  expect(within(dialog).getByText('Upstream Model')).toBeVisible()
+  expect(within(dialog).getByText('Response Model')).toBeVisible()
   expect(within(dialog).getByText('mapped-model')).toBeVisible()
   expect(within(dialog).getByText('unexpected-model')).toBeVisible()
+  expect(within(dialog).getAllByText(longName).length).toBeGreaterThan(0)
 })
 
 it('opens long channel text on tap and copies the complete value', async () => {

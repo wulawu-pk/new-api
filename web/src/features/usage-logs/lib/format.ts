@@ -29,6 +29,7 @@ import { translateServerText } from '@/lib/server-error-message'
 import type { UsageLog } from '../data/schema'
 import type { LogOtherData } from '../types'
 import { buildQuotaAuditOperation } from './quota-audit-operation'
+import { getResponseModelObservation } from './response-model'
 
 export { normalizeTierLabel }
 
@@ -253,7 +254,7 @@ export function formatModelName(log: UsageLog): {
     name: log.model_name,
     isMapped,
     actualModel: isMapped ? other.upstream_model_name : undefined,
-    responseModel: other?.response_model,
+    responseModel: getResponseModelObservation(other),
   }
 }
 

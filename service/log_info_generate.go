@@ -132,6 +132,13 @@ func GenerateTextOtherInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, m
 	return other
 }
 
+// AppendResponseModelLogInfo records the upstream model declarations observed on
+// the response as administrator diagnostics. It writes into the admin-only
+// scope because the three model names are an internal routing detail: a
+// consumer whose request was answered normally must never be shown a name
+// mismatch they cannot act on, so model.formatUserLogs strips the whole
+// admin_info object for non-admin viewers. Skipped when nothing differs, so a
+// clean request leaves no admin_info entry behind.
 func AppendResponseModelLogInfo(relayInfo *relaycommon.RelayInfo, other *model.LogOther) {
 	if relayInfo == nil || relayInfo.ResponseModel == nil || other == nil {
 		return
@@ -142,7 +149,7 @@ func AppendResponseModelLogInfo(relayInfo *relaycommon.RelayInfo, other *model.L
 		(relayInfo.ChannelMeta == nil || !relayInfo.IsModelMapped) {
 		return
 	}
-	other.SetPublic("response_model", *observation)
+	other.SetAdmin("response_model", *observation)
 }
 
 func appendParamOverrideInfo(relayInfo *relaycommon.RelayInfo, other *model.LogOther) {

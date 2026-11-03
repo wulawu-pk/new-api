@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 
@@ -331,12 +331,13 @@ it('opens the mismatch evidence with the keyboard and shows all three models', a
       }}
     />
   )
-  expect(screen.getByText(`Response model: ${returned}`)).toBeVisible()
+  // The cell must stay free of the admin-only diagnostic: no warning badge and
+  // no mention of the response model in the visible label.
+  expect(screen.queryByText(/^Response model:/)).not.toBeInTheDocument()
+  expect(screen.queryByText(returned)).not.toBeInTheDocument()
   await user.tab()
   expect(
-    screen.getByRole('button', {
-      name: `Model: requested-model, Response model: ${returned}`,
-    })
+    screen.getByRole('button', { name: 'Model: requested-model' })
   ).toHaveFocus()
   await user.keyboard('{Enter}')
   expect(await screen.findByText(returned)).toBeVisible()
@@ -430,3 +431,48 @@ it.each([
     ).not.toBeInTheDocument()
   }
 )
+
+it('treats a separator-only response difference as no difference in the row', async () => {
+  const user = userEvent.setup()
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+  render(
+    <ModelBadge
+      modelName='claude-sonnet-5-5'
+      responseModel={{
+        requested_model: 'claude-sonnet-5-5',
+        upstream_model: 'claude-sonnet-5-5',
+        returned_model: 'claude-sonnet-5.5',
+      }}
+    />
+  )
+  // No trigger, no warning: the row looks exactly like a log without
+  // diagnostics, so the admin-only observation never reaches the cell.
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  expect(screen.queryByText(/Response model/)).not.toBeInTheDocument()
+  await user.click(screen.getByText('claude-sonnet-5-5'))
+  expect(copy).toHaveBeenCalledWith('claude-sonnet-5-5')
+})
+
+it('never renders the response model warning in the row, only in the details', async () => {
+  const user = userEvent.setup()
+  render(
+    <ModelBadge
+      modelName='requested-model'
+      responseModel={{
+        requested_model: 'requested-model',
+        upstream_model: 'mapped-model',
+        returned_model: 'unexpected-model',
+      }}
+    />
+  )
+  const trigger = screen.getByRole('button', {
+    name: 'Model: requested-model',
+  })
+  expect(trigger).toHaveTextContent(/^requested-model$/)
+  expect(within(trigger).queryByText(/Response model/)).not.toBeInTheDocument()
+  expect(trigger.querySelector('[data-slot="status-badge"]')).not.toBeNull()
+  await user.click(trigger)
+  expect(
+    await screen.findByText('Response model: unexpected-model')
+  ).toBeVisible()
+})

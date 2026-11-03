@@ -114,6 +114,13 @@ export interface ToolSurchargeItem {
   price: number
 }
 
+/** The three upstream model declarations recorded on a response. */
+export interface ResponseModelObservation {
+  requested_model: string
+  upstream_model: string
+  returned_model: string
+}
+
 export interface LogOtherData {
   admin_info?: {
     request_policy?: PolicyEvent[]
@@ -147,6 +154,11 @@ export interface LogOtherData {
     // Reject / intercept reason (admin only)
     reject_reason?: string
     task_plugin?: TaskPluginInfo
+    // Upstream model declarations observed on the response. Admin-only
+    // diagnostic: the backend writes it into admin_info, so ordinary users
+    // never receive it. Whether the names disagree is derived in the UI via
+    // isResponseModelMismatch so old rows follow the current comparison rule.
+    response_model?: ResponseModelObservation
   }
   root_info?: {
     task_plugin?: TaskPluginRuntimeInfo
@@ -205,13 +217,11 @@ export interface LogOtherData {
   cache_creation_ratio_12h?: number
   is_model_mapped?: boolean
   upstream_model_name?: string
-  // Diagnostic only. Whether the names disagree is derived in the UI via
-  // isResponseModelMismatch so old rows follow the current comparison rule.
-  response_model?: {
-    requested_model: string
-    upstream_model: string
-    returned_model: string
-  }
+  // Legacy top-level placement of the response-model diagnostic, written before
+  // it moved into admin_info. Kept only so the type describes old rows; readers
+  // deliberately ignore it (see getResponseModelObservation) because at this
+  // level the backend cannot strip it from a consumer's own log view.
+  response_model?: ResponseModelObservation
   audio_ratio?: number
   audio_completion_ratio?: number
   frt?: number

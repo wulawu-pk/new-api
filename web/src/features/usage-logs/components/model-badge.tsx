@@ -31,7 +31,7 @@ import { getLobeIcon } from '@/lib/lobe-icon'
 import { resolveModelProvider } from '@/lib/model-provider'
 import { cn } from '@/lib/utils'
 
-import { isResponseModelMismatch } from '../lib/response-model'
+import { isResponseModelMismatch, isSameModelName } from '../lib/response-model'
 import type { LogOtherData } from '../types'
 import { DetailRow } from './dialogs/log-detail-layout'
 
@@ -92,24 +92,29 @@ function ModelBadgeContent(props: ModelBadgeProps & { copyable: boolean }) {
 
 export function ModelBadge(props: ModelBadgeProps) {
   const { t } = useTranslation()
-  const mismatch = isResponseModelMismatch(props.responseModel)
-  const responseModelLabel =
-    mismatch && props.responseModel
-      ? t('Response model: {{model}}', {
-          model: props.responseModel.returned_model,
-        })
-      : ''
-  const modelLabel = `${t('Model')}: ${props.modelName}${responseModelLabel ? `, ${responseModelLabel}` : ''}`
+  const modelLabel = `${t('Model')}: ${props.modelName}`
+  // The cell itself never mentions the response model — that record is
+  // administrator-only diagnostics, and a warning the viewer cannot act on just
+  // looks like an alarm. Only a real difference (compared with separators
+  // folded, matching the backend rule) keeps the popover reachable for the
+  // operators who do receive the data; with nothing to show the cell stays a
+  // plain copy target, identical to a log without any diagnostics.
+  const observation = props.responseModel
+  // A separator-only difference is not a difference, so those rows keep the
+  // plain copy affordance instead of growing a details trigger.
   const hasDetails =
     !!props.actualModel ||
     !!(
-      props.responseModel &&
-      (mismatch ||
-        props.responseModel.returned_model !==
-          props.responseModel.requested_model ||
-        (props.responseModel.upstream_model &&
-          props.responseModel.upstream_model !==
-            props.responseModel.requested_model))
+      observation &&
+      (!isSameModelName(
+        observation.returned_model,
+        observation.requested_model
+      ) ||
+        (observation.upstream_model &&
+          !isSameModelName(
+            observation.upstream_model,
+            observation.requested_model
+          )))
     )
 
   if (!hasDetails) {
@@ -132,15 +137,7 @@ export function ModelBadge(props: ModelBadgeProps) {
   const content = (
     <>
       <ModelBadgeContent {...props} copyable={false} />
-      {mismatch && (
-        <StatusBadge
-          icon={AlertTriangle}
-          label={responseModelLabel}
-          variant='warning'
-          copyable={false}
-        />
-      )}
-      {!mismatch && props.actualModel && (
+      {props.actualModel && (
         <Route
           className='text-muted-foreground size-3 shrink-0'
           aria-hidden='true'

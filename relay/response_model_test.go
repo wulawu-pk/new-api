@@ -10,6 +10,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relay/channel/claude"
 	"github.com/QuantumNous/new-api/relay/channel/gemini"
 	"github.com/QuantumNous/new-api/relay/channel/openai"
@@ -22,6 +23,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// adminResponseModel reads the response-model diagnostic back out of the
+// admin-only scope. The record is a routing detail for operators, so it must
+// live under admin_info (stripped for ordinary users) and never in the
+// user-visible top level.
+func adminResponseModel(t *testing.T, other *model.LogOther) *relaycommon.ResponseModel {
+	t.Helper()
+	snapshot := other.Snapshot()
+	require.NotContains(t, snapshot, "response_model", "response_model must not be user-visible")
+	adminInfo, ok := snapshot["admin_info"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	raw, ok := adminInfo["response_model"]
+	if !ok {
+		return nil
+	}
+	observation, ok := raw.(relaycommon.ResponseModel)
+	require.True(t, ok, "admin_info.response_model should hold a ResponseModel value")
+	return &observation
+}
 
 func TestResponseModelComparisonAndLog(t *testing.T) {
 	for _, tc := range []struct {
@@ -51,6 +73,14 @@ func TestResponseModelComparisonAndLog(t *testing.T) {
 		{name: "warning supersedes compatible difference", models: []string{"Requested", "other"}, returned: "other", mismatch: true},
 		{name: "compatible difference cannot erase warning", models: []string{"other", "Requested"}, returned: "other", mismatch: true},
 		{name: "mismatch survives later frames", models: []string{"mapped", "other", "", "requested"}, returned: "other", mismatch: true},
+		{name: "hyphen instead of the requested letters", models: []string{"request-ed"}, returned: "request-ed"},
+		{name: "dot instead of the requested letters", models: []string{"request.ed"}, returned: "request.ed"},
+		{name: "underscore inside the requested model", models: []string{"re_quest_ed"}, returned: "re_quest_ed"},
+		{name: "space inside the requested model", models: []string{"request ed"}, returned: "request ed"},
+		{name: "run of mixed separators", models: []string{"re--qu..est__ed"}, returned: "re--qu..est__ed"},
+		{name: "separator difference on the mapped model", models: []string{"map-ped"}, returned: "map-ped"},
+		{name: "separator difference on another model still warns", models: []string{"o-ther"}, returned: "o-ther", mismatch: true},
+		{name: "separator difference cannot rescue another model", models: []string{"requested", "o.ther"}, returned: "o.ther", mismatch: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
@@ -62,21 +92,52 @@ func TestResponseModelComparisonAndLog(t *testing.T) {
 				info.ObserveResponseModel(name)
 			}
 			other := service.GenerateTextOtherInfo(c, info, 1, 1, 1, 0, 0, 0, 1)
-			var stored struct {
-				ResponseModel *relaycommon.ResponseModel `json:"response_model"`
-			}
-			require.NoError(t, common.UnmarshalJsonStr(other.JSONString(), &stored))
+			recorded := adminResponseModel(t, other)
 			if tc.returned == "" {
-				assert.Nil(t, stored.ResponseModel)
+				assert.Nil(t, recorded)
 				return
 			}
-			require.NotNil(t, stored.ResponseModel)
+			require.NotNil(t, recorded)
 			assert.Equal(t, &relaycommon.ResponseModel{
 				RequestedModel: "requested", UpstreamModel: "mapped", ReturnedModel: tc.returned,
-			}, stored.ResponseModel)
+			}, recorded)
 			assert.NotContains(t, other.JSONString(), "mismatch")
-			assert.Equal(t, tc.mismatch, stored.ResponseModel.Mismatch())
+			assert.Equal(t, tc.mismatch, recorded.Mismatch())
 			assert.Equal(t, "mapped", info.UpstreamModelName)
+		})
+	}
+}
+
+// TestResponseModelSeparatorInsensitiveComparison pins the comparison rule that
+// provider spellings differing only in "-", ".", "_" or spaces describe the
+// same model, while genuinely different names still warn.
+func TestResponseModelSeparatorInsensitiveComparison(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		requested string
+		upstream  string
+		returned  string
+		mismatch  bool
+	}{
+		{name: "hyphen versus dot in the version", requested: "claude-sonnet-5-5", returned: "claude-sonnet-5.5"},
+		{name: "dot versus hyphen in the version", requested: "claude-sonnet-5.5", returned: "claude-sonnet-5-5"},
+		{name: "separator difference on the upstream model", upstream: "claude-sonnet-5-5", returned: "claude-sonnet-5.5"},
+		{name: "underscore and case difference", requested: "claude_sonnet_5_5", returned: "CLAUDE-SONNET-5.5"},
+		{name: "spaces inserted by the provider", requested: "claude-sonnet-5-5", returned: "claude sonnet 5.5"},
+		{name: "separator difference behind a provider path", requested: "anthropic/claude-sonnet-5-5", returned: "anthropic/claude-sonnet-5.5"},
+		{name: "separator difference with a dated suffix", requested: "claude-sonnet-5.5", returned: "claude-sonnet-5-5-2026-09-01"},
+		{name: "separator folding does not equate another version", requested: "claude-sonnet-5-5", returned: "claude-sonnet-5.6", mismatch: true},
+		{name: "separator folding does not equate another model", requested: "requested", returned: "other", mismatch: true},
+		{name: "separator folding does not equate a shorter name", requested: "requested", returned: "request", mismatch: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			info := &relaycommon.RelayInfo{
+				OriginModelName: tc.requested,
+				ChannelMeta:     &relaycommon.ChannelMeta{UpstreamModelName: tc.upstream},
+			}
+			info.ObserveResponseModel(tc.returned)
+			require.NotNil(t, info.ResponseModel)
+			assert.Equal(t, tc.mismatch, info.ResponseModel.Mismatch())
 		})
 	}
 }
@@ -95,6 +156,7 @@ func TestResponseModelLogOmitsUnchangedModel(t *testing.T) {
 		{name: "mapped response echoes request", upstream: "mapped", returned: "requested", mapped: true, record: true},
 		{name: "prefix difference", upstream: "requested", returned: "requested-2026-09-01", record: true},
 		{name: "case difference", upstream: "requested", returned: "REQUESTED", record: true},
+		{name: "separator difference", upstream: "requested", returned: "reques.ted", record: true},
 		{name: "mismatch", upstream: "requested", returned: "other", record: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -107,13 +169,38 @@ func TestResponseModelLogOmitsUnchangedModel(t *testing.T) {
 			other := service.GenerateTextOtherInfo(c, info, 1, 1, 1, 0, 0, 0, 1)
 			require.NotNil(t, info.ResponseModel)
 			assert.Equal(t, float64(1), other.Snapshot()["model_ratio"])
+			recorded := adminResponseModel(t, other)
 			if tc.record {
-				assert.Equal(t, *info.ResponseModel, other.Snapshot()["response_model"])
+				require.NotNil(t, recorded)
+				assert.Equal(t, *info.ResponseModel, *recorded)
 			} else {
-				assert.NotContains(t, other.Snapshot(), "response_model")
+				assert.Nil(t, recorded)
 			}
 		})
 	}
+}
+
+// TestResponseModelAdminOnlyVisibility verifies the recorded diagnostic stays
+// out of the user-visible top level: it is written into admin_info, which
+// model.formatUserLogs strips wholesale for ordinary users (see
+// TestFormatUserLogsStripsQuotaSaturation for that projection), so only
+// administrators and roots see the three names.
+func TestResponseModelAdminOnlyVisibility(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	info := &relaycommon.RelayInfo{
+		OriginModelName: "claude-sonnet-5-5",
+		ChannelMeta:     &relaycommon.ChannelMeta{UpstreamModelName: "claude-sonnet-5-5"},
+	}
+	info.ObserveResponseModel("unexpected-provider-model")
+	other := service.GenerateTextOtherInfo(c, info, 1, 1, 1, 0, 0, 0, 1)
+	stored := other.JSONString()
+	require.Contains(t, stored, "unexpected-provider-model")
+	snapshot := other.Snapshot()
+	require.Contains(t, snapshot, "admin_info")
+	require.NotContains(t, snapshot, "response_model")
+	adminInfo, ok := snapshot["admin_info"].(map[string]any)
+	require.True(t, ok)
+	require.Contains(t, adminInfo, "response_model")
 }
 
 func TestResponseModelEmptyExpectedNamesDoNotMatchEveryPrefix(t *testing.T) {
@@ -232,7 +319,9 @@ func TestResponseModelHandlersCaptureBeforeConversion(t *testing.T) {
 			assert.Equal(t, &relaycommon.ResponseModel{RequestedModel: "requested", UpstreamModel: "mapped", ReturnedModel: "returned"}, info.ResponseModel)
 			assert.True(t, info.ResponseModel.Mismatch())
 			other := service.GenerateTextOtherInfo(c, info, 1, 1, 1, 0, 0, 0, 1)
-			assert.Equal(t, *info.ResponseModel, other.Snapshot()["response_model"])
+			recorded := adminResponseModel(t, other)
+			require.NotNil(t, recorded)
+			assert.Equal(t, *info.ResponseModel, *recorded)
 		})
 	}
 }

@@ -96,16 +96,33 @@ function rowValue(label: string): string | null {
 
 test('shows the recorded request and response models in log details', () => {
   const queryClient = renderDetails({
-    response_model: {
-      requested_model: 'requested-model',
-      upstream_model: 'mapped-model',
-      returned_model: 'unexpected-model',
+    admin_info: {
+      response_model: {
+        requested_model: 'requested-model',
+        upstream_model: 'mapped-model',
+        returned_model: 'unexpected-model',
+      },
     },
   })
   expect(screen.getByText('Response model: unexpected-model')).toBeVisible()
   expect(rowValue('Request Model')).toBe('requested-model')
   expect(rowValue('Upstream Model')).toBe('mapped-model')
   expect(screen.getByText('unexpected-model')).toBeVisible()
+  queryClient.clear()
+})
+
+test('ignores the legacy top-level placement of the response model', () => {
+  // The diagnostic used to sit at the top level of `other`, where a consumer
+  // could read it. Only the admin_info placement is rendered now.
+  const queryClient = renderDetails({
+    response_model: {
+      requested_model: 'requested-model',
+      upstream_model: 'mapped-model',
+      returned_model: 'unexpected-model',
+    },
+  })
+  expect(screen.queryByText('Response model: unexpected-model')).toBeNull()
+  expect(screen.queryByText('unexpected-model')).toBeNull()
   queryClient.clear()
 })
 

@@ -32,7 +32,11 @@ export {
 } from './format'
 
 // Response model diagnostics
-export { isResponseModelMismatch } from './response-model'
+export {
+  getResponseModelObservation,
+  isResponseModelMismatch,
+  isSameModelName,
+} from './response-model'
 
 // Filter utilities
 export { buildSearchParams, getLogCategoryLabel } from './filter'
