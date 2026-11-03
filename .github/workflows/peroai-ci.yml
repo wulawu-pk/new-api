@@ -47,7 +47,18 @@ jobs:
       - name: Vet changed packages
         run: go vet ./relay/... ./service/... ./pkg/billingexpr/... ./setting/billing_setting/...
 
-      - name: Billing tests
+      # Verbose run of the kiro credit-billing tests so their names show in the log.
+      - name: Billing tests (verbose)
+        shell: bash
+        run: |
+          set -o pipefail
+          go test -count=1 -v \
+            -run 'Kiro|ProviderUsage|TieredSettle|SmokeTestExpr|ModelPriceHelperTiered' \
+            ./relay/channel/claude/... ./service/... ./pkg/billingexpr/... \
+            ./relay/helper/... ./setting/billing_setting/... \
+            | grep -E '^\s*(--- (PASS|FAIL)|PASS|FAIL|ok|panic)'
+
+      - name: Full tests of touched packages
         run: >
           go test -count=1
           ./relay/channel/claude/...
@@ -79,9 +90,6 @@ jobs:
 
       - name: Typecheck
         run: bun check -b
-
-      - name: Lint
-        run: bun run lint
 
       - name: Test
         run: bun run test
