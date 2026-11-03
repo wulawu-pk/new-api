@@ -556,3 +556,31 @@ This enables future evolution without breaking existing expressions.
 | Frontend display | `web/src/helpers/render.jsx`, `web/src/helpers/utils.jsx` |
 | Model detail | `web/src/components/table/model-pricing/modal/components/DynamicPricingBreakdown.jsx` |
 | Log display | `web/src/hooks/usage-logs/useUsageLogsData.jsx`, `web/src/components/table/usage-logs/UsageLogsColumnDefs.jsx` |
+
+---
+
+## Provider Usage Facts (peroai fork)
+
+Text relays can read a small, fixed set of upstream-reported billing facts
+with `u()`. The Claude handlers copy `provider_usage` from a non-stream
+response, or from the final `message_delta` stream event, onto the relay info,
+and `TryTieredSettle` merges it into the usage map at settlement:
+
+| key | type | source |
+|---|---|---|
+| `provider` | string | `provider_usage.provider`, e.g. `"kiro"` |
+| `credits` | number | `provider_usage.credits` |
+| `context_usage_percentage` | number | `provider_usage.context_usage_percentage` |
+
+Only these keys are allowed without a task plugin schema
+(`ProviderUsageKeys`). The facts do not exist at pre-consume time, so an
+expression must branch on them and keep a token-priced fallback, which is
+also what pre-consume reserves:
+
+```
+u("provider") == "kiro" ? tier("credit", u("credits") * 0.25 * 1000000) : tier("token", p * 2 + c * 10 + cr * 0.1)
+```
+
+`fixed()` only takes numeric literals, so a per-credit price scales the v1
+token-unit output instead: `u("credits") * <USD per credit> * 1000000`. The
+settled quota is `credits * <USD per credit> * QuotaPerUnit * GroupRatio`.

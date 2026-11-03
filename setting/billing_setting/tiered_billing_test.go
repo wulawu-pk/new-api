@@ -109,3 +109,15 @@ func TestSmokeTestExprRejectsTaskUsageWithoutSchema(t *testing.T) {
 
 	require.NoError(t, SmokeTestExpr(`tier("base", p * 2 + c * 8)`))
 }
+
+// peroai fork: provider usage facts (kiro credits) need no task plugin schema.
+func TestSmokeTestExprAcceptsProviderUsageKeys(t *testing.T) {
+	require.NoError(t, SmokeTestExpr(`u("provider") == "kiro" ? tier("credit", u("credits") * 0.25 * 1000000) : tier("token", p * 2 + c * 10 + cr * 0.1)`))
+
+	err := SmokeTestExpr(`u("provider") == "kiro" ? tier("credit", u("seconds") * 1) : tier("token", p)`)
+	assert.ErrorContains(t, err, "no task plugin usage schema")
+
+	// A negative provider-driven price is still rejected by the runtime vectors.
+	err = SmokeTestExpr(`u("provider") == "kiro" ? tier("credit", u("credits") - 1) : tier("token", p)`)
+	assert.ErrorContains(t, err, "non-negative")
+}

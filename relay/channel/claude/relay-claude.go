@@ -19,6 +19,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/model_setting"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tidwall/gjson"
 )
 
 func stopReasonClaude2OpenAI(reason string) string {
@@ -86,6 +87,34 @@ func FormatClaudeResponseInfo(claudeResponse *dto.ClaudeResponse, oaiResponse *d
 	return relayconvert.FormatClaudeResponseInfo(claudeResponse, oaiResponse, claudeInfo)
 }
 
+// captureClaudeProviderUsage records upstream-reported billing facts (peroai
+// fork). kiro relays bill per credit, not per token, and send
+// provider_usage {provider, credits, context_usage_percentage} at the top
+// level of a non-stream response and of the final message_delta event.
+// Credits are not linear in tokens, so they are passed through to tiered_expr
+// settlement as u("credits") / u("provider") instead of being estimated.
+func captureClaudeProviderUsage(info *relaycommon.RelayInfo, data []byte) {
+	if info == nil {
+		return
+	}
+	providerUsage := gjson.GetBytes(data, "provider_usage")
+	if !providerUsage.IsObject() {
+		return
+	}
+	credits := providerUsage.Get("credits")
+	if credits.Type != gjson.Number || credits.Float() < 0 {
+		return
+	}
+	facts := map[string]any{"credits": credits.Float()}
+	if provider := providerUsage.Get("provider"); provider.Type == gjson.String {
+		facts["provider"] = provider.String()
+	}
+	if percentage := providerUsage.Get("context_usage_percentage"); percentage.Type == gjson.Number {
+		facts["context_usage_percentage"] = percentage.Float()
+	}
+	info.ProviderUsage = facts
+}
+
 func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *ClaudeResponseInfo, data string) *types.NewAPIError {
 	var claudeResponse dto.ClaudeResponse
 	err := common.UnmarshalJsonStr(data, &claudeResponse)
@@ -107,6 +136,9 @@ func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 	}
 	if claudeResponse.Type == "message_stop" {
 		info.StreamStatus.MarkCompleted()
+	}
+	if claudeResponse.Type == "message_delta" {
+		captureClaudeProviderUsage(info, []byte(data))
 	}
 	if info.RelayFormat == types.RelayFormatClaude {
 		FormatClaudeResponseInfo(&claudeResponse, nil, claudeInfo)
@@ -366,6 +398,7 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 	}
 	info.ObserveResponseModel(claudeResponse.Model)
 	maybeMarkClaudeRefusal(c, info, claudeResponse.StopReason)
+	captureClaudeProviderUsage(info, data)
 	if claudeInfo.Usage == nil {
 		claudeInfo.Usage = &dto.Usage{}
 	}

@@ -802,3 +802,33 @@ func (s *priceTestReservation) GetPreConsumedQuota() int { return s.held }
 func (s *priceTestReservation) Reserve(quota int) error  { s.held = max(s.held, quota); return nil }
 
 func (s *priceTestReservation) ReserveBeforeSubmit(quota int) error { return s.Reserve(quota) }
+
+// peroai fork: a text-relay expression that reads provider usage facts is
+// accepted and pre-consumes on its token fallback branch.
+func TestModelPriceHelperTieredAcceptsProviderUsageExpr(t *testing.T) {
+	saved := map[string]string{}
+	require.NoError(t, config.GlobalConfig.SaveToDB(func(key, value string) error {
+		saved[key] = value
+		return nil
+	}))
+	t.Cleanup(func() { require.NoError(t, config.GlobalConfig.LoadFromDB(saved)) })
+	require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+		"billing_setting.billing_mode":    `{"kiro-test":"tiered_expr","task-usage-test":"tiered_expr"}`,
+		"billing_setting.billing_expr":    `{"kiro-test":"u(\"provider\") == \"kiro\" ? tier(\"credit\", u(\"credits\") * 0.25 * 1000000) : tier(\"token\", p * 2 + c * 10)","task-usage-test":"tier(\"base\", u(\"seconds\") * 0.4)"}`,
+		"group_ratio_setting.group_ratio": `{"default":1}`,
+	}))
+
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	info := &relaycommon.RelayInfo{OriginModelName: "kiro-test", UserGroup: "default", UsingGroup: "default", RelayFormat: types.RelayFormatClaude, BillingRequestInput: &billingexpr.RequestInput{}}
+	_, err := ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{})
+	require.NoError(t, err)
+	require.NotNil(t, info.TieredBillingSnapshot)
+	assert.Equal(t, "token", info.TieredBillingSnapshot.EstimatedTier)
+
+	ctx, _ = gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+	info = &relaycommon.RelayInfo{OriginModelName: "task-usage-test", UserGroup: "default", UsingGroup: "default", RelayFormat: types.RelayFormatClaude, BillingRequestInput: &billingexpr.RequestInput{}}
+	_, err = ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{})
+	require.Error(t, err, "other u() keys still require task billing")
+}

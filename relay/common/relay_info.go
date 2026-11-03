@@ -177,6 +177,13 @@ type RelayInfo struct {
 	TieredBillingSnapshot *billingexpr.BillingSnapshot
 	BillingRequestInput   *billingexpr.RequestInput
 	BillingImageCount     *int
+
+	// ProviderUsage holds per-response billing facts reported by the upstream
+	// (peroai fork), e.g. kiro's provider_usage {provider, credits}. It is
+	// merged into the tiered_expr usage map at settlement, see
+	// service.TryTieredSettle and billingexpr.ProviderUsageKeys.
+	ProviderUsage map[string]any
+
 	// ImageRequestCount is the effective quantity sent on the current attempt;
 	// ImageQuotaBeforeGroup is the frozen legacy estimate before request ratios.
 	ImageRequestCount     int
@@ -275,6 +282,8 @@ func (info *RelayInfo) InitChannelMeta(c *gin.Context) {
 	info.SendResponseCount = 0
 	info.ClaudeToChatStreamState = nil
 	info.ChatToGeminiStreamState = nil
+	// Provider usage belongs to one upstream response, not to the request.
+	info.ProviderUsage = nil
 	channelType := common.GetContextKeyInt(c, constant.ContextKeyChannelType)
 	paramOverride := common.GetContextKeyStringMap(c, constant.ContextKeyChannelParamOverride)
 	headerOverride := common.GetContextKeyStringMap(c, constant.ContextKeyChannelHeaderOverride)

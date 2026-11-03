@@ -195,7 +195,10 @@ func smokeTestExpr(exprStr string) error {
 		return err
 	}
 	usageKeys := billingexpr.UsedUsageKeys(exprStr)
-	if len(usageKeys) > 0 {
+	// peroai fork: provider usage facts (kiro credits) are filled by text
+	// relays at settlement, so they need no task plugin schema.
+	providerUsage := billingexpr.UsesOnlyProviderUsage(exprStr)
+	if len(usageKeys) > 0 && !providerUsage {
 		sortedKeys := make([]string, 0, len(usageKeys))
 		for key := range usageKeys {
 			sortedKeys = append(sortedKeys, key)
@@ -214,8 +217,15 @@ func smokeTestExpr(exprStr string) error {
 		{Len: math.MaxInt32, ImgCR: math.MaxInt32},
 	}
 
+	requests := billingExprSmokeRequests()
+	if providerUsage {
+		requests = append(requests,
+			billingexpr.RequestInput{Usage: map[string]any{"provider": "kiro", "credits": 0.0442, "context_usage_percentage": 1.5}},
+			billingexpr.RequestInput{Usage: map[string]any{"provider": "kiro", "credits": 0.0}},
+		)
+	}
 	for _, v := range vectors {
-		for _, request := range billingExprSmokeRequests() {
+		for _, request := range requests {
 			result, _, err := billingexpr.RunExprWithRequest(exprStr, v, request)
 			if err != nil {
 				return fmt.Errorf("vector {p=%g, c=%g}: run failed: %w", v.P, v.C, err)

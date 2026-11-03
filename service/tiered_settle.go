@@ -1,6 +1,7 @@
 package service
 
 import (
+	"maps"
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
@@ -250,6 +251,15 @@ func TryTieredSettle(relayInfo *relaycommon.RelayInfo, params billingexpr.TokenP
 	requestInput := billingexpr.RequestInput{}
 	if relayInfo.BillingRequestInput != nil {
 		requestInput = *relayInfo.BillingRequestInput
+	}
+	// peroai fork: merge upstream-reported facts (e.g. kiro credits) into a
+	// copy of the usage map so expressions can read u("credits") and
+	// u("provider"). The frozen request input stays untouched.
+	if len(relayInfo.ProviderUsage) > 0 {
+		usage := make(map[string]any, len(requestInput.Usage)+len(relayInfo.ProviderUsage))
+		maps.Copy(usage, requestInput.Usage)
+		maps.Copy(usage, relayInfo.ProviderUsage)
+		requestInput.Usage = usage
 	}
 	if relayInfo.BillingImageCount != nil {
 		requestInput.ImageCount = relayInfo.BillingImageCount

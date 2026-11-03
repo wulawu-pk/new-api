@@ -348,7 +348,9 @@ func modelPriceHelperTiered(c *gin.Context, info *relaycommon.RelayInfo, billing
 	}
 	exprHash := billingexpr.ExprHashString(exprStr)
 	usedVars := billingexpr.UsedVarsByHash(exprStr, exprHash)
-	if usedVars["u"] {
+	// peroai fork: text relays may read provider-reported usage facts
+	// (u("credits"), u("provider")); other u() keys still need task billing.
+	if usedVars["u"] && !billingexpr.UsesOnlyProviderUsage(exprStr) {
 		return hosttypes.PriceData{}, errors.New(i18n.T(c, i18n.MsgRelayTaskUsagePriceUnsupported, map[string]any{"Model": billingModelName}))
 	}
 	fixedPricing := billingexpr.UsesFixedPricingByHash(exprStr, exprHash)
