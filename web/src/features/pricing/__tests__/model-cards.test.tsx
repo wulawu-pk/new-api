@@ -170,7 +170,9 @@ describe('model cards', () => {
     })
     expect(statusStrip).toHaveTextContent('—')
     expect(statusStrip.querySelectorAll('[aria-hidden]')).toHaveLength(0)
-    expect(screen.getByText('No description available.')).toBeVisible()
+    // A card without a description shows nothing rather than a placeholder:
+    // the section heading above it already carries the group's own wording.
+    expect(screen.queryByText('No description available.')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Details' })).toBeEnabled()
   })
 
@@ -255,7 +257,7 @@ describe('model cards', () => {
     expect(within(idle).getByText('—t/s')).toBeVisible()
   })
 
-  it('keeps group, endpoint and tag overflow counts with their own metadata', () => {
+  it('keeps endpoint and tag overflow counts with their own metadata', () => {
     const groups = ['default-with-a-long-group-name', 'premium', 'internal']
     const endpoints = ['openai-response', 'openai', 'claude', 'gemini', 'jina']
     const tags = [
@@ -277,17 +279,14 @@ describe('model cards', () => {
       />
     )
 
-    const groupField = screen.getByText('Groups').parentElement
+    // The card sits inside a group section, so its own group list would repeat
+    // the heading; only the endpoints stay on the card.
+    expect(screen.queryByText('Groups')).not.toBeInTheDocument()
     const endpointField = screen.getByText('Endpoints').parentElement
-    if (!groupField || !endpointField) {
-      throw new Error('Expected labeled group and endpoint fields')
+    if (!endpointField) {
+      throw new Error('Expected a labeled endpoint field')
     }
     const tagField = screen.getByRole('group', { name: 'Tags' })
-    expect(within(groupField).getByText(groups[0])).toBeVisible()
-    expect(within(groupField).getByText('+2')).toHaveAttribute(
-      'title',
-      groups.slice(1).join(', ')
-    )
     expect(
       within(endpointField).getByText('openai-response, openai')
     ).toHaveAttribute('title', endpoints.join(', '))
@@ -577,7 +576,7 @@ describe('model cards', () => {
     expect(screen.getByText(/480p · 5s ≈/)).toBeVisible()
   })
 
-  it('keeps an unrecognized expression visible with the special billing message', () => {
+  it('shows a plain-language basis instead of the raw expression on the card', () => {
     const expression =
       'u("seconds") > 30 ? tier("long", u("seconds") * 0.3) : tier("short", u("seconds") * 0.4)'
     render(
@@ -590,8 +589,11 @@ describe('model cards', () => {
         onClick={vi.fn()}
       />
     )
-    expect(screen.getByText('Special billing expression')).toBeVisible()
-    expect(screen.getByText(expression)).toBeVisible()
+    expect(
+      screen.queryByText('Special billing expression')
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(expression)).not.toBeInTheDocument()
+    expect(screen.queryByText(/tier\(/)).not.toBeInTheDocument()
   })
 
   it('keeps browsing and missing metric values available after the metrics request fails', async () => {

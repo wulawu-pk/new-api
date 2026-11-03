@@ -26,15 +26,25 @@ import {
   LoadingSkeleton,
   EmptyState,
   SearchBar,
-  PricingTable,
   PricingSidebar,
   PricingToolbar,
-  ModelCardGrid,
   ModelDetailsDrawer,
+  PricingGroupSectionView,
 } from './components'
+import type { ModelPerfBadgeData } from './components/model-perf-badge'
 import { EXCLUDED_GROUPS, VIEW_MODES } from './constants'
 import { useFilters } from './hooks/use-filters'
 import { usePricingData } from './hooks/use-pricing-data'
+import {
+  buildGroupSections,
+  collectModelNames,
+} from './lib/group-sections'
+import { getPerfMetricsSummary } from '@/features/performance-metrics/api'
+import { requireServerSuccess } from '@/lib/server-error-message'
+import { useQuery } from '@tanstack/react-query'
+
+/** Cap on models per perf request; the backend rejects larger batches. */
+const MAX_PERF_MODELS = 50
 
 export function Pricing() {
   const { t } = useTranslation()
@@ -110,6 +120,53 @@ export function Pricing() {
     clearSearch()
   }, [clearFilters, clearSearch])
 
+  const sections = useMemo(
+    () =>
+      buildGroupSections(
+        filteredModels,
+        usableGroup || {},
+        groupRatio || {}
+      ),
+    [filteredModels, usableGroup, groupRatio]
+  )
+
+  // One perf request covers every model currently on screen.
+  const perfModelNames = useMemo(
+    () => collectModelNames(filteredModels).slice(0, MAX_PERF_MODELS),
+    [filteredModels]
+  )
+  const perfQuery = useQuery({
+    queryKey: ['perf-metrics-summary', 24, perfModelNames],
+    queryFn: async () =>
+      requireServerSuccess(await getPerfMetricsSummary(24, perfModelNames)),
+    enabled: perfModelNames.length > 0,
+    staleTime: 60 * 1000,
+    retry: false,
+  })
+  const perfMap = useMemo(() => {
+    const map = new Map<string, ModelPerfBadgeData>()
+    const payload = perfQuery.data?.data
+    for (const model of payload?.models ?? []) {
+      map.set(model.model_name, {
+        ...model,
+        window_start: payload?.window_start,
+        window_end: payload?.window_end,
+      })
+    }
+    for (const [name, series] of Object.entries(
+      payload?.recent_success_series ?? {}
+    )) {
+      map.set(name, {
+        avg_latency_ms: Number.NaN,
+        avg_tps: Number.NaN,
+        success_rate: Number.NaN,
+        ...map.get(name),
+        recent_success_series: series,
+      })
+    }
+    return map
+  }, [perfQuery.data])
+
   const renderPricingContent = () => {
     if (filteredModels.length === 0) {
       return (
@@ -121,30 +178,22 @@ export function Pricing() {
       )
     }
 
-    if (viewMode === VIEW_MODES.CARD) {
-      return (
-        <ModelCardGrid
-          models={filteredModels}
-          onModelClick={handleModelClick}
-          priceRate={priceRate}
-          usdExchangeRate={usdExchangeRate}
-          tokenUnit={tokenUnit}
-          showRechargePrice={showRechargePrice}
-          selectedGroup={groupFilter}
-        />
-      )
-    }
-
     return (
-      <PricingTable
-        models={filteredModels}
-        priceRate={priceRate}
-        usdExchangeRate={usdExchangeRate}
-        tokenUnit={tokenUnit}
-        showRechargePrice={showRechargePrice}
-        selectedGroup={groupFilter}
-        onModelClick={handleModelClick}
-      />
+      <div className='flex flex-col gap-8'>
+        {sections.map((section) => (
+          <PricingGroupSectionView
+            key={section.key}
+            section={section}
+            perf={perfMap}
+            priceRate={priceRate}
+            usdExchangeRate={usdExchangeRate}
+            tokenUnit={tokenUnit}
+            showRechargePrice={showRechargePrice}
+            viewMode={viewMode === VIEW_MODES.TABLE ? 'table' : 'card'}
+            onModelClick={handleModelClick}
+          />
+        ))}
+      </div>
     )
   }
 

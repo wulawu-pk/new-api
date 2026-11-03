@@ -121,13 +121,50 @@ export type ModelCapability =
   | 'caching'
   | 'embeddings'
 
+/**
+ * The group map from `/api/pricing`.
+ *
+ * `/api/pricing` sends `usable_group` as a plain `{group: description}` map,
+ * while some older payloads (and the console's own fixtures) carry
+ * `{group: {desc, ratio}}` objects. Both are read through the same accessor so a
+ * page never has to guess which shape it received.
+ */
+export type UsableGroupEntry = string | { desc?: string; ratio?: number | string }
+
+export type UsableGroups = Record<string, UsableGroupEntry>
+
+/** Administrator-written description for a group, or '' when there is none. */
+export function readGroupDescription(
+  groups: UsableGroups | undefined,
+  group: string
+): string {
+  const entry = groups?.[group]
+  if (typeof entry === 'string') return entry.trim()
+  if (entry && typeof entry === 'object') return (entry.desc ?? '').trim()
+  return ''
+}
+
+/** Configured multiplier for a group, or undefined when it is not priced. */
+export function readGroupRatio(
+  groups: UsableGroups | undefined,
+  group: string
+): number | undefined {
+  const entry = groups?.[group]
+  if (entry && typeof entry === 'object') {
+    const ratio = entry.ratio
+    const numeric = typeof ratio === 'string' ? Number(ratio) : ratio
+    if (typeof numeric === 'number' && Number.isFinite(numeric)) return numeric
+  }
+  return undefined
+}
+
 export type PricingData = {
   success: boolean
   message?: string
   data: PricingModel[]
   vendors: PricingVendor[]
   group_ratio: Record<string, number>
-  usable_group: Record<string, { desc: string; ratio: number }>
+  usable_group: UsableGroups
   supported_endpoint: Record<string, string>
   auto_groups: string[]
 }

@@ -38,11 +38,71 @@ import {
 } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
 import { isTokenBasedModel } from '../lib/model-helpers'
+import { summarizeSpecialExpression } from '../lib/special-price'
 import { formatPrice, formatRequestPrice } from '../lib/price'
 import { taskPriceLabel, taskUsageUnitLabel } from '../lib/task-price-display'
 import type { PricingModel, PriceType, TokenUnit } from '../types'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
 import { ModelPerfBadge, type ModelPerfBadgeData } from './model-perf-badge'
+
+/**
+ * Price block for expressions the tier parser cannot expand (credits, image
+ * sizes, request-dependent pricing).
+ *
+ * A visitor gets the per-unit numbers when they exist and one plain-language
+ * line otherwise — never the raw expression, which stays in the details drawer
+ * for anyone auditing their bill.
+ */
+function SpecialExpressionPrice(props: {
+  model: PricingModel
+  groupRatio?: number
+  priceRate?: number
+  usdExchangeRate?: number
+  showRechargePrice?: boolean
+}) {
+  const { t } = useTranslation()
+  const summary = useMemo(
+    () =>
+      summarizeSpecialExpression(props.model, {
+        groupRatio: props.groupRatio,
+        priceRate: props.priceRate,
+        usdExchangeRate: props.usdExchangeRate,
+        showRechargePrice: props.showRechargePrice,
+      }),
+    [
+      props.model,
+      props.groupRatio,
+      props.priceRate,
+      props.usdExchangeRate,
+      props.showRechargePrice,
+    ]
+  )
+  if (!summary) return null
+  if (summary.rows.length === 0) {
+    return (
+      <span className='text-muted-foreground col-span-full text-xs'>
+        {t(summary.note)}
+      </span>
+    )
+  }
+  return (
+    <div className='col-span-full flex min-w-0 flex-col gap-1'>
+      <div className='grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-x-3 gap-y-2'>
+        {summary.rows.map((row) => (
+          <div key={row.key} className='flex min-w-0 flex-col gap-1'>
+            <span className='text-muted-foreground text-xs'>
+              {/^\d/.test(row.label) ? row.label : t(row.label)}
+            </span>
+            <span className='font-mono text-sm font-semibold tabular-nums'>
+              {row.value}
+            </span>
+          </div>
+        ))}
+      </div>
+      <span className='text-muted-foreground text-xs'>{t(summary.note)}</span>
+    </div>
+  )
+}
 
 export interface ModelCardProps {
   model: PricingModel
@@ -64,7 +124,6 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
   const isTokenBased = isTokenBasedModel(props.model)
   const tokenUnitLabel = tokenUnit === 'K' ? '1K' : '1M'
   const tags = parseTags(props.model.tags)
-  const groups = props.model.enable_groups || []
   const endpoints = props.model.supported_endpoint_types || []
   const modelIconKey = props.model.icon || props.model.vendor_icon
   const modelIcon = modelIconKey ? getLobeIcon(modelIconKey, 28) : null
@@ -113,14 +172,13 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
     )
     if (dynamicSummary.isSpecialExpression) {
       priceSummary = (
-        <div className='col-span-full min-w-0'>
-          <span className='text-warning'>
-            {t('Special billing expression')}
-          </span>
-          <code className='text-muted-foreground mt-1 line-clamp-2 block font-mono text-xs break-all'>
-            {dynamicSummary.rawExpression}
-          </code>
-        </div>
+        <SpecialExpressionPrice
+          model={props.model}
+          groupRatio={dynamicPriceOptions.groupRatioMultiplier}
+          priceRate={priceRate}
+          usdExchangeRate={usdExchangeRate}
+          showRechargePrice={showRechargePrice}
+        />
       )
     } else if (
       dynamicSummary.primaryEntries.length > 0 ||
@@ -304,9 +362,11 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
       </CardHeader>
       <CardContent className='flex flex-1 flex-col gap-3'>
         <div className='flex min-w-0 flex-col gap-1.5'>
-          <p className='text-muted-foreground line-clamp-2 text-[13px] leading-5 break-words'>
-            {props.model.description || t('No description available.')}
-          </p>
+          {props.model.description && (
+            <p className='text-muted-foreground line-clamp-2 text-[13px] leading-5 break-words'>
+              {props.model.description}
+            </p>
+          )}
           {tags.length > 0 && (
             <div
               role='group'
@@ -344,53 +404,26 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
             {priceSummary}
           </div>
         </div>
-        {(groups.length > 0 || endpoints.length > 0) && (
-          <dl
-            className={cn(
-              'grid min-w-0 grid-cols-2 gap-3 text-xs',
-              (groups.length === 0 || endpoints.length === 0) && 'grid-cols-1'
-            )}
-          >
-            {groups.length > 0 && (
-              <div className='flex min-w-0 items-baseline gap-1.5'>
-                <dt className='text-muted-foreground shrink-0'>
-                  {t('Groups')}
-                </dt>
-                <dd className='flex min-w-0 items-baseline gap-1'>
-                  <span className='truncate' title={groups.join(', ')}>
-                    {groups[0]}
+        {endpoints.length > 0 && (
+          <dl className='grid min-w-0 grid-cols-1 gap-3 text-xs'>
+            <div className='flex min-w-0 items-baseline gap-1.5'>
+              <dt className='text-muted-foreground shrink-0'>
+                {t('Endpoints')}
+              </dt>
+              <dd className='flex min-w-0 items-baseline gap-1'>
+                <span className='truncate' title={endpoints.join(', ')}>
+                  {endpoints.slice(0, 2).join(', ')}
+                </span>
+                {endpoints.length > 2 && (
+                  <span
+                    className='text-muted-foreground shrink-0'
+                    title={endpoints.slice(2).join(', ')}
+                  >
+                    +{endpoints.length - 2}
                   </span>
-                  {groups.length > 1 && (
-                    <span
-                      className='text-muted-foreground shrink-0'
-                      title={groups.slice(1).join(', ')}
-                    >
-                      +{groups.length - 1}
-                    </span>
-                  )}
-                </dd>
-              </div>
-            )}
-            {endpoints.length > 0 && (
-              <div className='flex min-w-0 items-baseline gap-1.5'>
-                <dt className='text-muted-foreground shrink-0'>
-                  {t('Endpoints')}
-                </dt>
-                <dd className='flex min-w-0 items-baseline gap-1'>
-                  <span className='truncate' title={endpoints.join(', ')}>
-                    {endpoints.slice(0, 2).join(', ')}
-                  </span>
-                  {endpoints.length > 2 && (
-                    <span
-                      className='text-muted-foreground shrink-0'
-                      title={endpoints.slice(2).join(', ')}
-                    >
-                      +{endpoints.length - 2}
-                    </span>
-                  )}
-                </dd>
-              </div>
-            )}
+                )}
+              </dd>
+            </div>
           </dl>
         )}
       </CardContent>

@@ -99,6 +99,7 @@ import type {
   PriceType,
   PricingModel,
   TokenUnit,
+  UsableGroups,
 } from '../types'
 import { DynamicPricingBreakdown } from './dynamic-pricing-breakdown'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
@@ -989,7 +990,7 @@ function getDynamicFormattedPricesByTier(
 type GroupPricingSectionProps = {
   model: PricingModel
   groupRatio: Record<string, number>
-  usableGroup: Record<string, { desc: string; ratio: number }>
+  usableGroup: UsableGroups
   autoGroups: string[]
   priceRate: number
   usdExchangeRate: number
@@ -1459,7 +1460,7 @@ const TAB_META: Record<
 export interface ModelDetailsContentProps {
   model: PricingModel
   groupRatio: Record<string, number>
-  usableGroup: Record<string, { desc: string; ratio: number }>
+  usableGroup: UsableGroups
   endpointMap: Record<string, { path?: string; method?: string }>
   autoGroups: string[]
   priceRate: number

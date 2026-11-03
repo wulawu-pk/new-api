@@ -29,3 +29,7 @@ export {
   ModelDetailsDrawer,
 } from './model-details'
 export { PricingTable } from './pricing-table'
+export {
+  PricingGroupSectionView,
+  type PricingGroupSectionProps,
+} from './pricing-group-section'
