@@ -22,6 +22,7 @@ import {
   type PricingModel,
   type UsableGroups,
 } from '../types'
+import { unwrapExpressionParens } from './billing-expression/structure'
 
 // ----------------------------------------------------------------------------
 // Group sections
@@ -52,11 +53,41 @@ export const PREFERRED_GROUP_ORDER = [
   'gpt-promax',
   'gpt-test',
   'claude-kiro',
+  'claude-ccmax',
   'gemini-ultra',
   'gemini-pro',
   'image-gpt',
   'image-all',
 ]
+
+/**
+ * Groups whose channel reports upstream credits. A shared Claude model carries
+ * one expression for every group, `u("provider") == "kiro" ? tier("credit", …)
+ * : <token price>`, and only these groups ever take the credit branch. Every
+ * other section must quote the token branch, or a token-billed group would
+ * advertise a per-credit price it never charges.
+ */
+export const CREDIT_BILLED_GROUPS = new Set(['claude-kiro'])
+
+const PROVIDER_CREDIT_BRANCH =
+  /^\s*u\(\s*"provider"\s*\)\s*==\s*"[^"]*"\s*\?\s*tier\(\s*"credit"\s*,[^?:]*\)\s*:\s*([\s\S]+)$/
+
+/** The token-priced remainder of a provider-conditional credit expression. */
+export function stripProviderCreditBranch(expression: string): string | null {
+  const match = PROVIDER_CREDIT_BRANCH.exec(expression)
+  if (!match) return null
+  return unwrapExpressionParens(match[1])
+}
+
+/** The model as a customer of `group` is billed for it. */
+export function modelForGroup(
+  model: PricingModel,
+  group: string
+): PricingModel {
+  if (CREDIT_BILLED_GROUPS.has(group) || !model.billing_expr) return model
+  const tokenOnly = stripProviderCreditBranch(model.billing_expr)
+  return tokenOnly ? { ...model, billing_expr: tokenOnly } : model
+}
 
 /** '' and 'auto' are routing pseudo-groups with no price of their own. */
 const NON_SECTION_GROUPS = new Set(['', 'auto'])
@@ -129,7 +160,9 @@ export function buildGroupSections(
         typeof ratio === 'number' && Number.isFinite(ratio)
           ? ratio
           : configured,
-      models: byGroup.get(key) ?? [],
+      models: (byGroup.get(key) ?? []).map((model) =>
+        modelForGroup(model, key)
+      ),
     }
   })
 }

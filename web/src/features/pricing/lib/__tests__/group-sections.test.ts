@@ -18,12 +18,14 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { describe, expect, it } from 'vitest'
 
+import type { PricingModel } from '../../types'
 import {
   buildGroupSections,
   collectModelNames,
+  modelForGroup,
   PREFERRED_GROUP_ORDER,
+  stripProviderCreditBranch,
 } from '../group-sections'
-import type { PricingModel } from '../../types'
 
 function model(
   name: string,
@@ -150,5 +152,36 @@ describe('collectModelNames', () => {
     expect(
       collectModelNames([model('', ['gpt-pro']), model('a', ['gpt-pro'])])
     ).toEqual(['a'])
+  })
+})
+
+describe('credit branch per group', () => {
+  const kiroExpr =
+    'u("provider") == "kiro" ? tier("credit", u("credits") * 0.25 * 1000000) : (len <= 200000 ? tier("standard", p * 5.55) : tier("long_context", p * 11.1))'
+
+  it('strips the credit branch and its parentheses', () => {
+    expect(stripProviderCreditBranch(kiroExpr)).toBe(
+      'len <= 200000 ? tier("standard", p * 5.55) : tier("long_context", p * 11.1)'
+    )
+    expect(
+      stripProviderCreditBranch(
+        'u("provider") == "kiro" ? tier("credit", u("credits") * 0.25 * 1000000) : tier("token", p * 3.7 + c * 18.5)'
+      )
+    ).toBe('tier("token", p * 3.7 + c * 18.5)')
+    expect(stripProviderCreditBranch('tier("token", p * 2)')).toBeNull()
+  })
+
+  it('quotes credits only in credit-billed groups', () => {
+    const shared = model('claude-opus-5-5', ['claude-kiro', 'claude-ccmax'], {
+      billing_mode: 'tiered_expr',
+      billing_expr: kiroExpr,
+    })
+    const sections = buildGroupSections([shared], {}, {})
+    const byKey = Object.fromEntries(sections.map((s) => [s.key, s.models[0]]))
+    expect(byKey['claude-kiro'].billing_expr).toBe(kiroExpr)
+    expect(byKey['claude-ccmax'].billing_expr).not.toContain('credit')
+    expect(modelForGroup(shared, 'claude-ccmax').billing_expr).toContain(
+      'tier("standard"'
+    )
   })
 })
