@@ -151,6 +151,24 @@ describe('API key group table cell', () => {
     ).toBeVisible()
   })
 
+  test('shows a credit-billed group by its per-credit price instead of the multiplier', () => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <TooltipProvider>
+          <ApiKeyGroupCell
+            group='claude-kiro'
+            ratio={1.85}
+            ratioLabel='$0.25 / credit'
+            crossGroupRetry={false}
+            shouldReduceMotion={false}
+          />
+        </TooltipProvider>
+      </I18nextProvider>
+    )
+    expect(screen.getByText('$0.25 / credit')).toBeInTheDocument()
+    expect(screen.queryByText('1.85x')).not.toBeInTheDocument()
+  })
+
   test('never turns a string-valued normal group ratio into an automatic multiplier', () => {
     render(<CellHarness group='vip' ratio='自动' />)
     expect(screen.getByText('vip')).toBeInTheDocument()

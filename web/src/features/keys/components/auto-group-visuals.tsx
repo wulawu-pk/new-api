@@ -74,6 +74,8 @@ export function AutoGroupFrame(props: AutoGroupFrameProps) {
 type GroupRatioBadgeProps = {
   isAuto?: boolean
   ratio: GroupRatio
+  /** Replaces the multiplier, e.g. `$0.25 / credit` for a credit group. */
+  label?: string
   shouldReduceMotion?: boolean
 }
 
@@ -87,7 +89,9 @@ export function GroupRatioBadge(props: GroupRatioBadgeProps) {
   return (
     <GroupMultiplierBadge
       ratio={typeof props.ratio === 'number' ? props.ratio : undefined}
-      label={typeof props.ratio === 'number' ? undefined : t('Auto')}
+      label={
+        props.label ?? (typeof props.ratio === 'number' ? undefined : t('Auto'))
+      }
       className={cn(
         props.isAuto &&
           'overflow-visible rounded-md border-primary/30 bg-primary/10 text-primary'

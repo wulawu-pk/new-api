@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { formatBillingCurrencyFromUSD } from '@/lib/currency'
+
 import {
   readGroupDescription,
   readGroupRatio,
@@ -23,6 +25,7 @@ import {
   type UsableGroups,
 } from '../types'
 import { unwrapExpressionParens } from './billing-expression/structure'
+import { readCreditUnitPriceFromExpression } from './special-price'
 
 // ----------------------------------------------------------------------------
 // Group sections
@@ -41,6 +44,11 @@ export type PricingGroupSection = {
   description: string
   /** Group multiplier used to quote this section's prices. */
   ratio?: number
+  /**
+   * USD price of one credit, multiplier included, for a credit-billed group.
+   * The header quotes it instead of the multiplier.
+   */
+  creditPrice?: number
   models: PricingModel[]
 }
 
@@ -87,6 +95,79 @@ export function modelForGroup(
   if (CREDIT_BILLED_GROUPS.has(group) || !model.billing_expr) return model
   const tokenOnly = stripProviderCreditBranch(model.billing_expr)
   return tokenOnly ? { ...model, billing_expr: tokenOnly } : model
+}
+
+// ----------------------------------------------------------------------------
+// Per-credit price of a credit-billed group
+// ----------------------------------------------------------------------------
+// A credit-billed group (claude-kiro) charges `credits × rate × group ratio`.
+// Its multiplier alone tells a customer nothing, so every place that lists the
+// group quotes the price of one credit instead. The rate comes from the models'
+// own billing expressions, never from a constant, so the label follows whatever
+// the administrator configures.
+
+/**
+ * Price of one credit in `group` before the group multiplier, read from the
+ * credit tier of the group's models.
+ *
+ * Returns null when the group is not credit-billed, when none of its models
+ * carries a readable credit tier, or when its models disagree on the rate (a
+ * single label would then be wrong for some of them).
+ */
+export function getCreditGroupUnitPrice(
+  models: PricingModel[],
+  group: string
+): number | null {
+  if (!CREDIT_BILLED_GROUPS.has(group)) return null
+  const rates = new Set<number>()
+  for (const model of models) {
+    const groups = Array.isArray(model.enable_groups) ? model.enable_groups : []
+    if (!groups.includes(group)) continue
+    const rate = readCreditUnitPriceFromExpression(model.billing_expr || '')
+    if (rate !== null) rates.add(rate)
+  }
+  return rates.size === 1 ? [...rates][0] : null
+}
+
+/**
+ * USD price of one credit in `group` as billed: the expression's rate times the
+ * group multiplier. A missing multiplier counts as 1, as it does when billing.
+ */
+export function getCreditGroupPriceUSD(
+  models: PricingModel[],
+  group: string,
+  groupRatio: Record<string, number | string> | undefined
+): number | null {
+  const unitPrice = getCreditGroupUnitPrice(models, group)
+  if (unitPrice === null) return null
+  const raw = groupRatio?.[group]
+  const ratio = typeof raw === 'string' ? Number(raw) : raw
+  const multiplier =
+    typeof ratio === 'number' && Number.isFinite(ratio) ? ratio : 1
+  return unitPrice * multiplier
+}
+
+/** Display-currency text for a per-credit price, e.g. `$0.25`. */
+export function formatCreditPrice(priceUSD: number): string {
+  return formatBillingCurrencyFromUSD(priceUSD, {
+    digitsLarge: 4,
+    digitsSmall: 6,
+    abbreviate: false,
+  })
+}
+
+/**
+ * `$0.25 / credit` label for a credit-billed group, or null for any other
+ * group. `creditUnit` is the translated word for one credit.
+ */
+export function formatCreditGroupLabel(
+  models: PricingModel[],
+  group: string,
+  groupRatio: Record<string, number | string> | undefined,
+  creditUnit: string
+): string | null {
+  const price = getCreditGroupPriceUSD(models, group, groupRatio)
+  return price === null ? null : `${formatCreditPrice(price)} / ${creditUnit}`
 }
 
 /** '' and 'auto' are routing pseudo-groups with no price of their own. */
@@ -161,13 +242,18 @@ export function buildGroupSections(
     // The payload may send either a bare description string or a {desc} object.
     const description = normalize(readGroupDescription(usableGroup, key))
     const configured = readGroupRatio(usableGroup, key)
+    const resolvedRatio =
+      typeof ratio === 'number' && Number.isFinite(ratio) ? ratio : configured
+    const creditPrice = getCreditGroupPriceUSD(
+      byGroup.get(key) ?? [],
+      key,
+      resolvedRatio === undefined ? undefined : { [key]: resolvedRatio }
+    )
     return {
       key,
       description: description || key,
-      ratio:
-        typeof ratio === 'number' && Number.isFinite(ratio)
-          ? ratio
-          : configured,
+      ratio: resolvedRatio,
+      ...(creditPrice === null ? {} : { creditPrice }),
       models: (byGroup.get(key) ?? []).map((model) =>
         modelForGroup(model, key)
       ),

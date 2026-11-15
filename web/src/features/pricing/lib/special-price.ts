@@ -157,6 +157,22 @@ export function readCreditUnitPrice(body: ExpressionNode): number | null {
   return unique.length === 1 ? unique[0] : null
 }
 
+/**
+ * Price of one upstream credit stated by a billing expression, before any
+ * group multiplier. Null when the expression has no readable credit tier.
+ */
+export function readCreditUnitPriceFromExpression(
+  expression: string
+): number | null {
+  if (!expression) return null
+  const compiled = compileBillingExpression(expression)
+  if (compiled.status !== 'ready') return null
+  const creditTier = collectTierCalls(compiled.ast).find(
+    (tier) => tier.label === 'credit'
+  )
+  return creditTier ? readCreditUnitPrice(creditTier.body) : null
+}
+
 function formatMoney(priceUSD: number, showSymbol = true): string {
   return formatBillingCurrencyFromUSD(priceUSD, {
     showSymbol,

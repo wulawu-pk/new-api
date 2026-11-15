@@ -48,6 +48,8 @@ export type ApiKeyGroupOption = {
   label: string
   desc?: string
   ratio?: number | string
+  /** Shown instead of the multiplier, e.g. `$0.25 / credit`. */
+  ratioLabel?: string
 }
 
 type ApiKeyGroupComboboxProps = {
@@ -132,6 +134,7 @@ export function ApiKeyGroupCombobox({
           <span className='hidden sm:block'>
             <GroupRatioBadge
               ratio={selectedOption?.ratio}
+              label={selectedOption?.ratioLabel}
               isAuto={isAutoSelected}
               shouldReduceMotion={shouldReduceMotion}
             />
@@ -199,6 +202,7 @@ export function ApiKeyGroupCombobox({
                     </span>
                     <GroupRatioBadge
                       ratio={option.ratio}
+                      label={option.ratioLabel}
                       isAuto={isAutoOption}
                       shouldReduceMotion={shouldReduceMotion}
                     />

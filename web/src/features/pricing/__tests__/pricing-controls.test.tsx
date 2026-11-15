@@ -61,6 +61,34 @@ function toolbarProps(): PricingToolbarProps {
 }
 
 describe('pricing controls', () => {
+  it('quotes a credit-billed group by the price of one credit', () => {
+    const claude: PricingModel = {
+      id: 9,
+      model_name: 'claude-shared',
+      quota_type: 0,
+      model_ratio: 1,
+      completion_ratio: 1,
+      enable_groups: ['claude-kiro', 'claude-ccmax'],
+      billing_mode: 'tiered_expr',
+      billing_expr:
+        'u("provider") == "kiro" ? tier("credit", u("credits") * 0.135135135135 * 1000000) : tier("token", p * 2 + c * 10)',
+    }
+    render(
+      <PricingSidebar
+        {...toolbarProps()}
+        groups={['claude-kiro', 'claude-ccmax']}
+        groupRatios={{ 'claude-kiro': 1.85, 'claude-ccmax': 1.85 }}
+        models={[claude]}
+      />
+    )
+    expect(
+      screen.getByRole('button', { name: /^claude-kiro\s*\$0\.25 \/ credit$/ })
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: /^claude-ccmax\s*x1\.85$/ })
+    ).toBeVisible()
+  })
+
   it('counts each model once per filter and updates counts when the catalog changes', () => {
     const props = toolbarProps()
     const base: PricingModel = {

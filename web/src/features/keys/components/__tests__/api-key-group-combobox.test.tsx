@@ -65,6 +65,13 @@ const options = [
   },
   { value: 'default', label: 'default', desc: 'User group', ratio: 1 },
   { value: 'vip', label: 'vip', desc: 'Priority group', ratio: 3 },
+  {
+    value: 'claude-kiro',
+    label: 'claude-kiro',
+    desc: 'Credit group',
+    ratio: 1.85,
+    ratioLabel: '$0.25 / credit',
+  },
 ]
 
 function Harness(props: { initialValue: string }) {
@@ -220,5 +227,19 @@ describe('API key group combobox Auto effect', () => {
     expect(autoOption.querySelector('[data-auto-group-flow-border]')).toBe(null)
     expect(within(autoOption).getByText('Auto')).toBeInTheDocument()
     setReducedMotion(false)
+  })
+
+  test('quotes a credit-billed group by its per-credit price', () => {
+    render(<Harness initialValue='claude-kiro' />)
+    const trigger = getTrigger()
+    expect(within(trigger).getByText('$0.25 / credit')).toBeInTheDocument()
+    expect(within(trigger).queryByText('1.85x')).toBeNull()
+
+    fireEvent.click(trigger)
+    const option = getCommandItem('Credit group')
+    expect(within(option).getByText('$0.25 / credit')).toBeInTheDocument()
+    expect(
+      within(getCommandItem('Priority group')).getByText('3x')
+    ).toBeInTheDocument()
   })
 })

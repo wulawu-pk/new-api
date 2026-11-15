@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 
 import { StatusBadge } from '@/components/status-badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useCreditGroupLabel } from '@/features/pricing/hooks/use-credit-group-labels'
 import { useMediaQuery } from '@/hooks'
 import { toIntlLocale } from '@/i18n/languages'
 import { getUserGroups } from '@/lib/api'
@@ -73,6 +74,7 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
   const { meta: currency } = getCurrencyDisplay()
   const quotaUnit = currency.kind === 'tokens' ? t('Tokens') : currency.symbol
   const groupRatios = useGroupRatios()
+  const creditGroupLabel = useCreditGroupLabel()
   const shouldReduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const justNowLabel = t('Just now')
@@ -158,6 +160,7 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
             <ApiKeyGroupCell
               group={group}
               ratio={groupRatios[group]}
+              ratioLabel={creditGroupLabel(group, groupRatios[group])}
               crossGroupRetry={apiKey.cross_group_retry}
               shouldReduceMotion={shouldReduceMotion}
             />
@@ -233,6 +236,15 @@ export function useApiKeysColumns(now: number): ColumnDef<ApiKey>[] {
         meta: { pinned: 'right' as const },
       },
     ],
-    [t, quotaUnit, now, groupRatios, shouldReduceMotion, locale, justNowLabel]
+    [
+      t,
+      quotaUnit,
+      now,
+      groupRatios,
+      creditGroupLabel,
+      shouldReduceMotion,
+      locale,
+      justNowLabel,
+    ]
   )
 }

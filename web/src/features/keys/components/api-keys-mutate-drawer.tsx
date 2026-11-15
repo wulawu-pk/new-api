@@ -62,6 +62,7 @@ import {
 } from '@/components/ui/sheet'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { useCreditGroupLabel } from '@/features/pricing/hooks/use-credit-group-labels'
 import { RelatedPolicyLink } from '@/features/system-settings/request-policies/related-policy-link'
 import { useStatus } from '@/hooks/use-status'
 import { getUserModels, getUserGroups } from '@/lib/api'
@@ -161,6 +162,7 @@ export function ApiKeysMutateDrawer({
     staleTime: 0,
   })
 
+  const creditGroupLabel = useCreditGroupLabel()
   const models = modelsData?.data || []
   const groups = useMemo<ApiKeyGroupOption[]>(
     () =>
@@ -169,8 +171,9 @@ export function ApiKeysMutateDrawer({
         label: key,
         desc: info.desc ? translateServerText(t, info.desc) : key,
         ratio: info.ratio,
+        ratioLabel: creditGroupLabel(key, info.ratio) ?? undefined,
       })),
-    [groupsData, t]
+    [groupsData, t, creditGroupLabel]
   )
   const backendHasAuto = groups.some((g) => g.value === 'auto')
   const availableAutoGroupNames = useMemo(

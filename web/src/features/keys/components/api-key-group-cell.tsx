@@ -35,6 +35,8 @@ type ApiKeyGroupCellProps = {
   crossGroupRetry: boolean
   group: string
   ratio?: GroupRatio
+  /** Shown instead of the multiplier, e.g. `$0.25 / credit`. */
+  ratioLabel?: string | null
   shouldReduceMotion: boolean
 }
 
@@ -56,7 +58,7 @@ export function ApiKeyGroupCell(props: ApiKeyGroupCellProps) {
         <GroupBadge
           group={group}
           ratio={ratio}
-          ratioLabel={group ? undefined : t('Inherited')}
+          ratioLabel={group ? (props.ratioLabel ?? undefined) : t('Inherited')}
           type='text'
           className='px-0'
           containerClassName={cn('gap-3', isMobile && 'w-full justify-between')}

@@ -39,6 +39,7 @@ import {
 } from '../constants'
 import { hasTaskUsageSchema } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
+import { formatCreditGroupLabel } from '../lib/group-sections'
 import type { PricingModel, PricingVendor } from '../types'
 
 type FilterOption = {
@@ -71,6 +72,7 @@ export interface PricingSidebarProps {
   groups: string[]
   groupRatios?: Record<string, number>
   tags: string[]
+  /** Every model on the page, unfiltered, so group labels stay stable. */
   models: PricingModel[]
   hasActiveFilters: boolean
   onClearFilters: () => void
@@ -209,7 +211,14 @@ export const PricingSidebar = memo(function PricingSidebar(
     ...props.groups.map((group) => ({
       value: group,
       label: group,
-      suffix: formatGroupRatio(props.groupRatios?.[group]),
+      // A credit-billed group quotes the price of one credit, not a multiplier.
+      suffix:
+        formatCreditGroupLabel(
+          props.models,
+          group,
+          props.groupRatios,
+          t('credit')
+        ) ?? formatGroupRatio(props.groupRatios?.[group]),
     })),
   ]
 

@@ -26,7 +26,10 @@ import { Button } from '@/components/ui/button'
 import { getLobeIcon } from '@/lib/lobe-icon'
 
 import { DEFAULT_TOKEN_UNIT } from '../constants'
-import type { PricingGroupSection } from '../lib/group-sections'
+import {
+  formatCreditPrice,
+  type PricingGroupSection,
+} from '../lib/group-sections'
 import type { PricingModel, TokenUnit } from '../types'
 import { ModelCard } from './model-card'
 import { ModelPerfBadge, type ModelPerfBadgeData } from './model-perf-badge'
@@ -142,10 +145,17 @@ export function PricingGroupSectionView(props: PricingGroupSectionProps) {
             >
               {props.section.description}
             </h2>
-            {props.section.ratio != null && props.section.ratio !== 1 && (
+            {props.section.creditPrice != null ? (
               <span className='bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 font-mono text-[11px] tabular-nums'>
-                ×{props.section.ratio}
+                {formatCreditPrice(props.section.creditPrice)} / {t('credit')}
               </span>
+            ) : (
+              props.section.ratio != null &&
+              props.section.ratio !== 1 && (
+                <span className='bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 font-mono text-[11px] tabular-nums'>
+                  ×{props.section.ratio}
+                </span>
+              )
             )}
           </div>
           <p className='text-muted-foreground mt-1 text-xs'>
