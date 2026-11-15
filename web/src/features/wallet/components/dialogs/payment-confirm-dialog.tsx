@@ -129,6 +129,14 @@ export function PaymentConfirmDialog({
             )}
           </div>
 
+          {cryptoCurrency && !calculating && (
+            <p className='text-muted-foreground bg-muted/50 rounded-lg p-3 text-xs leading-5'>
+              {t(
+                'When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.'
+              )}
+            </p>
+          )}
+
           {hasDiscount && !calculating && (
             <div className='bg-muted/50 rounded-lg p-3'>
               <div className='flex items-center justify-between text-sm'>

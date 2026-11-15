@@ -7392,6 +7392,7 @@
     "Top up with {{currency}}": "Пополнить в {{currency}}",
     "You receive:": "Будет зачислено:",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Оплата {{amount}} {{currency}}; зачисление по текущему курсу 1 {{currency}} = ¥{{rate}} (¥1 = $1 квоты). Сумма фиксируется при создании заказа.",
-    "Exchange rate is temporarily unavailable, please try again later": "Курс временно недоступен, попробуйте позже"
+    "Exchange rate is temporarily unavailable, please try again later": "Курс временно недоступен, попробуйте позже",
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Если кто-то одновременно платит ту же сумму, касса может добавить 0,01–0,02. Переведите ровно сумму, показанную на кассе, в течение 30 минут; зачисление останется как указано выше."
   }
 }

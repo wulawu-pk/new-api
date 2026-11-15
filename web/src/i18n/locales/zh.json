@@ -7392,6 +7392,7 @@
     "Top up with {{currency}}": "{{currency}} 充值",
     "You receive:": "到账额度：",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "支付 {{amount}} {{currency}}，按实时汇率 1 {{currency}} = ¥{{rate}} 折算到账（¥1 = $1 额度），下单时锁定。",
-    "Exchange rate is temporarily unavailable, please try again later": "汇率暂时无法获取，请稍后再试"
+    "Exchange rate is temporarily unavailable, please try again later": "汇率暂时无法获取，请稍后再试",
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "同一时间有人支付相同金额时，收银台金额可能多出 0.01–0.02。请在 30 分钟内按收银台显示的金额精确转账，到账额度仍按上面计算。"
   }
 }

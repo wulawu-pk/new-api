@@ -7392,6 +7392,7 @@
     "Top up with {{currency}}": "Recharger en {{currency}}",
     "You receive:": "Crédité :",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Payez {{amount}} {{currency}} ; crédité au taux en direct 1 {{currency}} = ¥{{rate}} (¥1 = $1 de quota). Le crédit est fixé à la création de la commande.",
-    "Exchange rate is temporarily unavailable, please try again later": "Le taux de change est momentanément indisponible, veuillez réessayer plus tard"
+    "Exchange rate is temporarily unavailable, please try again later": "Le taux de change est momentanément indisponible, veuillez réessayer plus tard",
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Si d'autres paient le même montant au même moment, la caisse peut ajouter 0,01 à 0,02. Envoyez exactement le montant affiché sur la caisse sous 30 minutes ; le crédit reste celui indiqué ci-dessus."
   }
 }

@@ -7392,6 +7392,7 @@
     "Top up with {{currency}}": "{{currency}} でチャージ",
     "You receive:": "付与額：",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "{{amount}} {{currency}} を支払い、リアルタイムレート 1 {{currency}} = ¥{{rate}}（¥1 = $1）で付与されます。付与額は注文時に確定します。",
-    "Exchange rate is temporarily unavailable, please try again later": "為替レートを一時的に取得できません。しばらくしてから再試行してください"
+    "Exchange rate is temporarily unavailable, please try again later": "為替レートを一時的に取得できません。しばらくしてから再試行してください",
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "同時に同じ金額の支払いがある場合、決済画面の金額が 0.01～0.02 増えることがあります。30 分以内に決済画面に表示された金額を正確に送金してください。付与額は上記のままです。"
   }
 }
