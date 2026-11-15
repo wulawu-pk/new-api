@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { describe, expect, test } from 'vitest'
 
 import { PAYMENT_TYPES } from '../constants'
-import { requestPaymentAmount } from './use-payment'
+import { requestPaymentAmount, requestPaymentQuote } from './use-payment'
 
 describe('payment amount routing', () => {
   test('uses the dedicated Waffo amount calculator', async () => {
@@ -45,5 +45,33 @@ describe('payment amount routing', () => {
 
     expect(amount).toBe(18.75)
     expect(calls).toEqual(['waffo:120'])
+  })
+})
+
+describe('coin-priced crypto quotes', () => {
+  test('passes the method and returns the credited quota', async () => {
+    const seen: unknown[] = []
+    const quote = await requestPaymentQuote(3, 'usdt.trc20', {
+      regular: async (request) => {
+        seen.push(request)
+        return {
+          success: true,
+          data: '3',
+          currency: 'USDT',
+          rate: '6.67',
+          credit_quota: 10_005_000,
+        }
+      },
+      stripe: async () => ({ success: true, data: '0' }),
+      waffo: async () => ({ success: true, data: '0' }),
+      waffoPancake: async () => ({ success: true, data: '0' }),
+    })
+    expect(seen).toEqual([{ amount: 3, payment_method: 'usdt.trc20' }])
+    expect(quote).toEqual({
+      amount: 3,
+      currency: 'USDT',
+      rate: 6.67,
+      creditQuota: 10_005_000,
+    })
   })
 })

@@ -73,7 +73,10 @@ export async function requestPaymentAmount(
     calculator = calculators.waffoPancake
   }
 
-  const response = await calculator({ amount: topupAmount })
+  const response = await calculator({
+    amount: topupAmount,
+    payment_method: paymentType,
+  })
   if (!isApiSuccess(response) || !response.data) {
     return 0
   }
@@ -81,8 +84,49 @@ export async function requestPaymentAmount(
   return Number.parseFloat(response.data)
 }
 
+/**
+ * peroai: like requestPaymentAmount, but also returns what a coin-priced
+ * crypto order credits.
+ */
+export async function requestPaymentQuote(
+  topupAmount: number,
+  paymentType: string,
+  calculators: PaymentAmountCalculators = defaultPaymentAmountCalculators
+): Promise<PaymentQuote> {
+  if (
+    isStripePayment(paymentType) ||
+    isWaffoPayment(paymentType) ||
+    isWaffoPancakePayment(paymentType)
+  ) {
+    return {
+      amount: await requestPaymentAmount(topupAmount, paymentType, calculators),
+    }
+  }
+  const response = await calculators.regular({
+    amount: topupAmount,
+    payment_method: paymentType,
+  })
+  if (!isApiSuccess(response) || !response.data) {
+    return { amount: 0 }
+  }
+  return {
+    amount: Number.parseFloat(response.data),
+    currency: response.currency,
+    rate: response.rate ? Number.parseFloat(response.rate) : undefined,
+    creditQuota: response.credit_quota,
+  }
+}
+
+export interface PaymentQuote {
+  amount: number
+  currency?: string
+  rate?: number
+  creditQuota?: number
+}
+
 export function usePayment() {
   const [amount, setAmount] = useState<number>(0)
+  const [quote, setQuote] = useState<PaymentQuote>({ amount: 0 })
   const [calculating, setCalculating] = useState(false)
   const [processing, setProcessing] = useState(false)
 
@@ -91,14 +135,13 @@ export function usePayment() {
     async (topupAmount: number, paymentType: string) => {
       try {
         setCalculating(true)
-        const calculatedAmount = await requestPaymentAmount(
-          topupAmount,
-          paymentType
-        )
-        setAmount(calculatedAmount)
-        return calculatedAmount
+        const calculated = await requestPaymentQuote(topupAmount, paymentType)
+        setAmount(calculated.amount)
+        setQuote(calculated)
+        return calculated.amount
       } catch {
         setAmount(0)
+        setQuote({ amount: 0 })
         return 0
       } finally {
         setCalculating(false)
@@ -161,6 +204,7 @@ export function usePayment() {
 
   return {
     amount,
+    quote,
     calculating,
     processing,
     calculatePaymentAmount,

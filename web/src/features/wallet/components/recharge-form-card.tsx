@@ -34,9 +34,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { formatQuotaWithCurrency } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
+import type { PaymentQuote } from '../hooks/use-payment'
 import {
   formatCurrency,
   getDiscountLabel,
@@ -61,6 +63,10 @@ interface RechargeFormCardProps {
   topupAmount: number
   onTopupAmountChange: (amount: number) => void
   paymentAmount: number
+  /** peroai: quote for the current amount when crypto is priced in coins */
+  paymentQuote?: PaymentQuote
+  /** peroai: coin the custom amount is entered in (USDT), or undefined */
+  cryptoCurrency?: string
   calculating: boolean
   onPaymentMethodSelect: (method: PaymentMethod) => void
   paymentLoading: string | null
@@ -91,6 +97,8 @@ export function RechargeFormCard({
   topupAmount,
   onTopupAmountChange,
   paymentAmount,
+  paymentQuote,
+  cryptoCurrency,
   calculating,
   onPaymentMethodSelect,
   paymentLoading,
@@ -142,6 +150,12 @@ export function RechargeFormCard({
     Array.isArray(waffoPayMethods) && waffoPayMethods.length > 0
   const minTopup = getMinTopupAmount(topupInfo)
   const redemptionEnabled = topupInfo?.enable_redemption !== false
+  // peroai: with coin-priced crypto, presets are redemption-code shop links;
+  // a preset without a link is not shown, since crypto is entered in coins.
+  const amountLinks = topupInfo?.amount_links ?? {}
+  const visiblePresets = cryptoCurrency
+    ? presetAmounts.filter((preset) => amountLinks[preset.value])
+    : presetAmounts
 
   if (loading) {
     return (
@@ -221,13 +235,39 @@ export function RechargeFormCard({
         <div className='space-y-4 sm:space-y-6'>
           {hasConfigurableTopup && (
             <>
-              {presetAmounts.length > 0 && (
+              {visiblePresets.length > 0 && (
                 <div className='space-y-2.5 sm:space-y-3'>
                   <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-                    {t('Amount')}
+                    {cryptoCurrency
+                      ? t('Buy a redemption code (WeChat / Alipay)')
+                      : t('Amount')}
                   </Label>
                   <div className='grid grid-cols-2 gap-1.5 sm:gap-3 md:grid-cols-4'>
-                    {presetAmounts.map((preset) => {
+                    {visiblePresets.map((preset) => {
+                      const link = amountLinks[preset.value]
+                      if (link) {
+                        return (
+                          <a
+                            key={preset.value}
+                            href={link}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='border-muted hover:bg-foreground/5 flex min-h-16 flex-col items-start rounded-lg border px-3 py-2.5 text-left sm:min-h-[72px] sm:p-4'
+                          >
+                            <div className='flex w-full items-center justify-between gap-2'>
+                              <div className='text-base font-semibold sm:text-lg'>
+                                {formatNumber(preset.value * usdExchangeRate)}
+                              </div>
+                              <ExternalLink className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
+                            </div>
+                            <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
+                              {t('Pay {{amount}}', {
+                                amount: `¥${formatCurrency(preset.value * priceRatio)}`,
+                              })}
+                            </div>
+                          </a>
+                        )
+                      }
                       const discount =
                         preset.discount ||
                         topupInfo?.discount?.[preset.value] ||
@@ -296,7 +336,11 @@ export function RechargeFormCard({
                   htmlFor='topup-amount'
                   className='text-muted-foreground text-xs font-medium tracking-wider uppercase'
                 >
-                  {t('Custom Amount')}
+                  {cryptoCurrency
+                    ? t('Top up with {{currency}}', {
+                        currency: 'USDT / USDC',
+                      })
+                    : t('Custom Amount')}
                 </Label>
                 <div className='grid grid-cols-[minmax(0,1fr)_minmax(110px,0.55fr)] gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center'>
                   <Input
@@ -305,15 +349,30 @@ export function RechargeFormCard({
                     value={localAmount}
                     onChange={(e) => handleAmountChange(e.target.value)}
                     min={minTopup}
-                    placeholder={t('Minimum {{amount}}', { amount: minTopup })}
+                    step={1}
+                    placeholder={t('Minimum {{amount}}', {
+                      amount: cryptoCurrency
+                        ? `${minTopup} ${cryptoCurrency}`
+                        : minTopup,
+                    })}
                     className='h-9 text-base sm:h-10 sm:text-lg'
                   />
                   <div className='bg-muted/30 flex min-h-9 items-center justify-between gap-2 rounded-md border px-3 lg:min-w-52'>
                     <span className='text-muted-foreground truncate text-xs'>
-                      {t('Amount to pay:')}
+                      {cryptoCurrency ? t('You receive:') : t('Amount to pay:')}
                     </span>
                     {calculating ? (
                       <Skeleton className='h-5 w-16' />
+                    ) : cryptoCurrency ? (
+                      <span className='text-sm font-semibold'>
+                        {paymentQuote?.creditQuota
+                          ? formatQuotaWithCurrency(paymentQuote.creditQuota, {
+                              digitsLarge: 2,
+                              digitsSmall: 2,
+                              abbreviate: false,
+                            })
+                          : '-'}
+                      </span>
                     ) : (
                       <span className='text-sm font-semibold'>
                         {formatCurrency(paymentAmount)}
@@ -321,6 +380,18 @@ export function RechargeFormCard({
                     )}
                   </div>
                 </div>
+                {cryptoCurrency && paymentQuote?.rate ? (
+                  <p className='text-muted-foreground text-xs'>
+                    {t(
+                      'Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.',
+                      {
+                        amount: topupAmount,
+                        currency: paymentQuote.currency ?? cryptoCurrency,
+                        rate: paymentQuote.rate,
+                      }
+                    )}
+                  </p>
+                ) : null}
               </div>
 
               <div className='space-y-2.5 sm:space-y-3'>

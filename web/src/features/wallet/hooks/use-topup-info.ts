@@ -121,6 +121,22 @@ function parseCreemProducts(data: unknown): CreemProduct[] {
     .filter((item) => item.name && item.productId)
 }
 
+function parseAmountLinks(data: unknown): Record<number, string> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {}
+  const result: Record<number, string> = {}
+  for (const [key, value] of Object.entries(data)) {
+    const amount = Number(key)
+    if (
+      Number.isFinite(amount) &&
+      typeof value === 'string' &&
+      /^https?:\/\//i.test(value.trim())
+    ) {
+      result[amount] = value.trim()
+    }
+  }
+  return result
+}
+
 function parseAmountOptions(data: unknown): number[] {
   return parseJsonArray(data)
     .map((item) => Number(item))
@@ -189,6 +205,7 @@ export function useTopupInfo() {
         ),
         amount_options: parseAmountOptions(response.data.amount_options),
         discount: parseDiscountMap(response.data.discount),
+        amount_links: parseAmountLinks(response.data.amount_links),
         creem_products: parseCreemProducts(response.data.creem_products),
         waffo_pay_methods: parseWaffoPayMethods(
           response.data.waffo_pay_methods

@@ -119,6 +119,8 @@ func GetTopUpInfo(c *gin.Context) {
 		"waffo_min_topup":         setting.WaffoMinTopUp,
 		"waffo_pancake_min_topup": setting.WaffoPancakeMinTopUp,
 		"amount_options":          operation_setting.GetPaymentSetting().AmountOptions,
+		"amount_links":            operation_setting.GetPaymentSetting().AmountLinks,
+		"crypto_usd_topup":        isCryptoUsdTopupEnabled(),
 		"discount":                operation_setting.GetPaymentSetting().AmountDiscount,
 		"topup_link":              common.TopUpLink,
 	}
@@ -132,6 +134,8 @@ type EpayRequest struct {
 
 type AmountRequest struct {
 	Amount int64 `json:"amount"`
+	// peroai: lets coin-priced crypto methods quote in coins (topup_crypto_usd.go).
+	PaymentMethod string `json:"payment_method,omitempty"`
 }
 
 func GetEpayClient() *epay.Client {
@@ -292,6 +296,14 @@ func RequestEpay(c *gin.Context) {
 		return
 	}
 	id := c.GetInt("id")
+	if isCryptoUsdMethod(req.PaymentMethod) {
+		if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
+			paymentError(c, common.NewMessage("Payment method does not exist"))
+			return
+		}
+		requestCryptoUsdEpay(c, id, req)
+		return
+	}
 	if rejectInvalidTopUpQuota(c, id, req.Amount) {
 		return
 	}
@@ -509,6 +521,10 @@ func RequestAmount(c *gin.Context) {
 		return
 	}
 	id := c.GetInt("id")
+	if isCryptoUsdMethod(req.PaymentMethod) {
+		requestCryptoUsdAmount(c, id, req)
+		return
+	}
 	if rejectInvalidTopUpQuota(c, id, req.Amount) {
 		return
 	}

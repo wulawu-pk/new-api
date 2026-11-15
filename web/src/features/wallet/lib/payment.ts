@@ -193,6 +193,28 @@ export function getMinTopupAmount(topupInfo: TopupInfo | null): number {
 }
 
 /**
+ * peroai: coin the method is priced in ("USDT" / "USDC") when the site prices
+ * crypto top-ups in whole coins, otherwise undefined.
+ */
+export function getCryptoUsdCurrency(
+  topupInfo: TopupInfo | null,
+  paymentType: string | undefined
+): string | undefined {
+  if (!topupInfo?.crypto_usd_topup || !paymentType) return undefined
+  const coin = paymentType.split('.')[0]?.toLowerCase()
+  if (coin === 'usdt' || coin === 'usdc') return coin.toUpperCase()
+  return undefined
+}
+
+/**
+ * peroai: coin from a stored top-up payment method, for order history.
+ */
+export function getCoinOfPaymentMethod(method: string | undefined) {
+  const coin = method?.split('.')[0]?.toLowerCase()
+  return coin === 'usdt' || coin === 'usdc' ? coin.toUpperCase() : undefined
+}
+
+/**
  * Generate preset amounts based on minimum topup
  */
 export function generatePresetAmounts(minAmount: number): PresetAmount[] {

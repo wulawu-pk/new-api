@@ -7387,6 +7387,11 @@
     "Health of group {{group}}": "Состояние группы {{group}}",
     "Availability of group {{group}}": "Доступность группы {{group}}",
     "Request results per model group over the last 24 hours, rolled up every minute.": "Результаты запросов по группам моделей за последние 24 часа, сводка раз в минуту.",
-    "Request results per model group over the last 7 days, rolled up every minute.": "Результаты запросов по группам моделей за последние 7 дней, сводка раз в минуту."
+    "Request results per model group over the last 7 days, rolled up every minute.": "Результаты запросов по группам моделей за последние 7 дней, сводка раз в минуту.",
+    "Buy a redemption code (WeChat / Alipay)": "Купить код (WeChat / Alipay)",
+    "Top up with {{currency}}": "Пополнить в {{currency}}",
+    "You receive:": "Будет зачислено:",
+    "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Оплата {{amount}} {{currency}}; зачисление по текущему курсу 1 {{currency}} = ¥{{rate}} (¥1 = $1 квоты). Сумма фиксируется при создании заказа.",
+    "Exchange rate is temporarily unavailable, please try again later": "Курс временно недоступен, попробуйте позже"
   }
 }

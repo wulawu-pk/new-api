@@ -23,6 +23,19 @@ type TopUp struct {
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
+	// peroai: quota fixed at order time (coin-priced crypto top-ups). When > 0
+	// it is credited instead of Amount x QuotaPerUnit.
+	CreditQuota int64 `json:"credit_quota" gorm:"default:0"`
+}
+
+// epayCreditQuota is the quota an epay order credits on success.
+func (topUp *TopUp) epayCreditQuota() (int, error) {
+	if topUp.CreditQuota > 0 {
+		return common.WalletQuotaFromDecimalStrict(decimal.NewFromInt(topUp.CreditQuota))
+	}
+	return common.WalletQuotaFromDecimalStrict(
+		decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
+	)
 }
 
 const (
@@ -204,9 +217,7 @@ func RechargeEpay(tradeNo string, actualPaymentMethod string, callerIp string) (
 			topUp.PaymentMethod = actualPaymentMethod
 		}
 		var quotaErr error
-		quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(
-			decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
-		)
+		quotaToAdd, quotaErr = topUp.epayCreditQuota()
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota
 		}
@@ -487,9 +498,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 				decimal.NewFromFloat(topUp.Money).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
 			)
 		} else {
-			quotaToAdd, quotaErr = common.WalletQuotaFromDecimalStrict(
-				decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)),
-			)
+			quotaToAdd, quotaErr = topUp.epayCreditQuota()
 		}
 		if quotaErr != nil || quotaToAdd <= 0 {
 			return ErrInvalidTopUpQuota

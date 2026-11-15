@@ -19,8 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 import { describe, expect, test } from 'vitest'
 
 import { PAYMENT_TYPES } from '../constants'
+import type { TopupInfo } from '../types'
 import {
   dispatchSelectedPayment,
+  getCryptoUsdCurrency,
   isStripePayment,
   isWaffoPayment,
   isWaffoPancakePayment,
@@ -81,5 +83,20 @@ describe('payment dispatch', () => {
 
     expect(success).toBe(false)
     expect(called).toBe(false)
+  })
+})
+
+describe('getCryptoUsdCurrency', () => {
+  const info = { crypto_usd_topup: true } as TopupInfo
+  test('names the coin only when coin pricing is on', () => {
+    expect(getCryptoUsdCurrency(info, 'usdt.trc20')).toBe('USDT')
+    expect(getCryptoUsdCurrency(info, 'usdc.solana')).toBe('USDC')
+    expect(getCryptoUsdCurrency(info, 'alipay')).toBeUndefined()
+    expect(
+      getCryptoUsdCurrency(
+        { crypto_usd_topup: false } as TopupInfo,
+        'usdt.trc20'
+      )
+    ).toBeUndefined()
   })
 })

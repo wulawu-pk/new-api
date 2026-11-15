@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
-import { formatCurrencyFromUSD } from '@/lib/currency'
+import { formatCurrencyFromUSD, formatQuotaWithCurrency } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 
 import { useBillingHistory } from '../../hooks/use-billing-history'
@@ -54,6 +54,7 @@ import {
   getPaymentMethodName,
   formatTimestamp,
 } from '../../lib/billing'
+import { getCoinOfPaymentMethod } from '../../lib/payment'
 
 interface BillingHistoryDialogProps {
   open: boolean
@@ -248,11 +249,17 @@ export function BillingHistoryDialog({
                             {t('Amount')}
                           </Label>
                           <div className='text-sm font-semibold'>
-                            {formatCurrencyFromUSD(record.amount, {
-                              digitsLarge: 2,
-                              digitsSmall: 2,
-                              abbreviate: false,
-                            })}
+                            {record.credit_quota
+                              ? formatQuotaWithCurrency(record.credit_quota, {
+                                  digitsLarge: 2,
+                                  digitsSmall: 2,
+                                  abbreviate: false,
+                                })
+                              : formatCurrencyFromUSD(record.amount, {
+                                  digitsLarge: 2,
+                                  digitsSmall: 2,
+                                  abbreviate: false,
+                                })}
                           </div>
                         </div>
                         <div className='space-y-1'>
@@ -261,6 +268,10 @@ export function BillingHistoryDialog({
                           </Label>
                           <div className='text-sm font-semibold text-red-600'>
                             {formatNumber(record.money)}
+                            {record.credit_quota &&
+                            getCoinOfPaymentMethod(record.payment_method)
+                              ? ` ${getCoinOfPaymentMethod(record.payment_method)}`
+                              : ''}
                           </div>
                         </div>
                       </div>

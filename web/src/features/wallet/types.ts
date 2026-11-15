@@ -34,7 +34,14 @@ export interface ApiResponse<T = unknown> {
  */
 export type TopupInfoResponse = ApiResponse<TopupInfo>
 export type RedemptionResponse = ApiResponse<number>
-export type AmountResponse = ApiResponse<string>
+export type AmountResponse = ApiResponse<string> & {
+  /** peroai: coin the amount is priced in (USDT/USDC) for coin-priced methods */
+  currency?: string
+  /** peroai: CNY per coin used for the quote */
+  rate?: string
+  /** peroai: quota the order credits, fixed at order time */
+  credit_quota?: number
+}
 export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
   url?: string
 }
@@ -136,6 +143,10 @@ export interface TopupInfo {
   discount: Record<number, number>
   /** Optional topup link for purchasing codes */
   topup_link?: string
+  /** peroai: preset amount -> shop link for buying a redemption code */
+  amount_links?: Record<number, string>
+  /** peroai: usdt.* / usdc.* methods are priced in whole coins */
+  crypto_usd_topup?: boolean
   /** Whether Creem topup is enabled */
   enable_creem_topup?: boolean
   /** Available Creem products */
@@ -210,6 +221,8 @@ export interface WaffoPancakePaymentRequest {
 export interface AmountRequest {
   /** Topup amount to calculate */
   amount: number
+  /** Payment method, so coin-priced methods can quote in coins */
+  payment_method?: string
 }
 
 /**
@@ -261,6 +274,8 @@ export interface TopupRecord {
   amount: number
   /** Payment amount (actual money paid) */
   money: number
+  /** peroai: quota credited by a coin-priced order (0 for other orders) */
+  credit_quota?: number
   /** Trade/order number */
   trade_no: string
   /** Payment method type */

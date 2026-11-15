@@ -353,3 +353,30 @@ func TestRechargeEpayEnforcesFinalWalletQuotaLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestRechargeEpayCreditsLockedCryptoQuota(t *testing.T) {
+	truncateTables(t)
+
+	oldQuotaPerUnit := common.QuotaPerUnit
+	common.QuotaPerUnit = 500000
+	t.Cleanup(func() { common.QuotaPerUnit = oldQuotaPerUnit })
+
+	user := insertUserForPaymentGuardTest(t, 503, 0)
+	topUp := &TopUp{
+		UserId:          user.Id,
+		Amount:          6,
+		Money:           1,
+		TradeNo:         "EPAYTESTCRYPTOUSD",
+		PaymentMethod:   "usdt.trc20",
+		PaymentProvider: PaymentProviderEpay,
+		Status:          common.TopUpStatusPending,
+		CreateTime:      time.Now().Unix(),
+		CreditQuota:     3_335_000,
+	}
+	require.NoError(t, topUp.Insert())
+
+	alreadyDone, err := RechargeEpay(topUp.TradeNo, "usdt.trc20", "127.0.0.1")
+	require.NoError(t, err)
+	assert.False(t, alreadyDone)
+	assert.Equal(t, 3_335_000, getUserQuotaForPaymentGuardTest(t, user.Id))
+}

@@ -46,6 +46,7 @@ import {
   getDefaultPaymentType,
   getMinTopupAmount,
   dispatchSelectedPayment,
+  getCryptoUsdCurrency,
 } from './lib'
 import type {
   UserWalletData,
@@ -92,6 +93,7 @@ export function Wallet(props: WalletProps) {
   }, [currency?.quotaDisplayType, currency?.usdExchangeRate])
   const {
     amount: paymentAmount,
+    quote: paymentQuote,
     calculating,
     processing,
     calculatePaymentAmount,
@@ -270,6 +272,12 @@ export function Wallet(props: WalletProps) {
     }
   }
 
+  // peroai: coin of the method being quoted (the selected one, else the default)
+  const cryptoCurrency = getCryptoUsdCurrency(
+    topupInfo,
+    getCurrentPaymentType()
+  )
+
   // Get discount rate for current topup amount
   const getDiscountRate = useCallback(() => {
     return topupInfo?.discount?.[topupAmount] || DEFAULT_DISCOUNT_RATE
@@ -306,6 +314,8 @@ export function Wallet(props: WalletProps) {
                   topupAmount={topupAmount}
                   onTopupAmountChange={handleTopupAmountChange}
                   paymentAmount={paymentAmount}
+                  paymentQuote={paymentQuote}
+                  cryptoCurrency={cryptoCurrency}
                   calculating={calculating}
                   onPaymentMethodSelect={handlePaymentMethodSelect}
                   paymentLoading={paymentLoading}
@@ -363,6 +373,8 @@ export function Wallet(props: WalletProps) {
         processing={processing || waffoProcessing || pancakeProcessing}
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
+        cryptoCurrency={cryptoCurrency}
+        creditQuota={paymentQuote.creditQuota}
       />
 
       <TransferDialog
