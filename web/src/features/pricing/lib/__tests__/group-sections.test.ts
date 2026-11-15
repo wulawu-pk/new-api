@@ -45,6 +45,22 @@ function model(
 }
 
 describe('buildGroupSections', () => {
+  it('keeps only the filtered group when a model is shared by several', () => {
+    const shared = model('claude-shared', ['claude-kiro', 'claude-ccmax'])
+    const kiroOnly = model('claude-kiro-only', ['claude-kiro'])
+    const sections = buildGroupSections(
+      [shared, kiroOnly],
+      {},
+      {},
+      undefined,
+      'claude-ccmax'
+    )
+    expect(sections.map((section) => section.key)).toEqual(['claude-ccmax'])
+    expect(sections[0].models.map((m) => m.model_name)).toEqual([
+      'claude-shared',
+    ])
+  })
+
   it('orders groups by the shipped reading order, not by model order', () => {
     const sections = buildGroupSections(
       [

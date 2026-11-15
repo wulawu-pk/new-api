@@ -108,15 +108,20 @@ function normalize(value: string | undefined): string {
  * Bucket models by their enabled group, in {@link PREFERRED_GROUP_ORDER}.
  *
  * A model enabled in several groups appears in each of them with that group's
- * multiplier, which is what a per-group price list promises.
+ * multiplier, which is what a per-group price list promises. Pass `onlyGroup`
+ * (the sidebar's group filter) to keep just that group's section.
  */
 export function buildGroupSections(
   models: PricingModel[],
   usableGroup: UsableGroups,
   groupRatio: Record<string, number>,
-  preferredOrder: string[] = PREFERRED_GROUP_ORDER
+  preferredOrder: string[] = PREFERRED_GROUP_ORDER,
+  onlyGroup?: string
 ): PricingGroupSection[] {
   const byGroup = new Map<string, PricingModel[]>()
+  // With a group filter active, a model shared with other groups must only be
+  // listed under the selected one, or the filter shows foreign sections.
+  const only = normalize(onlyGroup)
 
   for (const model of models) {
     const groups = Array.isArray(model.enable_groups) ? model.enable_groups : []
@@ -126,8 +131,11 @@ export function buildGroupSections(
     const primary = cleaned.filter(
       (group) => !ALIAS_GROUPS.has(normalize(group))
     )
-    const targets = primary.length > 0 ? primary : cleaned
+    let targets = primary.length > 0 ? primary : cleaned
     if (targets.length === 0) targets.push('default')
+    if (only) {
+      targets = groups.some((group) => normalize(group) === only) ? [only] : []
+    }
     for (const group of targets) {
       const bucket = byGroup.get(group)
       if (bucket) {

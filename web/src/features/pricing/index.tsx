@@ -32,7 +32,7 @@ import {
   PricingGroupSectionView,
 } from './components'
 import type { ModelPerfBadgeData } from './components/model-perf-badge'
-import { EXCLUDED_GROUPS, VIEW_MODES } from './constants'
+import { EXCLUDED_GROUPS, FILTER_ALL, VIEW_MODES } from './constants'
 import { useFilters } from './hooks/use-filters'
 import { usePricingData } from './hooks/use-pricing-data'
 import {
@@ -125,9 +125,11 @@ export function Pricing() {
       buildGroupSections(
         filteredModels,
         usableGroup || {},
-        groupRatio || {}
+        groupRatio || {},
+        undefined,
+        groupFilter === FILTER_ALL ? undefined : groupFilter
       ),
-    [filteredModels, usableGroup, groupRatio]
+    [filteredModels, usableGroup, groupRatio, groupFilter]
   )
 
   // One perf request covers every model currently on screen.
