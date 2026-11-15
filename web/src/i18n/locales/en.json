@@ -7395,6 +7395,19 @@
     "You receive:": "You receive:",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.",
     "Exchange rate is temporarily unavailable, please try again later": "Exchange rate is temporarily unavailable, please try again later",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above."
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.",
+    "Activated": "Activated",
+    "{{quota}} has been added to your account.": "{{quota}} has been added to your account.",
+    "Current balance: {{balance}}": "Current balance: {{balance}}",
+    "Go to wallet": "Go to wallet",
+    "Activate another card": "Activate another card",
+    "Card code": "Card code",
+    "Paste your 32-character card code": "Paste your 32-character card code",
+    "The balance goes to account {{username}}.": "The balance goes to account {{username}}.",
+    "Activate": "Activate",
+    "Sign in to activate. The balance goes to the account you sign in with.": "Sign in to activate. The balance goes to the account you sign in with.",
+    "Activate recharge card": "Activate recharge card",
+    "Enter the card code you bought to add its balance to your account.": "Enter the card code you bought to add its balance to your account.",
+    "Each card can be activated once. A card is not an API key and cannot call models.": "Each card can be activated once. A card is not an API key and cannot call models."
   }
 }

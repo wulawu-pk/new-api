@@ -7395,6 +7395,19 @@
     "You receive:": "Nhận được:",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Thanh toán {{amount}} {{currency}}; quy đổi theo tỷ giá hiện tại 1 {{currency}} = ¥{{rate}} (¥1 = $1 hạn mức). Số tiền được cố định khi tạo đơn.",
     "Exchange rate is temporarily unavailable, please try again later": "Tạm thời không lấy được tỷ giá, vui lòng thử lại sau",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Nếu cùng lúc có người thanh toán cùng số tiền, trang thanh toán có thể cộng thêm 0,01–0,02. Hãy chuyển đúng số tiền hiển thị trên trang thanh toán trong vòng 30 phút; số tiền được cộng vẫn như trên."
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Nếu cùng lúc có người thanh toán cùng số tiền, trang thanh toán có thể cộng thêm 0,01–0,02. Hãy chuyển đúng số tiền hiển thị trên trang thanh toán trong vòng 30 phút; số tiền được cộng vẫn như trên.",
+    "Activated": "Đã kích hoạt",
+    "{{quota}} has been added to your account.": "Đã cộng {{quota}} vào tài khoản của bạn.",
+    "Current balance: {{balance}}": "Số dư hiện tại: {{balance}}",
+    "Go to wallet": "Đến ví",
+    "Activate another card": "Kích hoạt thẻ khác",
+    "Card code": "Mã thẻ",
+    "Paste your 32-character card code": "Dán mã thẻ 32 ký tự",
+    "The balance goes to account {{username}}.": "Số dư sẽ được cộng vào tài khoản {{username}}.",
+    "Activate": "Kích hoạt",
+    "Sign in to activate. The balance goes to the account you sign in with.": "Đăng nhập để kích hoạt. Số dư sẽ được cộng vào tài khoản bạn đăng nhập.",
+    "Activate recharge card": "Kích hoạt thẻ nạp",
+    "Enter the card code you bought to add its balance to your account.": "Nhập mã thẻ đã mua để cộng số dư vào tài khoản.",
+    "Each card can be activated once. A card is not an API key and cannot call models.": "Mỗi thẻ chỉ kích hoạt được một lần. Thẻ không phải là khóa API và không thể gọi mô hình."
   }
 }

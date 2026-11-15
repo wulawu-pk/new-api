@@ -7395,6 +7395,19 @@
     "You receive:": "到帳額度：",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "支付 {{amount}} {{currency}}，按即時匯率 1 {{currency}} = ¥{{rate}} 折算到帳（¥1 = $1 額度），下單時鎖定。",
     "Exchange rate is temporarily unavailable, please try again later": "匯率暫時無法取得，請稍後再試",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "同一時間有人支付相同金額時，收銀台金額可能多出 0.01–0.02。請在 30 分鐘內按收銀台顯示的金額精確轉帳，到帳額度仍按上方計算。"
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "同一時間有人支付相同金額時，收銀台金額可能多出 0.01–0.02。請在 30 分鐘內按收銀台顯示的金額精確轉帳，到帳額度仍按上方計算。",
+    "Activated": "啟用成功",
+    "{{quota}} has been added to your account.": "已為你的帳戶儲值 {{quota}}。",
+    "Current balance: {{balance}}": "目前餘額：{{balance}}",
+    "Go to wallet": "前往錢包",
+    "Activate another card": "再啟用一張",
+    "Card code": "卡密",
+    "Paste your 32-character card code": "貼上 32 位卡密",
+    "The balance goes to account {{username}}.": "額度將儲值到帳戶 {{username}}。",
+    "Activate": "啟用",
+    "Sign in to activate. The balance goes to the account you sign in with.": "登入後即可啟用，額度會儲值到你登入的帳戶。",
+    "Activate recharge card": "啟用儲值卡",
+    "Enter the card code you bought to add its balance to your account.": "輸入購買到的卡密，額度會儲值到你的帳戶。",
+    "Each card can be activated once. A card is not an API key and cannot call models.": "每張卡密只能啟用一次。卡密不是 API 金鑰，不能用來呼叫模型。"
   }
 }

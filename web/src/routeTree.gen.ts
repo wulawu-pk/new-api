@@ -32,6 +32,7 @@ import { Route as AboutIndexRouteImport } from './routes/about/index'
 import { Route as OauthProviderRouteImport } from './routes/oauth/$provider'
 import { Route as PricingIndexRouteImport } from './routes/pricing/index'
 import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
+import { Route as RedeemIndexRouteImport } from './routes/redeem/index'
 import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as StatusIndexRouteImport } from './routes/status/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
@@ -186,6 +187,11 @@ const PricingIndexRoute = PricingIndexRouteImport.update({
 const RankingsIndexRoute = RankingsIndexRouteImport.update({
   id: '/rankings/',
   path: '/rankings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedeemIndexRoute = RedeemIndexRouteImport.update({
+  id: '/redeem/',
+  path: '/redeem/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SetupIndexRoute = SetupIndexRouteImport.update({
@@ -450,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
+  '/redeem/': typeof RedeemIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/status/': typeof StatusIndexRoute
   '/user/reset': typeof authUserResetRoute
@@ -513,6 +520,7 @@ export interface FileRoutesByTo {
   '/about': typeof AboutIndexRoute
   '/pricing': typeof PricingIndexRoute
   '/rankings': typeof RankingsIndexRoute
+  '/redeem': typeof RedeemIndexRoute
   '/setup': typeof SetupIndexRoute
   '/status': typeof StatusIndexRoute
   '/user/reset': typeof authUserResetRoute
@@ -580,6 +588,7 @@ export interface FileRoutesById {
   '/about/': typeof AboutIndexRoute
   '/pricing/': typeof PricingIndexRoute
   '/rankings/': typeof RankingsIndexRoute
+  '/redeem/': typeof RedeemIndexRoute
   '/setup/': typeof SetupIndexRoute
   '/status/': typeof StatusIndexRoute
   '/(auth)/user/reset': typeof authUserResetRoute
@@ -646,6 +655,7 @@ export interface FileRouteTypes {
     | '/about/'
     | '/pricing/'
     | '/rankings/'
+    | '/redeem/'
     | '/setup/'
     | '/status/'
     | '/user/reset'
@@ -709,6 +719,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/pricing'
     | '/rankings'
+    | '/redeem'
     | '/setup'
     | '/status'
     | '/user/reset'
@@ -775,6 +786,7 @@ export interface FileRouteTypes {
     | '/about/'
     | '/pricing/'
     | '/rankings/'
+    | '/redeem/'
     | '/setup/'
     | '/status/'
     | '/(auth)/user/reset'
@@ -833,6 +845,7 @@ export interface RootRouteChildren {
   AboutIndexRoute: typeof AboutIndexRoute
   PricingIndexRoute: typeof PricingIndexRoute
   RankingsIndexRoute: typeof RankingsIndexRoute
+  RedeemIndexRoute: typeof RedeemIndexRoute
   SetupIndexRoute: typeof SetupIndexRoute
   StatusIndexRoute: typeof StatusIndexRoute
   PricingModelIdIndexRoute: typeof PricingModelIdIndexRoute
@@ -999,6 +1012,13 @@ declare module '@tanstack/react-router' {
       path: '/rankings'
       fullPath: '/rankings/'
       preLoaderRoute: typeof RankingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redeem/': {
+      id: '/redeem/'
+      path: '/redeem'
+      fullPath: '/redeem/'
+      preLoaderRoute: typeof RedeemIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setup/': {
@@ -1450,6 +1470,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutIndexRoute: AboutIndexRoute,
   PricingIndexRoute: PricingIndexRoute,
   RankingsIndexRoute: RankingsIndexRoute,
+  RedeemIndexRoute: RedeemIndexRoute,
   SetupIndexRoute: SetupIndexRoute,
   StatusIndexRoute: StatusIndexRoute,
   PricingModelIdIndexRoute: PricingModelIdIndexRoute,

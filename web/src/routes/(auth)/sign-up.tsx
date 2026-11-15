@@ -17,17 +17,31 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { z } from 'zod'
 
+import { sanitizeAuthRedirect } from '@/features/auth/lib/auth-redirect'
 import { SignUp } from '@/features/auth/sign-up'
 import { useAuthStore } from '@/stores/auth-store'
 
+// peroai: carry the page a visitor came from (e.g. /redeem?code=...) through
+// sign-up and the sign-in that follows it.
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+})
+
 export const Route = createFileRoute('/(auth)/sign-up')({
   component: SignUp,
-  beforeLoad: async () => {
+  validateSearch: searchSchema,
+  beforeLoad: async ({ search }) => {
     const { auth } = useAuthStore.getState()
 
     // 如果已经有用户信息，说明已登录，注册页对其无意义，跳转到 dashboard
     if (auth.user) {
+      const target = sanitizeAuthRedirect(
+        search?.redirect,
+        window.location.origin
+      )
+      if (target) throw redirect({ href: target, replace: true })
       throw redirect({ to: '/dashboard' })
     }
   },

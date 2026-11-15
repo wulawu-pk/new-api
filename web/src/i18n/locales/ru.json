@@ -7395,6 +7395,19 @@
     "You receive:": "Будет зачислено:",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Оплата {{amount}} {{currency}}; зачисление по текущему курсу 1 {{currency}} = ¥{{rate}} (¥1 = $1 квоты). Сумма фиксируется при создании заказа.",
     "Exchange rate is temporarily unavailable, please try again later": "Курс временно недоступен, попробуйте позже",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Если кто-то одновременно платит ту же сумму, касса может добавить 0,01–0,02. Переведите ровно сумму, показанную на кассе, в течение 30 минут; зачисление останется как указано выше."
+    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Если кто-то одновременно платит ту же сумму, касса может добавить 0,01–0,02. Переведите ровно сумму, показанную на кассе, в течение 30 минут; зачисление останется как указано выше.",
+    "Activated": "Активировано",
+    "{{quota}} has been added to your account.": "На ваш счёт зачислено {{quota}}.",
+    "Current balance: {{balance}}": "Текущий баланс: {{balance}}",
+    "Go to wallet": "Перейти в кошелёк",
+    "Activate another card": "Активировать ещё одну карту",
+    "Card code": "Код карты",
+    "Paste your 32-character card code": "Вставьте 32-символьный код карты",
+    "The balance goes to account {{username}}.": "Баланс будет зачислен на аккаунт {{username}}.",
+    "Activate": "Активировать",
+    "Sign in to activate. The balance goes to the account you sign in with.": "Войдите, чтобы активировать. Баланс будет зачислен на аккаунт, в который вы вошли.",
+    "Activate recharge card": "Активация карты пополнения",
+    "Enter the card code you bought to add its balance to your account.": "Введите купленный код карты, чтобы зачислить баланс на ваш аккаунт.",
+    "Each card can be activated once. A card is not an API key and cannot call models.": "Каждую карту можно активировать один раз. Карта не является API-ключом и не может вызывать модели."
   }
 }

@@ -25,6 +25,7 @@ import { formatQuota } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { redeemTopupCode } from '../api'
+import { extractRedemptionCode } from '../lib/redemption-code'
 
 // ============================================================================
 // Redemption Hook
@@ -33,10 +34,12 @@ import { redeemTopupCode } from '../api'
 export function useRedemption() {
   const [redeeming, setRedeeming] = useState(false)
 
-  const redeemCode = useCallback(async (code: string): Promise<boolean> => {
-    if (!code || code.trim() === '') {
+  /** Resolves to the quota added, or 0 when the code was not redeemed. */
+  const redeemCode = useCallback(async (input: string): Promise<number> => {
+    const code = extractRedemptionCode(input ?? '')
+    if (!code) {
       toast.error(i18next.t('Please enter a redemption code'))
-      return false
+      return 0
     }
 
     try {
@@ -51,14 +54,14 @@ export function useRedemption() {
           })
         )
         await getSelf()
-        return true
+        return quotaAdded
       }
 
       handleServerError(response, i18next.t('Redemption failed'))
-      return false
+      return 0
     } catch (_error) {
       handleServerError(_error, i18next.t('Redemption failed'))
-      return false
+      return 0
     } finally {
       setRedeeming(false)
     }
