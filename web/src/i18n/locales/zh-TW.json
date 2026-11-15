@@ -7408,6 +7408,9 @@
     "Sign in to activate. The balance goes to the account you sign in with.": "登入後即可啟用，額度會儲值到你登入的帳戶。",
     "Activate recharge card": "啟用儲值卡",
     "Enter the card code you bought to add its balance to your account.": "輸入購買到的卡密，額度會儲值到你的帳戶。",
-    "Each card can be activated once. A card is not an API key and cannot call models.": "每張卡密只能啟用一次。卡密不是 API 金鑰，不能用來呼叫模型。"
+    "Each card can be activated once. A card is not an API key and cannot call models.": "每張卡密只能啟用一次。卡密不是 API 金鑰，不能用來呼叫模型。",
+    "Credits used": "消耗 credit",
+    "Cache hit rate": "快取命中率",
+    "Hit {{rate}}": "命中 {{rate}}"
   }
 }

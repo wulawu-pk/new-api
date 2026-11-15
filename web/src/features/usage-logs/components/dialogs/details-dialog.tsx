@@ -69,6 +69,11 @@ import { cn } from '@/lib/utils'
 
 import { AuditDetailFields } from '../../audit/components/audit-detail-fields'
 import type { UsageLog } from '../../data/schema'
+import { formatCacheHitRate, getCacheHitRate } from '../../lib/cache-hit-rate'
+import {
+  formatCredits,
+  getCreditBillingSummary,
+} from '../../lib/credit-billing'
 import {
   parseLogOther,
   getParamOverrideActionLabel,
@@ -184,8 +189,24 @@ function BillingBreakdown(props: {
   const priceOpts = { digitsLarge: 4, digitsSmall: 6, abbreviate: false }
   const fmtPrice = (usd: number) => formatBillingCurrencyFromUSD(usd, priceOpts)
   const baseInputUSD = other.model_ratio != null ? other.model_ratio * 2.0 : 0
+  const creditSummary = getCreditBillingSummary(other, log.quota)
 
-  if (isTieredExpr) {
+  if (creditSummary) {
+    rows.push({
+      label: t('Billing Mode'),
+      value: t('Billed by upstream credits'),
+    })
+    if (creditSummary.credits !== null) {
+      rows.push({
+        label: t('Credits used'),
+        value: formatCredits(creditSummary.credits),
+      })
+    }
+    rows.push({
+      label: t('Per credit'),
+      value: fmtPrice(creditSummary.unitPriceUSD),
+    })
+  } else if (isTieredExpr) {
     rows.push({
       label: t('Billing Mode'),
       value: t('Dynamic Pricing'),
@@ -233,10 +254,18 @@ function BillingBreakdown(props: {
     }
   }
 
+  if (isTieredExpr && other.image_count !== undefined) {
+    rows.push({
+      label: t('Billable image count'),
+      value: String(other.image_count),
+    })
+  }
+
   const userGR = other.user_group_ratio
   const isUserGR = userGR != null && Number.isFinite(userGR) && userGR !== -1
   const effectiveGR = isUserGR ? userGR : other.group_ratio
-  if (effectiveGR != null && Number.isFinite(effectiveGR)) {
+  // The per-credit price already includes the group multiplier.
+  if (!creditSummary && effectiveGR != null && Number.isFinite(effectiveGR)) {
     rows.push({
       label: isUserGR ? t('User Exclusive Ratio') : t('Group Ratio'),
       value: `${formatRatio(effectiveGR)}x`,
@@ -468,6 +497,14 @@ function TokenBreakdown(props: { log: UsageLog; other: LogOtherData }) {
     rows.push({
       label: t('Cache Write (12h)'),
       value: cacheWrite12h.toLocaleString(),
+    })
+  }
+
+  const cacheHitRate = getCacheHitRate({ promptTokens, other })
+  if (cacheHitRate !== null) {
+    rows.push({
+      label: t('Cache hit rate'),
+      value: formatCacheHitRate(cacheHitRate),
     })
   }
 
@@ -1221,15 +1258,11 @@ export function DetailsDialog(props: DetailsDialogProps) {
           />
         )}
 
-        {/* Tiered pricing breakdown (when billing_mode is tiered_expr) */}
-        {isTieredBilling && other?.expr_b64 && (
+        {/* Tiered pricing breakdown (when billing_mode is tiered_expr).
+            peroai: administrators only; customers read the billing
+            details above and never see the expression. */}
+        {props.isAdmin && isTieredBilling && other?.expr_b64 && (
           <DetailSection label={t('Dynamic Pricing')}>
-            {other.image_count !== undefined && (
-              <DetailRow
-                label={t('Billable image count')}
-                value={other.image_count}
-              />
-            )}
             <DynamicPricingBreakdown
               compact
               billingExpr={decodeBillingExprB64(other.expr_b64)}

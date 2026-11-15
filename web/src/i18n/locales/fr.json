@@ -7408,6 +7408,9 @@
     "Sign in to activate. The balance goes to the account you sign in with.": "Connectez-vous pour activer. Le solde sera crédité sur le compte utilisé.",
     "Activate recharge card": "Activer une carte de recharge",
     "Enter the card code you bought to add its balance to your account.": "Saisissez le code de carte acheté pour créditer votre compte.",
-    "Each card can be activated once. A card is not an API key and cannot call models.": "Chaque carte ne peut être activée qu'une fois. Une carte n'est pas une clé API et ne peut pas appeler de modèles."
+    "Each card can be activated once. A card is not an API key and cannot call models.": "Chaque carte ne peut être activée qu'une fois. Une carte n'est pas une clé API et ne peut pas appeler de modèles.",
+    "Credits used": "Crédits consommés",
+    "Cache hit rate": "Taux de succès du cache",
+    "Hit {{rate}}": "Cache {{rate}}"
   }
 }

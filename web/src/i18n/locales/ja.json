@@ -7408,6 +7408,9 @@
     "Sign in to activate. The balance goes to the account you sign in with.": "サインインすると有効化できます。残高はサインインしたアカウントに追加されます。",
     "Activate recharge card": "チャージカードを有効化",
     "Enter the card code you bought to add its balance to your account.": "購入したカードコードを入力すると、残高がアカウントに追加されます。",
-    "Each card can be activated once. A card is not an API key and cannot call models.": "各カードは 1 回だけ有効化できます。カードは API キーではなく、モデルの呼び出しには使えません。"
+    "Each card can be activated once. A card is not an API key and cannot call models.": "各カードは 1 回だけ有効化できます。カードは API キーではなく、モデルの呼び出しには使えません。",
+    "Credits used": "消費クレジット",
+    "Cache hit rate": "キャッシュヒット率",
+    "Hit {{rate}}": "ヒット {{rate}}"
   }
 }

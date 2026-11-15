@@ -7408,6 +7408,9 @@
     "Sign in to activate. The balance goes to the account you sign in with.": "Đăng nhập để kích hoạt. Số dư sẽ được cộng vào tài khoản bạn đăng nhập.",
     "Activate recharge card": "Kích hoạt thẻ nạp",
     "Enter the card code you bought to add its balance to your account.": "Nhập mã thẻ đã mua để cộng số dư vào tài khoản.",
-    "Each card can be activated once. A card is not an API key and cannot call models.": "Mỗi thẻ chỉ kích hoạt được một lần. Thẻ không phải là khóa API và không thể gọi mô hình."
+    "Each card can be activated once. A card is not an API key and cannot call models.": "Mỗi thẻ chỉ kích hoạt được một lần. Thẻ không phải là khóa API và không thể gọi mô hình.",
+    "Credits used": "Credit đã dùng",
+    "Cache hit rate": "Tỷ lệ trúng cache",
+    "Hit {{rate}}": "Trúng {{rate}}"
   }
 }

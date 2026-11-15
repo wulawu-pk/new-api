@@ -55,6 +55,11 @@ import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { LOG_TYPE_ALL_VALUE } from '../../constants'
 import type { UsageLog } from '../../data/schema'
+import { formatCacheHitRate, getCacheHitRate } from '../../lib/cache-hit-rate'
+import {
+  formatCredits,
+  getCreditBillingSummary,
+} from '../../lib/credit-billing'
 import {
   formatModelName,
   decodeBillingExprB64,
@@ -181,7 +186,16 @@ function buildTypeDetailSegments(
   }
   const isTieredExpr = other.billing_mode === 'tiered_expr'
   const tieredSummary = getTieredBillingSummary(other)
-  if (isTieredExpr && other.is_task) {
+  const creditSummary = getCreditBillingSummary(other, log.quota)
+  if (creditSummary) {
+    const unit = `${formatPriceCompact(creditSummary.unitPriceUSD)} / ${t('credit')}`
+    segments.push({
+      text:
+        creditSummary.credits !== null
+          ? `${formatCredits(creditSummary.credits)} ${t('credit')} · ${unit}`
+          : unit,
+    })
+  } else if (isTieredExpr && other.is_task) {
     const tiers = parseTaskTiersFromExpr(
       decodeBillingExprB64(other.expr_b64),
       usageSchema,
@@ -629,7 +643,13 @@ export function useCommonLogsColumns(
         const displayName = sensitiveVisible ? tokenName : '••••'
         let group = log.group
         if (!group) group = other?.group || ''
-        const groupRatio = getGroupRatio(other)
+        const creditSummary = getCreditBillingSummary(other, log.quota)
+        const groupRatio = creditSummary ? null : getGroupRatio(other)
+        const groupRatioLabel = creditSummary
+          ? `${formatBillingCurrencyFromUSD(creditSummary.unitPriceUSD, { digitsLarge: 4, digitsSmall: 6, abbreviate: false })} / ${t('credit')}`
+          : groupRatio != null
+            ? `${formatRatioCompact(groupRatio)}x`
+            : null
 
         return (
           <div className='flex max-w-[200px] flex-col gap-0.5'>
@@ -652,7 +672,7 @@ export function useCommonLogsColumns(
                 )}
               </Tooltip>
             </TooltipProvider>
-            {(group || groupRatio != null) && (
+            {(group || groupRatioLabel != null) && (
               <span className='block max-w-full truncate text-xs leading-none'>
                 {group ? (
                   <GroupBadge
@@ -663,10 +683,10 @@ export function useCommonLogsColumns(
                     className='inline align-baseline text-xs leading-none [&>span]:leading-none'
                   />
                 ) : null}
-                {group && groupRatio != null ? ' ' : null}
-                {groupRatio != null ? (
+                {group && groupRatioLabel != null ? ' ' : null}
+                {groupRatioLabel != null ? (
                   <span className='text-muted-foreground/60 relative top-px align-baseline tabular-nums'>
-                    {formatRatioCompact(groupRatio)}x
+                    {groupRatioLabel}
                   </span>
                 ) : null}
               </span>
@@ -746,6 +766,7 @@ export function useCommonLogsColumns(
           const cacheWriteTokens = hasSplitCache
             ? cacheWrite5m + cacheWrite1h
             : other?.cache_creation_tokens || 0
+          const cacheHitRate = getCacheHitRate({ promptTokens, other })
 
           return (
             <div className='flex flex-col gap-0.5'>
@@ -763,6 +784,16 @@ export function useCommonLogsColumns(
                   {cacheWriteTokens > 0 && (
                     <span className='text-muted-foreground/60'>
                       ↑ {cacheWriteTokens.toLocaleString()}
+                    </span>
+                  )}
+                  {cacheHitRate !== null && (
+                    <span
+                      className='text-muted-foreground/60'
+                      title={t('Cache hit rate')}
+                    >
+                      {t('Hit {{rate}}', {
+                        rate: formatCacheHitRate(cacheHitRate),
+                      })}
                     </span>
                   )}
                 </div>

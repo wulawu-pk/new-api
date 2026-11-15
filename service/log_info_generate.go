@@ -362,6 +362,7 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 			other.SetPublic("image_count", *result.ImageCount)
 		}
 		other.SetPublic("matched_tier", result.MatchedTier)
+		recordProviderCredits(other, relayInfo)
 		if result.BillingUnit != "" {
 			other.SetPublic("billing_unit", result.BillingUnit)
 		}
@@ -381,4 +382,19 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 			other.SetPublic("fixed_price", *snap.EstimatedFixedPrice)
 		}
 	}
+}
+
+// recordProviderCredits copies the upstream-reported credits (peroai fork,
+// kiro provider_usage) onto the public log so the customer sees what a
+// credit-billed request was charged for. Only numeric, non-negative values
+// are recorded; requests without provider usage leave the log unchanged.
+func recordProviderCredits(other *model.LogOther, relayInfo *relaycommon.RelayInfo) {
+	if other == nil || relayInfo == nil || len(relayInfo.ProviderUsage) == 0 {
+		return
+	}
+	credits, ok := relayInfo.ProviderUsage["credits"].(float64)
+	if !ok || credits < 0 {
+		return
+	}
+	other.SetPublic("credits", credits)
 }

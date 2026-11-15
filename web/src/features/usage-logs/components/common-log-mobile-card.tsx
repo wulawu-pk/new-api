@@ -28,10 +28,13 @@ import { StatusBadge, type StatusVariant } from '@/components/status-badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
+import { formatBillingCurrencyFromUSD } from '@/lib/currency'
 import dayjs from '@/lib/dayjs'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
+import { formatCacheHitRate, getCacheHitRate } from '../lib/cache-hit-rate'
+import { getCreditBillingSummary } from '../lib/credit-billing'
 import { formatModelName, logTokenName, parseLogOther } from '../lib/format'
 import {
   getLogTypeConfig,
@@ -133,6 +136,11 @@ export function CommonLogMobileCard<TData>(props: {
       (other?.cache_creation_tokens_1h || 0) ||
     other?.cache_creation_tokens ||
     0
+  const cacheHitRate = getCacheHitRate({
+    promptTokens: log.prompt_tokens,
+    other,
+  })
+  const creditSummary = getCreditBillingSummary(other, log.quota)
   const showTokens =
     displayable &&
     props.cells.has('prompt_tokens') &&
@@ -278,7 +286,18 @@ export function CommonLogMobileCard<TData>(props: {
               </div>
             )
           })}
-          {groupRatio != null &&
+          {creditSummary && props.cells.has('token_name') && (
+            <div className='text-muted-foreground col-span-2 [overflow-wrap:anywhere]'>
+              {formatBillingCurrencyFromUSD(creditSummary.unitPriceUSD, {
+                digitsLarge: 4,
+                digitsSmall: 6,
+                abbreviate: false,
+              })}{' '}
+              / {t('credit')}
+            </div>
+          )}
+          {!creditSummary &&
+            groupRatio != null &&
             groupRatio !== 1 &&
             Number.isFinite(groupRatio) &&
             props.cells.has('token_name') && (
@@ -310,6 +329,11 @@ export function CommonLogMobileCard<TData>(props: {
           {cacheWrite > 0 && (
             <span>
               {t('Cache')} ↑ {cacheWrite.toLocaleString()}
+            </span>
+          )}
+          {cacheHitRate !== null && (
+            <span>
+              {t('Hit {{rate}}', { rate: formatCacheHitRate(cacheHitRate) })}
             </span>
           )}
         </div>

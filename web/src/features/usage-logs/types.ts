@@ -235,6 +235,9 @@ export interface LogOtherData {
   image_count?: number
   expr_b64?: string
   matched_tier?: string
+  // peroai fork: upstream-reported credits of a credit-billed request.
+  credits?: number
+  usage_semantic?: string
   request_rules?: RequestRuleTrace[]
   usage_facts?: Record<string, string | number>
   reasoning_effort?: string
