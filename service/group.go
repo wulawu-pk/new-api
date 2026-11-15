@@ -34,7 +34,9 @@ func GetUserUsableGroups(userGroup string) map[string]string {
 		}
 		// 如果userGroup不在UserUsableGroups中，返回UserUsableGroups + userGroup。
 		// 描述是英文源文本，由 web 控制台翻译；管理员配置的描述原样显示。
-		if _, ok := groupsCopy[userGroup]; !ok {
+		// peroai: a user group that has no group ratio cannot serve requests,
+		// so it is not offered as a token group either.
+		if _, ok := groupsCopy[userGroup]; !ok && ratio_setting.ContainsGroupRatio(userGroup) {
 			groupsCopy[userGroup] = "User group"
 		}
 	}

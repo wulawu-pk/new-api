@@ -4708,6 +4708,8 @@
     "Please log in with the appropriate credentials": "Vui lòng đăng nhập bằng thông tin xác thực phù hợp",
     "Please select a container": "Vui lòng chọn một container",
     "Please select a payment method": "Vui lòng chọn phương thức thanh toán",
+    "Please select a group": "Vui lòng chọn một nhóm",
+    "Group {{group}} is not available": "Nhóm {{group}} không khả dụng",
     "Please select a primary model": "Vui lòng chọn một mô hình chính",
     "Please select a product": "Vui lòng chọn sản phẩm",
     "Please select a subscription plan": "Vui lòng chọn gói đăng ký",

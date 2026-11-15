@@ -48,6 +48,13 @@ export function getApiKeyFormSchema(t: TFunction, maxAutoGroups = 5) {
       tokenCount: z.number().min(1).optional(),
     })
     .superRefine((data, ctx) => {
+      if (!data.group) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['group'],
+          message: t('Please select a group'),
+        })
+      }
       if (data.group === 'auto') {
         if (
           data.auto_groups_mode === 'custom' &&

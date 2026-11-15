@@ -277,11 +277,9 @@ export function ApiKeysMutateDrawer({
     if (groups.length === 0) return
     const currentGroup = selectedGroup
     if (currentGroup && !groups.some((g) => g.value === currentGroup)) {
-      const fallback =
-        groups.find((g) => g.value === 'default')?.value ??
-        groups[0]?.value ??
-        ''
-      form.setValue('group', fallback)
+      // peroai: make the user pick again rather than switching to another
+      // group with a different price.
+      form.setValue('group', '')
       if (currentGroup === 'auto') {
         form.setValue('auto_groups', [])
         form.setValue('auto_groups_mode', 'inherit')

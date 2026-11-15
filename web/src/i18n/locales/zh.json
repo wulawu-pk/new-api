@@ -4708,6 +4708,8 @@
     "Please log in with the appropriate credentials": "请使用适当的凭据登录",
     "Please select a container": "请选择一个容器",
     "Please select a payment method": "请选择支付方式",
+    "Please select a group": "请选择分组",
+    "Group {{group}} is not available": "分组 {{group}} 不可用",
     "Please select a primary model": "请选择主模型",
     "Please select a product": "请选择产品",
     "Please select a subscription plan": "请选择订阅套餐",

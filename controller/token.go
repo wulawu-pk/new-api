@@ -89,6 +89,30 @@ func getTokenRequestUserGroup(c *gin.Context) (string, error) {
 	return model.GetUserGroup(c.GetInt("id"), false)
 }
 
+// requireTokenGroup rejects a token without a group, or with a group the
+// user cannot select (peroai: every key must pick its group explicitly).
+func requireTokenGroup(c *gin.Context, group string) bool {
+	if group == "" {
+		common.ApiErrorT(c, "Please select a group")
+		return false
+	}
+	if group == "auto" {
+		// setTokenAutoGroups validates the auto order; the auth middleware
+		// rejects auto at request time when it is not offered to the user.
+		return true
+	}
+	userGroup, err := getTokenRequestUserGroup(c)
+	if err != nil {
+		common.ApiError(c, err)
+		return false
+	}
+	if service.IsUserSelectableGroup(userGroup, group) {
+		return true
+	}
+	common.ApiErrorT(c, "Group {{group}} is not available", map[string]any{"group": group})
+	return false
+}
+
 func setTokenAutoGroups(c *gin.Context, token *model.Token, groups []string) bool {
 	if len(groups) == 0 {
 		if err := token.SetAutoGroups(nil); err != nil {
@@ -333,6 +357,9 @@ func AddToken(c *gin.Context) {
 		common.ApiErrorT(c, "Maximum number of tokens reached ({{max}})", map[string]any{"max": maxTokens})
 		return
 	}
+	if !requireTokenGroup(c, token.Group) {
+		return
+	}
 	if token.Group == "auto" {
 		if !setTokenAutoGroups(c, &token, request.AutoGroups.Groups) {
 			return
@@ -448,6 +475,9 @@ func UpdateToken(c *gin.Context) {
 	if statusOnly != "" {
 		cleanToken.Status = token.Status
 	} else {
+		if !requireTokenGroup(c, token.Group) {
+			return
+		}
 		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
 		cleanToken.ExpiredTime = token.ExpiredTime

@@ -209,3 +209,24 @@ describe('API key user quota query form mapping', () => {
     }
   )
 })
+
+describe('API key group is required', () => {
+  const schema = getApiKeyFormSchema(t)
+  const values = (group: string) => ({
+    ...getApiKeyFormDefaultValues(false),
+    name: 'key',
+    group,
+  })
+
+  test('rejects a key without a group', () => {
+    const result = schema.safeParse(values(''))
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((issue) => issue.path.join('.'))).toContain(
+      'group'
+    )
+  })
+
+  test('accepts a key with a group', () => {
+    expect(schema.safeParse(values('gpt-pro')).success).toBe(true)
+  })
+})

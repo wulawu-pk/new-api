@@ -4708,6 +4708,8 @@
     "Please log in with the appropriate credentials": "Пожалуйста, войдите с соответствующими учетными данными",
     "Please select a container": "Пожалуйста, выберите контейнер",
     "Please select a payment method": "Пожалуйста, выберите способ оплаты",
+    "Please select a group": "Пожалуйста, выберите группу",
+    "Group {{group}} is not available": "Группа {{group}} недоступна",
     "Please select a primary model": "Пожалуйста, выберите основную модель",
     "Please select a product": "Выберите продукт",
     "Please select a subscription plan": "Пожалуйста, выберите план подписки",

@@ -17,9 +17,12 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -117,7 +120,22 @@ func setupTokenControllerTestDB(t *testing.T) *gorm.DB {
 
 	db := openTokenControllerTestDB(t)
 	migrateTokenControllerTestDB(t, db)
+	allowDefaultTokenGroup(t)
 	return db
+}
+
+// allowDefaultTokenGroup makes "default" a selectable token group for tests
+// that create or update tokens (peroai requires an explicit group).
+func allowDefaultTokenGroup(t *testing.T) {
+	t.Helper()
+	previousGroups := setting.UserUsableGroups2JSONString()
+	previousRatios := ratio_setting.GroupRatio2JSONString()
+	require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"default":"Default","vip":"VIP"}`))
+	require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(`{"default":1,"vip":1}`))
+	t.Cleanup(func() {
+		require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(previousGroups))
+		require.NoError(t, ratio_setting.UpdateGroupRatioByJSONString(previousRatios))
+	})
 }
 
 func openTokenControllerExternalDB(t *testing.T, dialect string, dsn string) (*gorm.DB, *bool) {
@@ -210,6 +228,7 @@ func newAuthenticatedContext(t *testing.T, method string, target string, body an
 		ctx.Request.Header.Set("Content-Type", "application/json")
 	}
 	ctx.Set("id", userID)
+	common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
 	return ctx, recorder
 }
 
@@ -607,7 +626,7 @@ func TestTokenAllowUserQuotaQueryOnCreateAndUpdate(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			db := setupTokenControllerTestDB(t)
-			body := map[string]any{"name": "quota-query", "expired_time": -1, "unlimited_quota": true, "status": common.TokenStatusEnabled}
+			body := map[string]any{"name": "quota-query", "expired_time": -1, "unlimited_quota": true, "status": common.TokenStatusEnabled, "group": "default"}
 			if tc.field != nil {
 				body["allow_user_quota_query"] = tc.field
 			}
@@ -764,6 +783,7 @@ func TestAPITokenAuditDatabaseMatrix(t *testing.T) {
 
 func verifyAPITokenAudit(t *testing.T) {
 	t.Helper()
+	allowDefaultTokenGroup(t)
 	pat := "api-token-audit-pat-secret"
 	user := &model.User{Username: "token-owner", Password: "placeholder", Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default", AuthVersion: 1, AccessToken: &pat, AffCode: "token-owner"}
 	require.NoError(t, model.DB.Create(user).Error)
@@ -800,7 +820,7 @@ func verifyAPITokenAudit(t *testing.T) {
 		initialStatus                    int
 		failWrite, rateLimit, usePAT     bool
 	}{
-		{name: "create", method: "POST", path: "/", body: `{"name":"created","expired_time":-1,"unlimited_quota":true}`, action: "token.create", success: true},
+		{name: "create", method: "POST", path: "/", body: `{"name":"created","expired_time":-1,"unlimited_quota":true,"group":"default"}`, action: "token.create", success: true},
 		{name: "invalid create", method: "POST", path: "/", body: `{"name":"attempt","remain_quota":-1}`, action: "token.create", params: `{"name":"attempt"}`},
 		{name: "malformed body", method: "POST", path: "/", body: `{"key":"raw-body-secret"`, action: "token.create", params: `{}`},
 		{name: "validation error exceeds audit buffer", method: "POST", path: "/", body: `{"remain_quota":` + strings.Repeat("9", 64*1024) + `}`, action: "token.create", params: `{}`},
@@ -1004,7 +1024,7 @@ func verifyAPITokenAudit(t *testing.T) {
 			}
 		}))
 		t.Cleanup(func() { require.NoError(t, model.LOG_DB.Callback().Create().Remove("token-audit:log-fail")) })
-		request := httptest.NewRequest("POST", "/api/token/", strings.NewReader(`{"name":"audit-down","unlimited_quota":true}`))
+		request := httptest.NewRequest("POST", "/api/token/", strings.NewReader(`{"name":"audit-down","unlimited_quota":true,"group":"default"}`))
 		request.Header.Set("Authorization", "Bearer "+jwt)
 		request.Header.Set("Content-Type", "application/json")
 		response := httptest.NewRecorder()
@@ -1014,4 +1034,50 @@ func verifyAPITokenAudit(t *testing.T) {
 		require.NoError(t, model.DB.Model(&model.Token{}).Where("name = ?", "audit-down").Count(&count).Error)
 		assert.EqualValues(t, 1, count)
 	})
+}
+
+func TestTokenRequiresSelectableGroup(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		group   any
+		success bool
+	}{
+		{name: "missing group", group: nil},
+		{name: "empty group", group: ""},
+		{name: "group without ratio", group: "ghost"},
+		{name: "selectable group", group: "vip", success: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupTokenControllerTestDB(t)
+			require.NoError(t, db.AutoMigrate(&model.User{}))
+			require.NoError(t, db.Create(&model.User{Id: 1, Username: "group-owner", Password: "placeholder", Group: "default", Status: common.UserStatusEnabled, AffCode: "group-owner"}).Error)
+
+			body := map[string]any{"name": "grouped", "expired_time": -1, "unlimited_quota": true}
+			if tc.group != nil {
+				body["group"] = tc.group
+			}
+			ctx, recorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/", body, 1)
+			AddToken(ctx)
+			response := decodeAPIResponse(t, recorder)
+			assert.Equal(t, tc.success, response.Success, response.Message)
+
+			seeded := seedToken(t, db, 1, "existing", "existing-key-"+strings.ReplaceAll(tc.name, " ", "-"))
+			update := map[string]any{"id": seeded.Id, "name": "existing", "expired_time": -1, "unlimited_quota": true}
+			if tc.group != nil {
+				update["group"] = tc.group
+			}
+			ctx, recorder = newAuthenticatedContext(t, http.MethodPut, "/api/token/", update, 1)
+			UpdateToken(ctx)
+			response = decodeAPIResponse(t, recorder)
+			assert.Equal(t, tc.success, response.Success, response.Message)
+
+			var stored model.Token
+			require.NoError(t, db.First(&stored, seeded.Id).Error)
+			if tc.success {
+				assert.Equal(t, tc.group, stored.Group)
+			} else {
+				assert.Equal(t, "default", stored.Group)
+			}
+		})
+	}
 }
