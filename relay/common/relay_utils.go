@@ -71,6 +71,7 @@ func isSensitiveURLQueryKey(key string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(key))
 	switch normalized {
 	case "key",
+		"code",
 		"api_key",
 		"api-key",
 		"apikey",
