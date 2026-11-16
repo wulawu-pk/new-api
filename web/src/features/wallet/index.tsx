@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 import { SectionPageLayout } from '@/components/layout'
 import { useStatus } from '@/hooks/use-status'
@@ -41,6 +42,7 @@ import {
   useCreemPayment,
   useWaffoPayment,
   useWaffoPancakePayment,
+  isQuoteFor,
 } from './hooks'
 import {
   getDefaultPaymentType,
@@ -184,24 +186,60 @@ export function Wallet(props: WalletProps) {
         return
       }
 
-      // Calculate payment amount and show confirmation dialog
-      await calculatePaymentAmount(topupAmount, method.type)
+      // Calculate payment amount and show confirmation dialog. A failed
+      // quote opens nothing payable; a superseded one opens the dialog with
+      // confirm disabled until the newest quote matches.
+      const quote = await calculatePaymentAmount(topupAmount, method.type)
+      if (quote && !(quote.amount > 0)) {
+        toast.error(quote.error || t('Payment request failed'))
+        return
+      }
       setConfirmDialogOpen(true)
     } finally {
       setPaymentLoading(null)
     }
   }
 
+  // peroai: the dialog may only confirm a finished quote for exactly the
+  // amount and method that will be submitted.
+  const quoteReady =
+    !calculating &&
+    isQuoteFor(paymentQuote, topupAmount, selectedPaymentMethod?.type)
+
+  // While the dialog is open, a quote for another amount or method (an
+  // earlier request that was superseded) is replaced by a fresh one.
+  useEffect(() => {
+    const type = selectedPaymentMethod?.type
+    if (!confirmDialogOpen || calculating || !type) return
+    if (
+      paymentQuote.requestAmount === topupAmount &&
+      paymentQuote.paymentType === type
+    ) {
+      return
+    }
+    void calculatePaymentAmount(topupAmount, type)
+  }, [
+    confirmDialogOpen,
+    calculating,
+    selectedPaymentMethod?.type,
+    topupAmount,
+    paymentQuote.requestAmount,
+    paymentQuote.paymentType,
+    calculatePaymentAmount,
+  ])
+
   // Handle payment confirmation
   const handlePaymentConfirm = async () => {
-    if (!selectedPaymentMethod) return
+    if (!selectedPaymentMethod || !quoteReady) return
 
+    const confirmedCreditQuota = paymentQuote.creditQuota
     const success = await dispatchSelectedPayment(
       selectedPaymentMethod,
       topupAmount,
       selectedWaffoMethodIndex,
       {
-        regular: processPayment,
+        regular: (amount, paymentType) =>
+          processPayment(amount, paymentType, confirmedCreditQuota),
         waffo: processWaffoPayment,
         waffoPancake: processWaffoPancakePayment,
       }
@@ -265,7 +303,14 @@ export function Wallet(props: WalletProps) {
     setPaymentLoading(loadingKey)
 
     try {
-      await calculatePaymentAmount(topupAmount, PAYMENT_TYPES.WAFFO)
+      const quote = await calculatePaymentAmount(
+        topupAmount,
+        PAYMENT_TYPES.WAFFO
+      )
+      if (quote && !(quote.amount > 0)) {
+        toast.error(quote.error || t('Payment request failed'))
+        return
+      }
       setConfirmDialogOpen(true)
     } finally {
       setPaymentLoading(null)
@@ -370,6 +415,7 @@ export function Wallet(props: WalletProps) {
         paymentAmount={paymentAmount}
         paymentMethod={selectedPaymentMethod}
         calculating={calculating}
+        quoteReady={quoteReady}
         processing={processing || waffoProcessing || pancakeProcessing}
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}

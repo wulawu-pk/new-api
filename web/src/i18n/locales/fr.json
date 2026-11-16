@@ -7395,7 +7395,7 @@
     "You receive:": "Crédité :",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Payez {{amount}} {{currency}} ; crédité au taux en direct 1 {{currency}} = ¥{{rate}} (¥1 = $1 de quota). Le crédit est fixé à la création de la commande.",
     "Exchange rate is temporarily unavailable, please try again later": "Le taux de change est momentanément indisponible, veuillez réessayer plus tard",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Si d'autres paient le même montant au même moment, la caisse peut ajouter 0,01 à 0,02. Envoyez exactement le montant affiché sur la caisse sous 30 minutes ; le crédit reste celui indiqué ci-dessus.",
+    "If someone else pays the same amount at the same time, the checkout amount may be a few cents higher. Go by the amount shown on the checkout and transfer exactly that within 30 minutes; your credit does not change.": "Si quelqu'un d'autre paie le même montant au même moment, le montant de la caisse peut être supérieur de quelques centimes. Fiez-vous au montant affiché sur la caisse et envoyez exactement ce montant sous 30 minutes ; votre crédit ne change pas.",
     "Activated": "Activée",
     "{{quota}} has been added to your account.": "{{quota}} a été ajouté à votre compte.",
     "Current balance: {{balance}}": "Solde actuel : {{balance}}",
@@ -7411,6 +7411,8 @@
     "Each card can be activated once. A card is not an API key and cannot call models.": "Chaque carte ne peut être activée qu'une fois. Une carte n'est pas une clé API et ne peut pas appeler de modèles.",
     "Credits used": "Crédits consommés",
     "Cache hit rate": "Taux de succès du cache",
-    "Hit {{rate}}": "Cache {{rate}}"
+    "Hit {{rate}}": "Cache {{rate}}",
+    "The exchange rate has been updated. Please review and confirm again.": "Le taux de change a été mis à jour. Vérifiez et confirmez à nouveau.",
+    "Invalid redemption code format": "Format de code d'échange invalide"
   }
 }

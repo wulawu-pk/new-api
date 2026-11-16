@@ -16,12 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useLocation } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { Redeem } from '@/features/redeem'
+import { RedeemFromUrl } from '@/features/redeem'
 import { resolveAuthentication } from '@/lib/auth-session'
 
+// `code` is still accepted from older links; the page reads it and then
+// clears it from the address bar. New links use `#code=`.
 const redeemSearchSchema = z.object({
   code: z.string().optional().catch(undefined),
 })
@@ -42,5 +44,6 @@ export const Route = createFileRoute('/redeem/')({
 
 function RouteComponent() {
   const { code } = Route.useSearch()
-  return <Redeem initialCode={code} />
+  const hash = useLocation({ select: (location) => location.hash })
+  return <RedeemFromUrl searchCode={code} hash={hash} />
 }

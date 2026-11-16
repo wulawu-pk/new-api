@@ -23,6 +23,7 @@ import {
   createRouter,
   Outlet,
   RouterProvider,
+  useLocation,
 } from '@tanstack/react-router'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -32,7 +33,12 @@ import { extractRedemptionCode } from '@/features/wallet/lib/redemption-code'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { Redeem, redeemReturnPath } from '..'
+import { Redeem, RedeemFromUrl } from '..'
+import {
+  PENDING_REDEEM_CODE_KEY,
+  readPendingRedeemCode,
+  redeemCodeFromLocation,
+} from '../lib/pending-code'
 
 // The public header needs status, notifications and a full route tree; the
 // page body is what this suite covers.
@@ -42,12 +48,23 @@ vi.mock('@/components/layout', () => ({
 
 const CODE = '0123456789abcdef0123456789abcdef'
 
-function renderRedeem(initialCode?: string) {
+function renderRedeem(initialCode?: string, initialEntry = '/redeem') {
   const root = createRootRoute({ component: Outlet })
   const page = createRoute({
     getParentRoute: () => root,
     path: '/redeem',
-    component: () => <Redeem initialCode={initialCode} />,
+    validateSearch: (search: Record<string, unknown>) => ({
+      code: typeof search.code === 'string' ? search.code : undefined,
+    }),
+    component: function Page() {
+      const { code } = page.useSearch()
+      const hash = useLocation({ select: (location) => location.hash })
+      return initialCode === undefined ? (
+        <RedeemFromUrl searchCode={code} hash={hash} />
+      ) : (
+        <Redeem initialCode={initialCode} />
+      )
+    },
   })
   const stub = (path: string) =>
     createRoute({
@@ -63,7 +80,7 @@ function renderRedeem(initialCode?: string) {
       stub('/keys'),
       stub('/wallet'),
     ]),
-    history: createMemoryHistory({ initialEntries: ['/redeem'] }),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
   })
   render(<RouterProvider router={router} />)
   return router
@@ -72,6 +89,7 @@ function renderRedeem(initialCode?: string) {
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  sessionStorage.clear()
   useAuthStore.getState().auth.reset('idle')
 })
 
@@ -85,29 +103,71 @@ describe('extractRedemptionCode', () => {
     ).toBe(CODE)
   })
 
-  it('leaves anything that is not a code for the server to reject', () => {
-    expect(extractRedemptionCode(' abc ')).toBe('abc')
-    expect(extractRedemptionCode(`${CODE}0`)).toBe(`${CODE}0`)
+  it('returns nothing for text without a code, so it is never passed on', () => {
+    expect(extractRedemptionCode(' abc ')).toBe('')
+    expect(extractRedemptionCode(`${CODE}0`)).toBe('')
+    expect(extractRedemptionCode('my email is a@b.c')).toBe('')
     expect(extractRedemptionCode('')).toBe('')
   })
 })
 
 describe('redeem page', () => {
-  it('sends a signed-out visitor to sign in with the code kept in the return path', async () => {
+  it('sends a signed-out visitor to sign in without the code in any URL', async () => {
     const post = vi.spyOn(api, 'post')
-    renderRedeem(CODE)
+    const user = userEvent.setup()
+    const router = renderRedeem(CODE)
 
     const signIn = await screen.findByRole('button', { name: 'Sign in' })
     expect(signIn).toHaveAttribute(
       'href',
-      `/sign-in?redirect=${encodeURIComponent(`/redeem?code=${CODE}`)}`
+      `/sign-in?redirect=${encodeURIComponent('/redeem')}`
     )
     expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute(
       'href',
-      `/sign-up?redirect=${encodeURIComponent(`/redeem?code=${CODE}`)}`
+      `/sign-up?redirect=${encodeURIComponent('/redeem')}`
     )
     expect(screen.queryByRole('button', { name: 'Activate' })).toBeNull()
+
+    await user.click(signIn)
+    expect(await screen.findByText('/sign-in page')).toBeVisible()
+    expect(router.state.location.href).not.toContain(CODE)
+    expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toContain(CODE)
     expect(post).not.toHaveBeenCalled()
+  })
+
+  it('restores the pending code after sign-in and forgets it', async () => {
+    useAuthStore.getState().auth.setUser({ id: 7, username: 'buyer', role: 1 })
+    sessionStorage.setItem(
+      PENDING_REDEEM_CODE_KEY,
+      JSON.stringify({ code: CODE, at: Date.now() })
+    )
+    renderRedeem()
+
+    expect(await screen.findByLabelText('Card code')).toHaveValue(CODE)
+    expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+  })
+
+  it('ignores a pending code older than 10 minutes', () => {
+    sessionStorage.setItem(
+      PENDING_REDEEM_CODE_KEY,
+      JSON.stringify({ code: CODE, at: Date.now() - 11 * 60 * 1000 })
+    )
+    expect(readPendingRedeemCode()).toBe('')
+  })
+
+  it('reads a legacy ?code= link and clears it from the address bar', async () => {
+    const router = renderRedeem(undefined, `/redeem?code=${CODE}`)
+
+    expect(await screen.findByLabelText('Card code')).toHaveValue(CODE)
+    await vi.waitFor(() => expect(router.state.location.href).toBe('/redeem'))
+    expect(screen.getByLabelText('Card code')).toHaveValue(CODE)
+  })
+
+  it('reads the code from a #code= fragment', () => {
+    expect(redeemCodeFromLocation(undefined, `#code=${CODE}`)).toBe(CODE)
+    expect(redeemCodeFromLocation(undefined, `code=${CODE}`)).toBe(CODE)
+    expect(redeemCodeFromLocation(CODE, '')).toBe(CODE)
+    expect(redeemCodeFromLocation(undefined, '')).toBe('')
   })
 
   it('activates the prefilled code for a signed-in user and shows the new balance', async () => {
@@ -151,8 +211,33 @@ describe('redeem page', () => {
     expect(screen.queryByText('Activated')).toBeNull()
   })
 
-  it('builds a bare return path when there is no code yet', () => {
-    expect(redeemReturnPath('')).toBe('/redeem')
-    expect(redeemReturnPath(` ${CODE} `)).toBe(`/redeem?code=${CODE}`)
+  it('forgets the pending code once the card is activated', async () => {
+    useAuthStore.getState().auth.setUser({ id: 7, username: 'buyer', role: 1 })
+    vi.spyOn(api, 'post').mockResolvedValue({
+      data: { success: true, data: 5000000 },
+    })
+    vi.spyOn(api, 'get').mockResolvedValue({
+      data: { success: true, data: { id: 7, quota: 5000000 } },
+    })
+    const user = userEvent.setup()
+    renderRedeem(CODE)
+    sessionStorage.setItem(
+      PENDING_REDEEM_CODE_KEY,
+      JSON.stringify({ code: CODE, at: Date.now() })
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Activate' }))
+    expect(await screen.findByText('Activated')).toBeVisible()
+    expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+  })
+
+  it('does not send text without a code to the server', async () => {
+    useAuthStore.getState().auth.setUser({ id: 7, username: 'buyer', role: 1 })
+    const post = vi.spyOn(api, 'post')
+    const user = userEvent.setup()
+    renderRedeem('not a card code')
+
+    await user.click(await screen.findByRole('button', { name: 'Activate' }))
+    expect(post).not.toHaveBeenCalled()
   })
 })

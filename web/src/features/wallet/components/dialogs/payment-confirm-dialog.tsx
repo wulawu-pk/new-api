@@ -48,6 +48,8 @@ interface PaymentConfirmDialogProps {
   paymentMethod: PaymentMethod | undefined
   calculating: boolean
   processing: boolean
+  /** peroai: false while the shown quote is not for the current amount/method */
+  quoteReady?: boolean
   discountRate?: number
   usdExchangeRate?: number
   /** peroai: coin the order is paid in, when crypto is priced in coins */
@@ -65,6 +67,7 @@ export function PaymentConfirmDialog({
   paymentMethod,
   calculating,
   processing,
+  quoteReady = true,
   discountRate = DEFAULT_DISCOUNT_RATE,
   usdExchangeRate = 1,
   cryptoCurrency,
@@ -132,7 +135,7 @@ export function PaymentConfirmDialog({
           {cryptoCurrency && !calculating && (
             <p className='text-muted-foreground bg-muted/50 rounded-lg p-3 text-xs leading-5'>
               {t(
-                'When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.'
+                'If someone else pays the same amount at the same time, the checkout amount may be a few cents higher. Go by the amount shown on the checkout and transfer exactly that within 30 minutes; your credit does not change.'
               )}
             </p>
           )}
@@ -170,7 +173,10 @@ export function PaymentConfirmDialog({
           <AlertDialogCancel disabled={processing}>
             {t('Cancel')}
           </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={processing}>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={processing || calculating || !quoteReady}
+          >
             {processing && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
             {t('Confirm Payment')}
           </AlertDialogAction>

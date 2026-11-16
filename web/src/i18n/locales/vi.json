@@ -7395,7 +7395,7 @@
     "You receive:": "Nhận được:",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Thanh toán {{amount}} {{currency}}; quy đổi theo tỷ giá hiện tại 1 {{currency}} = ¥{{rate}} (¥1 = $1 hạn mức). Số tiền được cố định khi tạo đơn.",
     "Exchange rate is temporarily unavailable, please try again later": "Tạm thời không lấy được tỷ giá, vui lòng thử lại sau",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "Nếu cùng lúc có người thanh toán cùng số tiền, trang thanh toán có thể cộng thêm 0,01–0,02. Hãy chuyển đúng số tiền hiển thị trên trang thanh toán trong vòng 30 phút; số tiền được cộng vẫn như trên.",
+    "If someone else pays the same amount at the same time, the checkout amount may be a few cents higher. Go by the amount shown on the checkout and transfer exactly that within 30 minutes; your credit does not change.": "Nếu cùng lúc có người khác thanh toán cùng số tiền, số tiền trên trang thanh toán có thể cao hơn vài xu. Hãy theo số tiền hiển thị trên trang thanh toán và chuyển chính xác số đó trong vòng 30 phút; số tiền được cộng không thay đổi.",
     "Activated": "Đã kích hoạt",
     "{{quota}} has been added to your account.": "Đã cộng {{quota}} vào tài khoản của bạn.",
     "Current balance: {{balance}}": "Số dư hiện tại: {{balance}}",
@@ -7411,6 +7411,8 @@
     "Each card can be activated once. A card is not an API key and cannot call models.": "Mỗi thẻ chỉ kích hoạt được một lần. Thẻ không phải là khóa API và không thể gọi mô hình.",
     "Credits used": "Credit đã dùng",
     "Cache hit rate": "Tỷ lệ trúng cache",
-    "Hit {{rate}}": "Trúng {{rate}}"
+    "Hit {{rate}}": "Trúng {{rate}}",
+    "The exchange rate has been updated. Please review and confirm again.": "Tỷ giá đã được cập nhật. Vui lòng kiểm tra và xác nhận lại.",
+    "Invalid redemption code format": "Định dạng mã đổi thưởng không hợp lệ"
   }
 }

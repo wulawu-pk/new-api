@@ -7395,7 +7395,7 @@
     "You receive:": "You receive:",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.",
     "Exchange rate is temporarily unavailable, please try again later": "Exchange rate is temporarily unavailable, please try again later",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.",
+    "If someone else pays the same amount at the same time, the checkout amount may be a few cents higher. Go by the amount shown on the checkout and transfer exactly that within 30 minutes; your credit does not change.": "If someone else pays the same amount at the same time, the checkout amount may be a few cents higher. Go by the amount shown on the checkout and transfer exactly that within 30 minutes; your credit does not change.",
     "Activated": "Activated",
     "{{quota}} has been added to your account.": "{{quota}} has been added to your account.",
     "Current balance: {{balance}}": "Current balance: {{balance}}",
@@ -7411,6 +7411,8 @@
     "Each card can be activated once. A card is not an API key and cannot call models.": "Each card can be activated once. A card is not an API key and cannot call models.",
     "Credits used": "Credits used",
     "Cache hit rate": "Cache hit rate",
-    "Hit {{rate}}": "Hit {{rate}}"
+    "Hit {{rate}}": "Hit {{rate}}",
+    "The exchange rate has been updated. Please review and confirm again.": "The exchange rate has been updated. Please review and confirm again.",
+    "Invalid redemption code format": "Invalid redemption code format"
   }
 }
