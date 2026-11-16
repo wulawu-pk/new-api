@@ -286,16 +286,17 @@ export function CommonLogMobileCard<TData>(props: {
               </div>
             )
           })}
-          {creditSummary && props.cells.has('token_name') && (
-            <div className='text-muted-foreground col-span-2 [overflow-wrap:anywhere]'>
-              {formatBillingCurrencyFromUSD(creditSummary.unitPriceUSD, {
-                digitsLarge: 4,
-                digitsSmall: 6,
-                abbreviate: false,
-              })}{' '}
-              / {t('credit')}
-            </div>
-          )}
+          {creditSummary?.unitPriceUSD != null &&
+            props.cells.has('token_name') && (
+              <div className='text-muted-foreground col-span-2 [overflow-wrap:anywhere]'>
+                {formatBillingCurrencyFromUSD(creditSummary.unitPriceUSD, {
+                  digitsLarge: 4,
+                  digitsSmall: 6,
+                  abbreviate: false,
+                })}{' '}
+                / {t('credit')}
+              </div>
+            )}
           {!creditSummary &&
             groupRatio != null &&
             groupRatio !== 1 &&

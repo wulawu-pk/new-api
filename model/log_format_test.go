@@ -114,7 +114,7 @@ func TestLegacyLogOtherVisibilityIsRoleSeparated(t *testing.T) {
 		formatUserLogs(logs, 10)
 
 		assert.Equal(t, 11, logs[0].Id)
-		assert.Equal(t, 77, logs[0].ChannelId)
+		assert.Zero(t, logs[0].ChannelId)
 		assert.Empty(t, logs[0].ChannelName)
 		parsed, err := common.StrToMap(logs[0].Other)
 		require.NoError(t, err)
@@ -240,5 +240,49 @@ func TestLogFormattingPreservesLargeIntegerLexemes(t *testing.T) {
 		adminLogs := []*Log{{Other: unprivileged}}
 		FormatAdminLogs(adminLogs)
 		assert.Equal(t, unprivileged, adminLogs[0].Other)
+	})
+}
+
+func TestFormatUserLogsHidesPricingInternalsAndChannel(t *testing.T) {
+	current := NewLogOther()
+	current.SetPublic("billing_mode", "tiered_expr")
+	current.SetPublic("matched_tier", "credit")
+	current.SetPublic("credits", 0.0442)
+	current.SetPublic("tier_prices", map[string]any{"unit": "credit", "per_unit": map[string]float64{"credits": 0.25}})
+	current.SetAdmin("expr_b64", "dGllcigiY3JlZGl0IiwgdSgiY3JlZGl0cyIpKQ==")
+	current.SetAdmin("request_rules", []map[string]any{{"cond": `param("fast") == true`, "multiplier": 2}})
+
+	legacy := common.MapToJsonStr(map[string]any{
+		"billing_mode":   "tiered_expr",
+		"matched_tier":   "base",
+		"expr_b64":       "dGllcigiYmFzZSIsIHAgKiAyKQ==",
+		"request_rules":  []map[string]any{{"cond": `param("fast") == true`, "multiplier": 2}},
+		"response_model": map[string]any{"declared": "secret-upstream-model"},
+	})
+
+	for name, other := range map[string]string{"current": current.JSONString(), "legacy": legacy} {
+		t.Run(name, func(t *testing.T) {
+			logs := []*Log{{ChannelId: 42, ChannelName: "upstream-channel", Other: other}}
+			formatUserLogs(logs, 0)
+
+			encoded, err := common.Marshal(logs[0])
+			require.NoError(t, err)
+			text := string(encoded)
+			for _, forbidden := range []string{"expr_b64", "tier(", "request_rules", "response_model", "upstream-channel", "secret-upstream-model", "admin_info"} {
+				assert.NotContains(t, text, forbidden)
+			}
+			assert.Contains(t, text, `"channel":0`)
+			assert.Contains(t, text, "matched_tier")
+		})
+	}
+
+	t.Run("admin keeps legacy expression", func(t *testing.T) {
+		logs := []*Log{{ChannelId: 42, Other: legacy}}
+		FormatAdminLogs(logs)
+		assert.Equal(t, 42, logs[0].ChannelId)
+		parsed, err := common.StrToMap(logs[0].Other)
+		require.NoError(t, err)
+		assert.Equal(t, "dGllcigiYmFzZSIsIHAgKiAyKQ==", parsed["expr_b64"])
+		assert.Contains(t, parsed, "request_rules")
 	})
 }

@@ -91,6 +91,7 @@ import {
 } from '../../lib/format'
 import { buildQuotaAuditOperation } from '../../lib/quota-audit-operation'
 import { getResponseModelObservation } from '../../lib/response-model'
+import { getLogBillingExprB64, getLogRequestRules } from '../../lib/tier-prices'
 import {
   getLogTypeConfig,
   isPerCallBilling,
@@ -202,10 +203,12 @@ function BillingBreakdown(props: {
         value: formatCredits(creditSummary.credits),
       })
     }
-    rows.push({
-      label: t('Per credit'),
-      value: fmtPrice(creditSummary.unitPriceUSD),
-    })
+    if (creditSummary.unitPriceUSD !== null) {
+      rows.push({
+        label: t('Per credit'),
+        value: fmtPrice(creditSummary.unitPriceUSD),
+      })
+    }
   } else if (isTieredExpr) {
     rows.push({
       label: t('Billing Mode'),
@@ -264,8 +267,14 @@ function BillingBreakdown(props: {
   const userGR = other.user_group_ratio
   const isUserGR = userGR != null && Number.isFinite(userGR) && userGR !== -1
   const effectiveGR = isUserGR ? userGR : other.group_ratio
-  // The per-credit price already includes the group multiplier.
-  if (!creditSummary && effectiveGR != null && Number.isFinite(effectiveGR)) {
+  // The per-credit price and backend tier prices already include the group
+  // multiplier; listing it again would read as a second charge.
+  if (
+    !creditSummary &&
+    tieredSummary?.source !== 'tier_prices' &&
+    effectiveGR != null &&
+    Number.isFinite(effectiveGR)
+  ) {
     rows.push({
       label: isUserGR ? t('User Exclusive Ratio') : t('Group Ratio'),
       value: `${formatRatio(effectiveGR)}x`,
@@ -568,11 +577,12 @@ export function DetailsDialog(props: DetailsDialogProps) {
   const isTopup = props.log.type === 1
   const isManage = props.log.type === 3
   const isSubscription = other?.billing_source === 'subscription'
+  const billingExprB64 = getLogBillingExprB64(other)
   const isTieredBilling =
     isConsume &&
     !isViolation &&
     other?.billing_mode === 'tiered_expr' &&
-    !!other?.expr_b64
+    !!billingExprB64
   const pricingData = usePricingData(props.open && isTieredBilling)
   const billingUsageSchema = pluginUsageSchema(
     pricingData.models.find(
@@ -1261,15 +1271,15 @@ export function DetailsDialog(props: DetailsDialogProps) {
         {/* Tiered pricing breakdown (when billing_mode is tiered_expr).
             peroai: administrators only; customers read the billing
             details above and never see the expression. */}
-        {props.isAdmin && isTieredBilling && other?.expr_b64 && (
+        {props.isAdmin && isTieredBilling && other && billingExprB64 && (
           <DetailSection label={t('Dynamic Pricing')}>
             <DynamicPricingBreakdown
               compact
-              billingExpr={decodeBillingExprB64(other.expr_b64)}
+              billingExpr={decodeBillingExprB64(billingExprB64)}
               matchedTierLabel={other.matched_tier}
               matchedBillingUnit={other.billing_unit}
               matchedFixedPrice={other.fixed_price}
-              requestRules={other.request_rules}
+              requestRules={getLogRequestRules(other)}
               hideCacheColumns={!hasAnyCacheTokens(other)}
               usageSchema={billingUsageSchema}
               usageFacts={other.usage_facts}

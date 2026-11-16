@@ -347,7 +347,9 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 		return
 	}
 	other.SetPublic("billing_mode", "tiered_expr")
-	other.SetPublic("expr_b64", base64.StdEncoding.EncodeToString([]byte(snap.ExprString)))
+	// The expression and request-rule conditions are pricing internals:
+	// administrators audit them, customers get the computed tier_prices.
+	other.SetAdmin("expr_b64", base64.StdEncoding.EncodeToString([]byte(snap.ExprString)))
 	if result != nil {
 		if tokens := result.BillingTokens; tokens != nil && result.BillingUnit == billingexpr.BillingUnitToken {
 			other.SetPublic("image_cache_tokens", tokens.ImgCR)
@@ -370,8 +372,9 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 			other.SetPublic("fixed_price", *result.FixedPrice)
 		}
 		if len(result.RequestRules) > 0 {
-			other.SetPublic("request_rules", result.RequestRules)
+			other.SetAdmin("request_rules", result.RequestRules)
 		}
+		setTierPrices(other, snap, result.MatchedTier)
 	} else if snap.EstimatedBillingUnit != "" {
 		if snap.EstimatedImageCount != nil {
 			other.SetPublic("image_count", *snap.EstimatedImageCount)
@@ -381,7 +384,23 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 		if snap.EstimatedFixedPrice != nil {
 			other.SetPublic("fixed_price", *snap.EstimatedFixedPrice)
 		}
+		setTierPrices(other, snap, snap.EstimatedTier)
 	}
+}
+
+// setTierPrices publishes the matched tier's unit prices, already multiplied
+// by the group ratio the settlement used, so usage logs can show prices
+// without exposing the billing expression. When the prices cannot be derived
+// exactly (unknown tier, non-linear body) nothing is written.
+func setTierPrices(other *model.LogOther, snap *billingexpr.BillingSnapshot, matchedTier string) {
+	if other == nil || snap == nil || snap.ExprString == "" || matchedTier == "" {
+		return
+	}
+	prices, err := billingexpr.ComputeTierPrices(snap.ExprString, matchedTier, snap.TaskUsageBilling, snap.GroupRatio)
+	if err != nil {
+		return
+	}
+	other.SetPublic("tier_prices", prices)
 }
 
 // recordProviderCredits copies the upstream-reported credits (peroai fork,

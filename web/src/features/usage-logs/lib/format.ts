@@ -30,6 +30,7 @@ import type { UsageLog } from '../data/schema'
 import type { LogOtherData } from '../types'
 import { buildQuotaAuditOperation } from './quota-audit-operation'
 import { getResponseModelObservation } from './response-model'
+import { getLogBillingExprB64, readTierPrices } from './tier-prices'
 
 export { normalizeTierLabel }
 
@@ -320,8 +321,78 @@ export interface TieredBillingSummary {
     field: string
     shortLabel: string
     price: number
-    unit?: 'request' | 'image'
+    unit?: 'request' | 'image' | 'second' | 'credit' | 'unit'
   }>
+  /**
+   * `tier_prices`: backend prices that already include the group ratio.
+   * `expression`: prices read from the expression, before the group ratio.
+   */
+  source: 'tier_prices' | 'expression'
+}
+
+function usageFactPriceUnit(key: string): 'second' | 'credit' | 'unit' {
+  if (key === 'seconds') return 'second'
+  if (key === 'credits') return 'credit'
+  return 'unit'
+}
+
+/**
+ * Summary built from the backend's `tier_prices`, which every viewer gets.
+ * Prices are what the customer paid per unit, group ratio included.
+ */
+function getTierPricesSummary(
+  other: LogOtherData
+): TieredBillingSummary | null {
+  const prices = readTierPrices(other)
+  if (!prices) return null
+  const label = other.matched_tier || ''
+  const priceEntries: TieredBillingSummary['priceEntries'] = []
+
+  if (prices.unit === 'request' && prices.fixed !== undefined) {
+    const perImage = other.image_count !== undefined
+    const tier: ParsedTier = {
+      label,
+      conditions: [],
+      billingUnit: 'request',
+      fixedPrice: prices.fixed,
+    }
+    priceEntries.push({
+      field: 'fixedPrice',
+      shortLabel: perImage ? 'Per image' : 'Per-call',
+      price: prices.fixed,
+      unit: perImage ? 'image' : 'request',
+    })
+    return { tiers: [tier], tier, priceEntries, source: 'tier_prices' }
+  }
+
+  const tier: ParsedTier = { label, conditions: [], billingUnit: 'token' }
+  const cacheTokensPresent = hasAnyCacheTokens(other)
+  for (const v of BILLING_PRICING_VARS) {
+    if (!v.field) continue
+    const price = prices.per_million?.[v.key]
+    if (price === undefined) continue
+    tier[v.field] = price
+    if (v.group === 'cache' && !cacheTokensPresent) continue
+    priceEntries.push({ field: v.field, shortLabel: v.shortLabel, price })
+  }
+  for (const [key, price] of Object.entries(prices.per_unit ?? {})) {
+    priceEntries.push({
+      field: `usage:${key}`,
+      shortLabel: key,
+      price,
+      unit: usageFactPriceUnit(key),
+    })
+  }
+  if (prices.constant !== undefined) {
+    priceEntries.push({
+      field: 'constant',
+      shortLabel: 'Additional charge',
+      price: prices.constant,
+      unit: 'request',
+    })
+  }
+  if (priceEntries.length === 0) return null
+  return { tiers: [tier], tier, priceEntries, source: 'tier_prices' }
 }
 
 /**
@@ -347,7 +418,11 @@ export function getTieredBillingSummary(
   other: LogOtherData | null
 ): TieredBillingSummary | null {
   if (!other || other.billing_mode !== 'tiered_expr') return null
-  const exprStr = decodeBillingExprB64(other.expr_b64)
+  const fromTierPrices = getTierPricesSummary(other)
+  if (fromTierPrices) return fromTierPrices
+  // Only administrators receive the expression; customer logs without
+  // tier_prices (written before the backend computed them) show no unit price.
+  const exprStr = decodeBillingExprB64(getLogBillingExprB64(other))
   if (!exprStr) return null
   const tiers = parseTiersFromExpr(
     splitBillingExprAndRequestRules(exprStr).billingExpr
@@ -384,6 +459,7 @@ export function getTieredBillingSummary(
           unit: other.image_count !== undefined ? 'image' : 'request',
         },
       ],
+      source: 'expression',
     }
   }
   if (!tier) return null
@@ -399,6 +475,7 @@ export function getTieredBillingSummary(
           unit: tier.imageCount ? 'image' : 'request',
         },
       ],
+      source: 'expression',
     }
   }
 
@@ -418,7 +495,7 @@ export function getTieredBillingSummary(
       })
     }
   }
-  return { tiers, tier, priceEntries }
+  return { tiers, tier, priceEntries, source: 'expression' }
 }
 
 /**

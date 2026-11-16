@@ -135,3 +135,25 @@ func TestTaskLogDTOKeepsFailureReasonAndDoesNotMarkPluginTaskLegacy(t *testing.T
 	assert.Empty(t, pluginView.ResultURL)
 	assert.Empty(t, pluginView.FailReason)
 }
+
+func TestTaskLogDTOHidesChannelAndUpstreamDataFromUsers(t *testing.T) {
+	task := &model.Task{
+		TaskID:    "task_video",
+		Platform:  "supergpt-video",
+		ChannelId: 61,
+		Data:      []byte(`{"id":"upstream-video-id","price":0.42,"content_url":"https://upstream.invalid/v.mp4"}`),
+	}
+
+	userView := tasksToDto([]*model.Task{task}, false, common.RoleCommonUser)[0]
+	assert.Zero(t, userView.ChannelId)
+	assert.Empty(t, userView.Data)
+	encoded, err := common.Marshal(userView)
+	require.NoError(t, err)
+	for _, forbidden := range []string{"upstream-video-id", "upstream.invalid", "0.42"} {
+		assert.NotContains(t, string(encoded), forbidden)
+	}
+
+	adminView := tasksToDto([]*model.Task{task}, false, common.RoleAdminUser)[0]
+	assert.Equal(t, 61, adminView.ChannelId)
+	assert.Contains(t, string(adminView.Data), "upstream-video-id")
+}
