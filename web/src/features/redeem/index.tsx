@@ -16,9 +16,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { CheckCircle2, Gift, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
@@ -26,10 +26,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useRedemption } from '@/features/wallet/hooks/use-redemption'
-import { extractRedemptionCode } from '@/features/wallet/lib/redemption-code'
 import { getSelf } from '@/lib/api'
 import { formatQuota } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth-store'
+
+import {
+  REDEEM_RETURN_PATH,
+  clearPendingRedeemCode,
+  readPendingRedeemCode,
+  redeemCodeFromLocation,
+  savePendingRedeemCode,
+} from './lib/pending-code'
 
 type RedeemProps = {
   initialCode?: string
@@ -40,18 +47,40 @@ type RedeemResult = {
   balance: number | null
 }
 
-/** Where sign-in and sign-up send the visitor back to, code included. */
-export function redeemReturnPath(code: string): string {
-  const extracted = extractRedemptionCode(code)
-  return extracted ? `/redeem?code=${encodeURIComponent(extracted)}` : '/redeem'
+/**
+ * The /redeem route: takes the code out of the address bar, then replaces
+ * the address with a bare /redeem so the code does not stay in history,
+ * bookmarks or sign-in links.
+ */
+export function RedeemFromUrl({
+  searchCode,
+  hash,
+}: {
+  searchCode?: string
+  hash: string
+}) {
+  const navigate = useNavigate()
+  const [initialCode] = useState(() => redeemCodeFromLocation(searchCode, hash))
+  const hasCodeInUrl = searchCode !== undefined || /(^|[#&])code=/.test(hash)
+  useEffect(() => {
+    if (hasCodeInUrl) {
+      void navigate({ to: REDEEM_RETURN_PATH, search: {}, replace: true })
+    }
+  }, [hasCodeInUrl, navigate])
+  return <Redeem initialCode={initialCode} />
 }
 
 export function Redeem({ initialCode = '' }: RedeemProps) {
   const { t } = useTranslation()
   const user = useAuthStore((state) => state.auth.user)
-  const [code, setCode] = useState(initialCode)
+  const [code, setCode] = useState(() => initialCode || readPendingRedeemCode())
   const [result, setResult] = useState<RedeemResult | null>(null)
   const { redeeming, redeemCode } = useRedemption()
+
+  // The pending code has been read into the form; drop the stored copy.
+  useEffect(() => {
+    clearPendingRedeemCode()
+  }, [])
 
   const handleActivate = async () => {
     const added = await redeemCode(code)
@@ -66,10 +95,11 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
       // The credit already landed; a failed balance refresh is cosmetic.
     }
     setCode('')
+    clearPendingRedeemCode()
     setResult({ added, balance })
   }
 
-  const returnPath = redeemReturnPath(code)
+  const keepCodeForSignIn = () => savePendingRedeemCode(code)
 
   let body
   if (result) {
@@ -118,7 +148,10 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
           <Input
             id='redeem-code'
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onChange={(event) => {
+              setCode(event.target.value)
+              if (event.target.value.trim() === '') clearPendingRedeemCode()
+            }}
             placeholder={t('Paste your 32-character card code')}
             autoComplete='off'
             spellCheck={false}
@@ -151,7 +184,13 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
             </p>
             <Button
               className='w-full'
-              render={<Link to='/sign-in' search={{ redirect: returnPath }} />}
+              render={
+                <Link
+                  to='/sign-in'
+                  search={{ redirect: REDEEM_RETURN_PATH }}
+                  onClick={keepCodeForSignIn}
+                />
+              }
             >
               {t('Sign in')}
             </Button>
@@ -159,7 +198,8 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
               {t("Don't have an account?")}{' '}
               <Link
                 to='/sign-up'
-                search={{ redirect: returnPath }}
+                search={{ redirect: REDEEM_RETURN_PATH }}
+                onClick={keepCodeForSignIn}
                 className='hover:text-primary font-medium underline underline-offset-4'
               >
                 {t('Sign up')}

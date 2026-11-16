@@ -38,7 +38,11 @@ export function useRedemption() {
   const redeemCode = useCallback(async (input: string): Promise<number> => {
     const code = extractRedemptionCode(input ?? '')
     if (!code) {
-      toast.error(i18next.t('Please enter a redemption code'))
+      toast.error(
+        (input ?? '').trim()
+          ? i18next.t('Invalid redemption code format')
+          : i18next.t('Please enter a redemption code')
+      )
       return 0
     }
 

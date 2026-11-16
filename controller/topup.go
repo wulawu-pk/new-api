@@ -130,6 +130,9 @@ func GetTopUpInfo(c *gin.Context) {
 type EpayRequest struct {
 	Amount        int64  `json:"amount"`
 	PaymentMethod string `json:"payment_method"`
+	// peroai: credit_quota the customer confirmed for a coin-priced crypto
+	// order. When it no longer matches the live quote, no order is created.
+	ExpectedCreditQuota int64 `json:"expected_credit_quota,omitempty"`
 }
 
 type AmountRequest struct {
@@ -522,6 +525,11 @@ func RequestAmount(c *gin.Context) {
 	}
 	id := c.GetInt("id")
 	if isCryptoUsdMethod(req.PaymentMethod) {
+		// Same method check as /pay, before any exchange-rate request.
+		if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
+			paymentError(c, common.NewMessage("Payment method does not exist"))
+			return
+		}
 		requestCryptoUsdAmount(c, id, req)
 		return
 	}

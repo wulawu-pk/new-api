@@ -7395,7 +7395,7 @@
     "You receive:": "到账额度：",
     "Pay {{amount}} {{currency}}; credited at the live rate 1 {{currency}} = ¥{{rate}} (¥1 = $1 quota). The credit is fixed when the order is created.": "支付 {{amount}} {{currency}}，按实时汇率 1 {{currency}} = ¥{{rate}} 折算到账（¥1 = $1 额度），下单时锁定。",
     "Exchange rate is temporarily unavailable, please try again later": "汇率暂时无法获取，请稍后再试",
-    "When others pay the same amount at the same time, the checkout may add 0.01–0.02. Transfer exactly the amount shown on the checkout within 30 minutes; the credit stays as quoted above.": "同一时间有人支付相同金额时，收银台金额可能多出 0.01–0.02。请在 30 分钟内按收银台显示的金额精确转账，到账额度仍按上面计算。",
+    "If someone else pays the same amount at the same time, the checkout amount may be a few cents higher. Go by the amount shown on the checkout and transfer exactly that within 30 minutes; your credit does not change.": "如果同时有人支付相同金额，收银台金额可能会略高几分。请以收银台显示的金额为准，在 30 分钟内精确转账；到账额度不变。",
     "Activated": "激活成功",
     "{{quota}} has been added to your account.": "已为你的账户充值 {{quota}}。",
     "Current balance: {{balance}}": "当前余额：{{balance}}",
@@ -7411,6 +7411,8 @@
     "Each card can be activated once. A card is not an API key and cannot call models.": "每张卡密只能激活一次。卡密不是 API 密钥，不能用来调用模型。",
     "Credits used": "消耗 credit",
     "Cache hit rate": "缓存命中率",
-    "Hit {{rate}}": "命中 {{rate}}"
+    "Hit {{rate}}": "命中 {{rate}}",
+    "The exchange rate has been updated. Please review and confirm again.": "汇率已更新，请重新确认。",
+    "Invalid redemption code format": "兑换码格式不正确"
   }
 }

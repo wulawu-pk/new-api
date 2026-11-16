@@ -44,6 +44,12 @@ export type AmountResponse = ApiResponse<string> & {
 }
 export type PaymentResponse = ApiResponse<Record<string, unknown>> & {
   url?: string
+  /** peroai: coin-priced crypto order fields, see AmountResponse */
+  currency?: string
+  rate?: string
+  credit_quota?: number
+  /** peroai: the live quote no longer matches expected_credit_quota */
+  quote_changed?: boolean
 }
 export type StripePaymentResponse = ApiResponse<{ pay_link: string }>
 export type AffiliateCodeResponse = ApiResponse<string>
@@ -195,6 +201,8 @@ export interface PaymentRequest {
   amount: number
   /** Payment method identifier */
   payment_method: string
+  /** peroai: credit the customer confirmed for a coin-priced crypto order */
+  expected_credit_quota?: number
 }
 
 /**

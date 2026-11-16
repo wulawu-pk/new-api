@@ -47,10 +47,22 @@ describe('authentication redirect validation', () => {
       'javascript:alert(1)',
       '/\\attacker.example/path',
       'https:\\attacker.example/path',
+      // Normalised into a leading `//`
+      'https://dashboard.example.com//attacker.example',
+      '/x/..//attacker.example',
+      '/%2e//attacker.example',
     ]
 
     for (const target of unsafeTargets) {
       expect(sanitizeAuthRedirect(target, origin)).toBe(null)
+    }
+  })
+
+  test('returns a path that sanitises to itself', () => {
+    for (const target of ['/console?tab=usage#recent', '/redeem', '/a/../b']) {
+      const once = sanitizeAuthRedirect(target, origin)
+      expect(once).not.toBe(null)
+      expect(sanitizeAuthRedirect(once, origin)).toBe(once)
     }
   })
 

@@ -20,12 +20,11 @@ For commercial licensing, please contact support@quantumnous.com
 // peroai: redemption codes are 32 hex characters (a UUID without dashes,
 // common.GetUUID). Shops deliver them with surrounding text, a trailing
 // space or a full activation link, so pull the code out of whatever the
-// buyer pasted instead of sending the raw text and failing the redeem.
+// buyer pasted. Text without a code yields '' so it is never sent anywhere
+// or carried into a URL.
 const CODE_PATTERN = /(?<![0-9a-f])[0-9a-f]{32}(?![0-9a-f])/i
 
 export function extractRedemptionCode(input: string): string {
-  const text = input.trim()
-  const match = CODE_PATTERN.exec(text)
-  if (match) return match[0].toLowerCase()
-  return text
+  const match = CODE_PATTERN.exec(input.trim())
+  return match ? match[0].toLowerCase() : ''
 }

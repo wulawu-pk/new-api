@@ -87,6 +87,33 @@ export function submitPaymentForm(
 }
 
 /**
+ * peroai: open a gateway checkout page returned by the server. The click's
+ * user activation may be gone after the await, so a blocked new tab falls
+ * back to the current tab; Safari always uses the current tab, as with
+ * submitPaymentForm. Returns false for anything but an http(s) URL.
+ */
+export function openCheckoutUrl(url: string): boolean {
+  let target: URL
+  try {
+    target = new URL(url)
+  } catch {
+    return false
+  }
+  if (target.protocol !== 'https:' && target.protocol !== 'http:') {
+    return false
+  }
+  if (!isSafariBrowser()) {
+    const opened = window.open(target.href, '_blank')
+    if (opened) {
+      opened.opener = null
+      return true
+    }
+  }
+  window.location.assign(target.href)
+  return true
+}
+
+/**
  * Check if payment method is Stripe
  */
 export function isStripePayment(paymentType: string): boolean {

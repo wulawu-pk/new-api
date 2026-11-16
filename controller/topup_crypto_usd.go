@@ -9,13 +9,23 @@ package controller
 // fiat=USD rate=1 so the checkout asks for exactly N coins, and the order
 // credits N x (live CNY per coin) / Price quota dollars, fixed when the order
 // is created. That keeps crypto in line with the 卡密 rate of ¥1 = $1.
+//
+// The signed gateway request never leaves the server when
+// EPAY_INTERNAL_SUBMIT_URL is set: new-api posts it to BEpusdt itself and
+// hands the browser only the checkout URL. BEpusdt starts the 30-minute
+// payment window when it receives the request, so the locked credit and the
+// payment window start together and a customer cannot hold signed parameters
+// back until the rate moves in their favour.
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,11 +40,16 @@ import (
 	"github.com/Calcium-Ion/go-epay/epay"
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
 	cryptoRateFreshFor = time.Minute
 	cryptoRateStaleMax = 30 * time.Minute
+	// After a failed refresh, CoinGecko is not asked again for this long; a
+	// cached rate younger than cryptoRateStaleMax is used meanwhile.
+	cryptoRateRetryAfter   = 30 * time.Second
+	cryptoRateFetchTimeout = 8 * time.Second
 	// CNY per coin outside this band is treated as a bad quote, not a price.
 	cryptoRateMin = 3.0
 	cryptoRateMax = 15.0
@@ -54,10 +69,17 @@ type cachedCryptoRate struct {
 }
 
 var (
-	cryptoRateMu    sync.Mutex
-	cryptoRateCache = map[string]cachedCryptoRate{}
+	// cryptoRateMu guards cryptoRateCache and cryptoRateFailedAt only; it is
+	// never held across a network call.
+	cryptoRateMu       sync.Mutex
+	cryptoRateCache    = map[string]cachedCryptoRate{}
+	cryptoRateFailedAt = map[string]time.Time{}
+	// cryptoRateGroup merges concurrent refreshes of the same coin.
+	cryptoRateGroup singleflight.Group
 	cryptoRateNow   = time.Now
 )
+
+var errCryptoRateBackoff = errors.New("rate source failed recently, waiting before the next try")
 
 // cryptoCoinOf returns "usdt" or "usdc" for a coin-priced epay method, or "".
 func cryptoCoinOf(paymentMethod string) string {
@@ -81,34 +103,64 @@ func isCryptoUsdMethod(paymentMethod string) bool {
 }
 
 // cryptoCNYRate returns the CNY price of one coin from CoinGecko, the source
-// BEpusdt itself syncs from, cached for a minute.
+// BEpusdt itself syncs from, cached for a minute. Concurrent refreshes of a
+// coin share one request, a failed refresh backs off for
+// cryptoRateRetryAfter, and a caller stops waiting when its ctx ends.
 func cryptoCNYRate(ctx context.Context, coin string) (decimal.Decimal, error) {
 	id, ok := cryptoCoinGeckoIDs[coin]
 	if !ok {
 		return decimal.Zero, fmt.Errorf("unsupported coin %q", coin)
 	}
-	cryptoRateMu.Lock()
-	defer cryptoRateMu.Unlock()
 
 	now := cryptoRateNow()
+	cryptoRateMu.Lock()
 	cached, hasCached := cryptoRateCache[coin]
+	failedAt := cryptoRateFailedAt[coin]
+	cryptoRateMu.Unlock()
+
 	if hasCached && now.Sub(cached.at) < cryptoRateFreshFor {
 		return cached.rate, nil
 	}
-	rate, err := fetchCryptoCNYRate(ctx, id)
-	if err == nil {
-		cryptoRateCache[coin] = cachedCryptoRate{rate: rate, at: now}
+	staleUsable := hasCached && now.Sub(cached.at) < cryptoRateStaleMax
+	if !failedAt.IsZero() && now.Sub(failedAt) < cryptoRateRetryAfter {
+		if staleUsable {
+			return cached.rate, nil
+		}
+		return decimal.Zero, errCryptoRateBackoff
+	}
+
+	results := cryptoRateGroup.DoChan(coin, func() (any, error) {
+		// Detached from the first caller: its cancellation must not fail the
+		// other callers sharing this refresh. fetchCryptoCNYRate bounds it.
+		rate, err := fetchCryptoCNYRate(context.WithoutCancel(ctx), id)
+		cryptoRateMu.Lock()
+		defer cryptoRateMu.Unlock()
+		if err != nil {
+			cryptoRateFailedAt[coin] = cryptoRateNow()
+			return nil, err
+		}
+		cryptoRateCache[coin] = cachedCryptoRate{rate: rate, at: cryptoRateNow()}
+		delete(cryptoRateFailedAt, coin)
 		return rate, nil
+	})
+
+	select {
+	case <-ctx.Done():
+		return decimal.Zero, ctx.Err()
+	case res := <-results:
+		if res.Err == nil {
+			return res.Val.(decimal.Decimal), nil
+		}
+		if staleUsable {
+			logger.LogWarn(ctx, common.LogText("crypto top-up rate refresh failed, using cached rate coin=%s age=%s error=%q", coin, now.Sub(cached.at).Round(time.Second), res.Err.Error()))
+			return cached.rate, nil
+		}
+		return decimal.Zero, res.Err
 	}
-	if hasCached && now.Sub(cached.at) < cryptoRateStaleMax {
-		logger.LogWarn(ctx, common.LogText("crypto top-up rate refresh failed, using cached rate coin=%s age=%s error=%q", coin, now.Sub(cached.at).Round(time.Second), err.Error()))
-		return cached.rate, nil
-	}
-	return decimal.Zero, err
 }
 
 func fetchCryptoCNYRate(ctx context.Context, id string) (decimal.Decimal, error) {
-	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, cryptoRateFetchTimeout)
 	defer cancel()
 	query := url.Values{"ids": {id}, "vs_currencies": {"cny"}}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, cryptoRateURL+"?"+query.Encode(), nil)
@@ -187,7 +239,7 @@ func cryptoQuoteResponse(q cryptoUsdQuote) gin.H {
 
 // requestCryptoUsdAmount answers /api/user/amount for a coin-priced method.
 func requestCryptoUsdAmount(c *gin.Context, userId int, req AmountRequest) {
-	group, err := model.GetUserGroup(userId, true)
+	group, err := cryptoUserGroup(userId)
 	if err != nil {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
@@ -200,10 +252,84 @@ func requestCryptoUsdAmount(c *gin.Context, userId int, req AmountRequest) {
 	c.JSON(http.StatusOK, cryptoQuoteResponse(q))
 }
 
+// cryptoUserGroup is a variable so tests can skip the user-group lookup.
+var cryptoUserGroup = func(userId int) (string, error) {
+	return model.GetUserGroup(userId, true)
+}
+
+// cryptoEpaySubmitClient posts signed orders to BEpusdt. It must not follow
+// redirects: the 302 Location is the checkout URL handed to the browser.
+var cryptoEpaySubmitClient = &http.Client{
+	Timeout: 10 * time.Second,
+	CheckRedirect: func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
+const cryptoCheckoutPathPrefix = "/pay/checkout/"
+
+var cryptoBrowserSubmitWarning sync.Once
+
+// cryptoInternalSubmitURL is BEpusdt's submit.php as new-api reaches it over
+// the internal network, e.g. http://bepusdt:8080/submit.php.
+func cryptoInternalSubmitURL() string {
+	return strings.TrimSpace(os.Getenv("EPAY_INTERNAL_SUBMIT_URL"))
+}
+
+// submitCryptoEpayOrder posts the signed order to BEpusdt and returns the
+// checkout URL from its 302. BEpusdt answers a rejected order with HTTP 200
+// and an error text.
+func submitCryptoEpayOrder(ctx context.Context, submitURL string, params map[string]string) (string, error) {
+	form := url.Values{}
+	for k, v := range params {
+		form.Set(k, v)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, submitURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := cryptoEpaySubmitClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<10))
+	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusSeeOther {
+		return "", fmt.Errorf("gateway status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	location := resp.Header.Get("Location")
+	if err := validateCryptoCheckoutURL(location); err != nil {
+		return "", err
+	}
+	return location, nil
+}
+
+// validateCryptoCheckoutURL accepts only an https checkout page on the same
+// origin as PayAddress.
+func validateCryptoCheckoutURL(raw string) error {
+	checkout, err := url.Parse(raw)
+	if err != nil || !checkout.IsAbs() {
+		return fmt.Errorf("checkout location %q is not an absolute URL", raw)
+	}
+	payAddress, err := url.Parse(operation_setting.PayAddress)
+	if err != nil {
+		return fmt.Errorf("pay address is not a URL")
+	}
+	if checkout.Scheme != "https" || checkout.User != nil ||
+		!strings.EqualFold(checkout.Scheme, payAddress.Scheme) ||
+		!strings.EqualFold(checkout.Host, payAddress.Host) ||
+		!strings.HasPrefix(checkout.Path, cryptoCheckoutPathPrefix) ||
+		len(checkout.Path) == len(cryptoCheckoutPathPrefix) {
+		return fmt.Errorf("checkout location %q is not a checkout page on the pay address", raw)
+	}
+	return nil
+}
+
 // requestCryptoUsdEpay creates a coin-priced BEpusdt order. The caller has
 // already checked the minimum and the method.
 func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
-	group, err := model.GetUserGroup(userId, true)
+	group, err := cryptoUserGroup(userId)
 	if err != nil {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
 		return
@@ -211,6 +337,15 @@ func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
 	q, err := quoteCryptoUsdTopup(c.Request.Context(), req.Amount, req.PaymentMethod, group)
 	if err != nil {
 		paymentError(c, err)
+		return
+	}
+	// The customer confirmed a quote; if the rate moved since, create no
+	// order and let them confirm the new one.
+	if req.ExpectedCreditQuota > 0 && req.ExpectedCreditQuota != int64(q.CreditQuota) {
+		resp := cryptoQuoteResponse(q)
+		maps.Copy(resp, gin.H{"message": "error", "data": "The exchange rate has been updated. Please review and confirm again.", "quote_changed": true})
+		maps.Copy(resp, common.NewMessage("The exchange rate has been updated. Please review and confirm again.").Fields())
+		c.JSON(http.StatusOK, resp)
 		return
 	}
 	if err := model.ValidateTopUpQuotaCapacity(userId, q.CreditQuota); err != nil {
@@ -248,12 +383,27 @@ func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
 		paymentError(c, common.NewMessage("Failed to start payment"))
 		return
 	}
-	submitUrl, err := url.JoinPath(operation_setting.PayAddress, epay.PurchaseUrl)
-	if err != nil {
+	internalSubmitURL := cryptoInternalSubmitURL()
+	submitUrl := internalSubmitURL
+	if submitUrl == "" {
+		cryptoBrowserSubmitWarning.Do(func() {
+			logger.LogWarn(c.Request.Context(), "EPAY_INTERNAL_SUBMIT_URL is not set: coin-priced crypto orders hand signed gateway parameters to the browser, which can submit them late at an old rate")
+		})
+		submitUrl, err = url.JoinPath(operation_setting.PayAddress, epay.PurchaseUrl)
+		if err != nil {
+			paymentError(c, common.NewMessage("Failed to start payment"))
+			return
+		}
+	} else if u, parseErr := url.Parse(submitUrl); parseErr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		logger.LogError(c.Request.Context(), "EPAY_INTERNAL_SUBMIT_URL is not an http(s) URL")
 		paymentError(c, common.NewMessage("Failed to start payment"))
 		return
 	}
 
+	// The local order is written before BEpusdt hears of it, so a gateway
+	// callback can always find it. If the gateway then refuses the order,
+	// the local row is marked failed; the browser never saw the signed
+	// parameters, so nobody can pay it.
 	topUp := &model.TopUp{
 		UserId:          userId,
 		Amount:          int64(q.CreditQuota) / int64(common.QuotaPerUnit),
@@ -271,8 +421,28 @@ func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
 		return
 	}
 	logger.LogInfo(c.Request.Context(), common.LogText("Epay crypto top-up order created user_id=%d trade_no=%s payment_method=%s coins=%d cny_rate=%s credit_quota=%d", userId, tradeNo, req.PaymentMethod, q.Coins, q.Rate.String(), q.CreditQuota))
+
+	if internalSubmitURL == "" {
+		resp := cryptoQuoteResponse(q)
+		resp["data"] = params
+		resp["url"] = submitUrl
+		c.JSON(http.StatusOK, resp)
+		return
+	}
+
+	// Detached from the browser request: an aborted page must not leave
+	// BEpusdt with an order that new-api then marks failed halfway.
+	checkoutURL, err := submitCryptoEpayOrder(context.WithoutCancel(c.Request.Context()), internalSubmitURL, params)
+	if err != nil {
+		logger.LogError(c.Request.Context(), common.LogText("Epay crypto top-up gateway refused the order user_id=%d trade_no=%s error=%q", userId, tradeNo, err.Error()))
+		if markErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); markErr != nil {
+			logger.LogError(c.Request.Context(), common.LogText("Epay crypto top-up failed to mark order failed trade_no=%s error=%q", tradeNo, markErr.Error()))
+		}
+		paymentError(c, common.NewMessage("Failed to start payment"))
+		return
+	}
 	resp := cryptoQuoteResponse(q)
-	resp["data"] = params
-	resp["url"] = submitUrl
+	resp["data"] = gin.H{"checkout_url": checkoutURL}
+	resp["url"] = checkoutURL
 	c.JSON(http.StatusOK, resp)
 }

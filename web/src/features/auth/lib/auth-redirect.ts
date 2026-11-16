@@ -76,5 +76,18 @@ export function sanitizeAuthRedirect(
     return null
   }
 
-  return `${redirectURL.pathname}${redirectURL.search}${redirectURL.hash}`
+  // Normalisation can produce a new leading `//` (`/x/..//evil.example`,
+  // `https://origin//evil.example`), which a browser would read as another
+  // host. Check the result again.
+  const result = `${redirectURL.pathname}${redirectURL.search}${redirectURL.hash}`
+  if (
+    !result.startsWith('/') ||
+    result.startsWith('//') ||
+    result.startsWith('/\\') ||
+    // eslint-disable-next-line no-control-regex
+    /[\u0000-\u001f\u007f]/.test(result)
+  ) {
+    return null
+  }
+  return result
 }
