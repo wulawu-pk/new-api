@@ -71,6 +71,7 @@ import {
   renderAuditContent,
   renderLogContent,
 } from '../../lib/format'
+import { getLogBillingExprB64, readTierPrices } from '../../lib/tier-prices'
 import {
   isDisplayableLogType,
   isTimingLogType,
@@ -188,32 +189,66 @@ function buildTypeDetailSegments(
   const tieredSummary = getTieredBillingSummary(other)
   const creditSummary = getCreditBillingSummary(other, log.quota)
   if (creditSummary) {
-    const unit = `${formatPriceCompact(creditSummary.unitPriceUSD)} / ${t('credit')}`
+    const parts: string[] = []
+    if (creditSummary.credits !== null) {
+      parts.push(`${formatCredits(creditSummary.credits)} ${t('credit')}`)
+    }
+    if (creditSummary.unitPriceUSD !== null) {
+      parts.push(
+        `${formatPriceCompact(creditSummary.unitPriceUSD)} / ${t('credit')}`
+      )
+    }
     segments.push({
       text:
-        creditSummary.credits !== null
-          ? `${formatCredits(creditSummary.credits)} ${t('credit')} · ${unit}`
-          : unit,
+        parts.length > 0 ? parts.join(' · ') : t('Billed by upstream credits'),
     })
   } else if (isTieredExpr && other.is_task) {
-    const tiers = parseTaskTiersFromExpr(
-      decodeBillingExprB64(other.expr_b64),
-      usageSchema,
-      true
-    )
+    const taskPrices = readTierPrices(other)
+    const tiers = taskPrices
+      ? []
+      : parseTaskTiersFromExpr(
+          decodeBillingExprB64(getLogBillingExprB64(other)),
+          usageSchema,
+          true
+        )
     const tier = tiers.find(
       (entry) =>
         Boolean(other.matched_tier) &&
         normalizeTierLabel(entry.label) ===
           normalizeTierLabel(other.matched_tier)
     )
-    if (tier) {
-      const prices = Object.entries(tier.unitPrices).map(([field, price]) => {
-        const definition = usageSchema?.[field]
-        const unitKey = getTaskUsagePriceUnitLabelKey(definition?.unit)
-        const unitLabel = taskUsageUnitLabel(definition, language, t(unitKey))
-        return `${field} ${formatTaskUsageUnitPrice(price, { tokenUnit: 'M' })}/${unitLabel}`
+    const taskPriceText = (field: string, price: number) => {
+      const definition = usageSchema?.[field]
+      const unitKey = getTaskUsagePriceUnitLabelKey(definition?.unit)
+      const unitLabel = taskUsageUnitLabel(definition, language, t(unitKey))
+      return `${field} ${formatTaskUsageUnitPrice(price, { tokenUnit: 'M' })}/${unitLabel}`
+    }
+    if (taskPrices) {
+      // Backend prices are USD per unit after the group ratio; a token-unit
+      // fact is quoted per 1M tokens like the model square.
+      const prices = Object.entries(taskPrices.per_unit ?? {}).map(
+        ([field, price]) =>
+          taskPriceText(
+            field,
+            usageSchema?.[field]?.unit === 'token' ? price * 1_000_000 : price
+          )
+      )
+      if (taskPrices.constant !== undefined) {
+        prices.push(
+          `${t('Additional charge')} ${formatTaskUsageUnitPrice(taskPrices.constant, { tokenUnit: 'M' })}/${t('request')}`
+        )
+      }
+      segments.push({
+        text:
+          prices.length > 0
+            ? `${other.matched_tier || t('Default')} · ${prices.join(' · ')}`
+            : `${t('Dynamic Pricing')} · ${other.matched_tier || t('Special billing expression')}`,
+        muted: prices.length === 0,
       })
+    } else if (tier) {
+      const prices = Object.entries(tier.unitPrices).map(([field, price]) =>
+        taskPriceText(field, price)
+      )
       if (tier.constant > 0) {
         prices.push(
           `${t('Additional charge')} ${formatTaskUsageUnitPrice(tier.constant, { tokenUnit: 'M' })}/${t('request')}`
@@ -646,7 +681,9 @@ export function useCommonLogsColumns(
         const creditSummary = getCreditBillingSummary(other, log.quota)
         const groupRatio = creditSummary ? null : getGroupRatio(other)
         const groupRatioLabel = creditSummary
-          ? `${formatBillingCurrencyFromUSD(creditSummary.unitPriceUSD, { digitsLarge: 4, digitsSmall: 6, abbreviate: false })} / ${t('credit')}`
+          ? creditSummary.unitPriceUSD !== null
+            ? `${formatBillingCurrencyFromUSD(creditSummary.unitPriceUSD, { digitsLarge: 4, digitsSmall: 6, abbreviate: false })} / ${t('credit')}`
+            : null
           : groupRatio != null
             ? `${formatRatioCompact(groupRatio)}x`
             : null

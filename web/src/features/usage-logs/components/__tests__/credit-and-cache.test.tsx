@@ -189,3 +189,68 @@ describe('billing expression visibility', () => {
     expect(screen.getAllByText('Dynamic Pricing').length).toBeGreaterThan(0)
   })
 })
+
+describe('backend tier prices (customer view without the expression)', () => {
+  function customerOther(extra: Partial<LogOtherData> = {}): LogOtherData {
+    const { expr_b64: _expr, ...rest } = kiroOther(extra)
+    return rest
+  }
+
+  test('quotes the per-credit price the backend computed', () => {
+    const other = customerOther({
+      credits: 0.0442,
+      tier_prices: { unit: 'credit', per_unit: { credits: 0.25 } },
+    })
+    expect(getCreditBillingSummary(other, 5525)).toEqual({
+      unitPriceUSD: 0.25,
+      credits: 0.0442,
+    })
+    renderDetails(makeLog(other, 5525, 94), false)
+    expect(rowValue('Per credit')).toBe('$0.25')
+    expect(rowValue('Credits used')).toBe('0.0442')
+    expect(document.body.textContent).not.toContain('tier(')
+  })
+
+  test('old credit rows without tier prices keep the credits but no unit price', () => {
+    const other = customerOther({ credits: 0.0442 })
+    expect(getCreditBillingSummary(other, 5525)).toEqual({
+      unitPriceUSD: null,
+      credits: 0.0442,
+    })
+    renderDetails(makeLog(other, 5525, 94), false)
+    expect(rowValue('Credits used')).toBe('0.0442')
+    expect(screen.queryByText('Per credit')).toBeNull()
+  })
+
+  test('token tier prices already include the group ratio', () => {
+    const other = customerOther({
+      matched_tier: 'token',
+      tier_prices: {
+        unit: 'token',
+        per_million: { p: 9.25, c: 46.25, cr: 0.925 },
+      },
+    })
+    expect(getCreditBillingSummary(other, 1000)).toBeNull()
+    renderDetails(makeLog(other, 1000, 94), false)
+    expect(rowValue('Input')).toBe('$9.25/M')
+    expect(rowValue('Output')).toBe('$46.25/M')
+    expect(screen.queryByText('Group Ratio')).toBeNull()
+  })
+
+  test('rows with neither tier prices nor an expression show no unit price', () => {
+    const other = customerOther({ matched_tier: 'token' })
+    renderDetails(makeLog(other, 1000, 94), false)
+    expect(rowValue('Matched Tier')).toBe('token')
+    expect(screen.queryByText('Input')).toBeNull()
+  })
+
+  test('administrators read the moved expression from admin_info', () => {
+    const other = customerOther({
+      credits: 0.0442,
+      admin_info: { expr_b64: btoa(KIRO_EXPR) },
+    })
+    expect(getCreditBillingSummary(other, 5525)?.unitPriceUSD).toBeCloseTo(0.25)
+    renderDetails(makeLog(other, 5525, 94), true)
+    expect(screen.getAllByText('Dynamic Pricing').length).toBeGreaterThan(0)
+  })
+})

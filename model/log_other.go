@@ -25,6 +25,15 @@ var legacySensitiveLogOtherKeys = []string{
 	"reject_reason",
 }
 
+// legacyPricingLogOtherKeys were written at the top level before they moved
+// into admin_info. Customers no longer receive them; administrators still
+// read old rows unchanged.
+var legacyPricingLogOtherKeys = []string{
+	"expr_b64",
+	"request_rules",
+	"response_model",
+}
+
 type logOtherVisibility int
 
 const (
@@ -251,6 +260,12 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 			}
 		}
 		for _, key := range legacySensitiveLogOtherKeys {
+			if _, exists := values[key]; exists {
+				delete(values, key)
+				changed = true
+			}
+		}
+		for _, key := range legacyPricingLogOtherKeys {
 			if _, exists := values[key]; exists {
 				delete(values, key)
 				changed = true

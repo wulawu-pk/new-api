@@ -501,3 +501,70 @@ test.each(['missing schema', 'unsupported expression', 'unknown tier'])(
     )
   }
 )
+
+test.each([
+  {
+    name: 'token tier',
+    other: {
+      billing_mode: 'tiered_expr',
+      matched_tier: 'standard',
+      tier_prices: {
+        unit: 'token' as const,
+        per_million: { p: 3.7, c: 18.5 },
+      },
+    },
+    expected: 'standard · $3.7 / $18.5/M',
+  },
+  {
+    name: 'fixed image tier',
+    other: {
+      billing_mode: 'tiered_expr',
+      billing_unit: 'request' as const,
+      matched_tier: '1K',
+      image_count: 1,
+      tier_prices: { unit: 'request' as const, fixed: 0.0648 },
+    },
+    expected: '1K · Per image $0.0648/image',
+  },
+  {
+    name: 'credit tier',
+    other: {
+      billing_mode: 'tiered_expr',
+      matched_tier: 'credit',
+      credits: 0.0116644,
+      tier_prices: { unit: 'credit' as const, per_unit: { credits: 0.25 } },
+    },
+    expected: '0.0116644 credit · $0.25 / credit',
+  },
+])('customer list shows backend $name prices', ({ other, expected }) => {
+  const preview = renderPreview(other, false)
+  expect(preview.textContent).toBe(expected)
+})
+
+test('customer task list shows backend per-second and constant prices', () => {
+  client.setQueryData(['pricing'], {
+    data: [
+      {
+        model_name: 'wan2.5-i2v-preview',
+        billing_usage_schema: { seconds: { type: 'number', unit: 'second' } },
+      },
+    ],
+    vendors: [],
+  })
+  const preview = renderPreview(
+    {
+      is_task: true,
+      billing_mode: 'tiered_expr',
+      matched_tier: 'base',
+      tier_prices: {
+        unit: 'task',
+        per_unit: { seconds: 0.036 },
+        constant: 0.5,
+      },
+    },
+    false
+  )
+  expect(preview.textContent).toBe(
+    'base · seconds $0.036/second · Additional charge $0.5/request'
+  )
+})

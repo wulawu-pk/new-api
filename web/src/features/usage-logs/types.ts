@@ -121,6 +121,22 @@ export interface ResponseModelObservation {
   returned_model: string
 }
 
+/**
+ * Unit prices of the matched tier, computed by the backend in USD after the
+ * group ratio (peroai fork). Replaces the billing expression in customer logs.
+ */
+export interface LogTierPrices {
+  unit: 'token' | 'request' | 'credit' | 'task' | 'usage'
+  /** USD per 1M tokens, keyed by token variable (p, c, cr, cc, ...). */
+  per_million?: Record<string, number>
+  /** USD per unit of a usage fact, e.g. { credits: 0.25 } or { seconds: 0.036 }. */
+  per_unit?: Record<string, number>
+  /** USD per request (or per image) of a fixed-price tier. */
+  fixed?: number
+  /** USD charged per request on top of the variable part. */
+  constant?: number
+}
+
 export interface LogOtherData {
   admin_info?: {
     request_policy?: PolicyEvent[]
@@ -159,6 +175,10 @@ export interface LogOtherData {
     // never receive it. Whether the names disagree is derived in the UI via
     // isResponseModelMismatch so old rows follow the current comparison rule.
     response_model?: ResponseModelObservation
+    // Billing expression and request-rule traces (admin only since the
+    // peroai fork moved them out of the customer view).
+    expr_b64?: string
+    request_rules?: RequestRuleTrace[]
   }
   root_info?: {
     task_plugin?: TaskPluginRuntimeInfo
@@ -226,15 +246,17 @@ export interface LogOtherData {
   audio_completion_ratio?: number
   frt?: number
   // Tiered (expression-based) billing fields, set by backend when
-  // billing_mode === 'tiered_expr'. expr_b64 is the base64-encoded billing
-  // expression; the matched tier and request-rule traces come from the actual
-  // settlement run.
+  // billing_mode === 'tiered_expr'. Customers get tier_prices; the
+  // base64-encoded expression and request-rule traces are admin-only and sit
+  // in admin_info. The top-level expr_b64/request_rules below only exist on
+  // rows written before that move, and only administrators receive them.
   billing_mode?: string
   billing_unit?: 'token' | 'request'
   fixed_price?: number
   image_count?: number
   expr_b64?: string
   matched_tier?: string
+  tier_prices?: LogTierPrices
   // peroai fork: upstream-reported credits of a credit-billed request.
   credits?: number
   usage_semantic?: string

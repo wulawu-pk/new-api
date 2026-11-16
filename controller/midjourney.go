@@ -316,6 +316,12 @@ func GetUserMidjourney(c *gin.Context) {
 
 	items := model.GetAllUserTask(userId, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), queryParams)
 	total := model.CountAllUserTask(userId, queryParams)
+	// The routing channel is operator data, not part of a customer's view.
+	for _, midjourney := range items {
+		if midjourney != nil {
+			midjourney.ChannelId = 0
+		}
+	}
 
 	if setting.MjForwardUrlEnabled {
 		for i, midjourney := range items {

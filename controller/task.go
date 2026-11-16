@@ -466,6 +466,13 @@ func tasksToDto(tasks []*model.Task, fillUser bool, viewerRole int) []*dto.TaskD
 				item.FailReason = ""
 			}
 		}
+		if viewerRole < common.RoleAdminUser {
+			// Customers get neither the routing channel nor the upstream's
+			// raw task response (it carries our cost and upstream URLs).
+			// The console reads results through the artifacts endpoint.
+			item.ChannelId = 0
+			item.Data = nil
+		}
 		if viewerRole >= common.RoleAdminUser {
 			adminInfo := &dto.TaskAdminInfo{}
 			if execution := task.PrivateData.Execution; execution != nil {

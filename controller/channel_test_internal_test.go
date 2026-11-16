@@ -286,6 +286,7 @@ func TestBuildTestLogOtherInjectsTieredInfo(t *testing.T) {
 		TieredBillingSnapshot: &billingexpr.BillingSnapshot{
 			BillingMode: "tiered_expr",
 			ExprString:  `tier("base", p * 2)`,
+			GroupRatio:  1,
 		},
 		ChannelMeta: &relaycommon.ChannelMeta{},
 	}
@@ -311,8 +312,13 @@ func TestBuildTestLogOtherInjectsTieredInfo(t *testing.T) {
 	fields := other.Snapshot()
 	require.Equal(t, "tiered_expr", fields["billing_mode"])
 	require.Equal(t, "base", fields["matched_tier"])
-	require.Equal(t, requestRules, fields["request_rules"])
-	require.NotEmpty(t, fields["expr_b64"])
+	require.NotContains(t, fields, "request_rules")
+	require.NotContains(t, fields, "expr_b64")
+	adminInfo, ok := fields["admin_info"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, requestRules, adminInfo["request_rules"])
+	require.NotEmpty(t, adminInfo["expr_b64"])
+	require.Equal(t, &billingexpr.TierPrices{Unit: billingexpr.TierPriceUnitToken, PerMillion: map[string]float64{"p": 2}}, fields["tier_prices"])
 }
 
 func TestResolveChannelTestUserIDUsesRequestUser(t *testing.T) {

@@ -261,7 +261,7 @@ func TestTaskBillingOtherIncludesTieredSnapshotAndKeepsUsageFactsNested(t *testi
 	other := taskBillingOther(task).Snapshot()
 
 	assert.Equal(t, "tiered_expr", other["billing_mode"])
-	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(expression)), other["expr_b64"])
+	assertTaskExprAdminOnly(t, other, expression)
 	assert.Equal(t, "720P", other["matched_tier"])
 	facts, ok := other["usage_facts"].(map[string]any)
 	require.True(t, ok)
@@ -285,7 +285,7 @@ func TestTaskBillingOtherOmitsEmptyUsageFacts(t *testing.T) {
 	other := taskBillingOther(task).Snapshot()
 
 	assert.Equal(t, "tiered_expr", other["billing_mode"])
-	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(expression)), other["expr_b64"])
+	assertTaskExprAdminOnly(t, other, expression)
 	assert.Equal(t, "base", other["matched_tier"])
 	assert.NotContains(t, other, "usage_facts")
 }
@@ -337,7 +337,7 @@ func TestLogTaskConsumptionIncludesTieredSnapshotUsageFacts(t *testing.T) {
 	var other map[string]any
 	require.NoError(t, common.UnmarshalJsonStr(log.Other, &other))
 	assert.Equal(t, "tiered_expr", other["billing_mode"])
-	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(expression)), other["expr_b64"])
+	assertTaskExprAdminOnly(t, other, expression)
 	assert.Equal(t, "720P", other["matched_tier"])
 	facts, ok := other["usage_facts"].(map[string]any)
 	require.True(t, ok)
@@ -1809,4 +1809,33 @@ func TestSettle_TokenRecalcFallsBackToCompletionTokens(t *testing.T) {
 			assert.Equal(t, testCase.wantQuota, task.Quota)
 		})
 	}
+}
+
+// assertTaskExprAdminOnly checks the task expression is kept for administrators
+// only, while customers get the computed tier_prices instead.
+func assertTaskExprAdminOnly(t *testing.T, other map[string]any, expression string) {
+	t.Helper()
+	assert.NotContains(t, other, "expr_b64")
+	adminInfo, ok := other["admin_info"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte(expression)), adminInfo["expr_b64"])
+}
+
+func TestTaskBillingOtherPublishesTaskTierPrices(t *testing.T) {
+	task := makeTask(1, 1, 100, 0, BillingSourceWallet, 0)
+	task.PrivateData.BillingContext.TieredSnapshot = &billingexpr.BillingSnapshot{
+		ExprString:       `tier("base", u("seconds") * 0.03)`,
+		EstimatedTier:    "base",
+		GroupRatio:       1.2,
+		TaskUsageBilling: true,
+		UsageFacts:       map[string]any{"seconds": 8},
+	}
+
+	other := taskBillingOther(task).Snapshot()
+
+	assert.NotContains(t, other, "expr_b64")
+	prices, ok := other["tier_prices"].(*billingexpr.TierPrices)
+	require.True(t, ok)
+	assert.Equal(t, billingexpr.TierPriceUnitTask, prices.Unit)
+	assert.Equal(t, map[string]float64{"seconds": 0.036}, prices.PerUnit)
 }

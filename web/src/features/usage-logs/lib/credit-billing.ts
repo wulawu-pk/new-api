@@ -20,6 +20,7 @@ import { readCreditUnitPriceFromExpression } from '@/features/pricing/lib/specia
 
 import type { LogOtherData } from '../types'
 import { decodeBillingExprB64 } from './format'
+import { getLogBillingExprB64, readTierPrices } from './tier-prices'
 
 // ----------------------------------------------------------------------------
 // Credit-billed requests in usage logs (peroai fork)
@@ -30,12 +31,18 @@ import { decodeBillingExprB64 } from './format'
 // quotes what they were actually charged for: the credits the upstream
 // reported and the price of one credit (X × group ratio), the same
 // "$0.25 / credit" the model square and key pages show.
+//
+// The per-credit price comes from the backend's tier_prices. Administrators
+// can still derive it from the expression on older rows. Older customer rows
+// carry neither, so they show the credits without a unit price: inverting
+// the charge (quota ÷ credits) would print rounding noise such as $0.249991
+// because the charged quota is an integer.
 
 const DEFAULT_QUOTA_PER_UNIT = 500000
 
 export type CreditBillingSummary = {
-  /** USD price of one credit after the group multiplier. */
-  unitPriceUSD: number
+  /** USD price of one credit after the group multiplier, when known. */
+  unitPriceUSD: number | null
   /** Upstream-reported credits, or derived from the charged quota. */
   credits: number | null
 }
@@ -59,17 +66,37 @@ export function getCreditBillingSummary(
 ): CreditBillingSummary | null {
   if (!other || other.billing_mode !== 'tiered_expr') return null
   if ((other.matched_tier || '').trim().toLowerCase() !== 'credit') return null
-  const rate = readCreditUnitPriceFromExpression(
-    decodeBillingExprB64(other.expr_b64)
-  )
-  if (rate === null) return null
-  const unitPriceUSD = rate * effectiveGroupRatio(other)
-  if (!(unitPriceUSD > 0)) return null
+  const recordedCredits =
+    typeof other.credits === 'number' && Number.isFinite(other.credits)
+      ? other.credits
+      : null
 
-  let credits: number | null = null
-  if (typeof other.credits === 'number' && Number.isFinite(other.credits)) {
-    credits = other.credits
-  } else if (Number.isFinite(quota) && quota >= 0 && quotaPerUnit > 0) {
+  const tierPrices = readTierPrices(other)
+  let unitPriceUSD: number | null = null
+  if (tierPrices) {
+    const price = tierPrices.per_unit?.credits
+    if (tierPrices.unit !== 'credit' || price === undefined) return null
+    unitPriceUSD = price
+  } else {
+    const exprStr = decodeBillingExprB64(getLogBillingExprB64(other))
+    if (exprStr) {
+      const rate = readCreditUnitPriceFromExpression(exprStr)
+      if (rate === null) return null
+      unitPriceUSD = rate * effectiveGroupRatio(other)
+    } else if (recordedCredits === null) {
+      return null
+    }
+  }
+  if (unitPriceUSD !== null && !(unitPriceUSD > 0)) return null
+
+  let credits = recordedCredits
+  if (
+    credits === null &&
+    unitPriceUSD !== null &&
+    Number.isFinite(quota) &&
+    quota >= 0 &&
+    quotaPerUnit > 0
+  ) {
     // Logs written before the backend recorded credits: invert the charge.
     credits = quota / quotaPerUnit / unitPriceUSD
   }

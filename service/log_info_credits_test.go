@@ -40,3 +40,49 @@ func TestRecordProviderCreditsIgnoresNonNumericCredits(t *testing.T) {
 	_, present := other.Snapshot()["credits"]
 	assert.False(t, present)
 }
+
+func TestInjectTieredBillingInfoPublishesTierPricesNotExpression(t *testing.T) {
+	info := kiroRelayInfo(1.85, map[string]any{"provider": "kiro", "credits": 0.0442})
+	ok, _, result := TryTieredSettle(info, billingexpr.TokenParams{P: 100, C: 50})
+	require.True(t, ok)
+
+	other := model.NewLogOther()
+	InjectTieredBillingInfo(other, info, result)
+	snap := other.Snapshot()
+	assert.NotContains(t, snap, "expr_b64")
+	assert.NotContains(t, snap, "request_rules")
+	adminInfo, isMap := snap["admin_info"].(map[string]any)
+	require.True(t, isMap)
+	assert.NotEmpty(t, adminInfo["expr_b64"])
+	prices, isPrices := snap["tier_prices"].(*billingexpr.TierPrices)
+	require.True(t, isPrices)
+	assert.Equal(t, billingexpr.TierPriceUnitCredit, prices.Unit)
+	// kiroCreditExpr prices a credit at 0.25 before the group ratio.
+	assert.Equal(t, map[string]float64{"credits": 0.4625}, prices.PerUnit)
+}
+
+func TestInjectTieredBillingInfoTokenFallbackPricesIncludeGroupRatio(t *testing.T) {
+	info := kiroRelayInfo(1.85, nil)
+	ok, _, result := TryTieredSettle(info, billingexpr.TokenParams{P: 100, C: 50})
+	require.True(t, ok)
+	require.Equal(t, "token", result.MatchedTier)
+
+	other := model.NewLogOther()
+	InjectTieredBillingInfo(other, info, result)
+	prices, isPrices := other.Snapshot()["tier_prices"].(*billingexpr.TierPrices)
+	require.True(t, isPrices)
+	assert.Equal(t, billingexpr.TierPriceUnitToken, prices.Unit)
+	assert.InDelta(t, 2*1.85, prices.PerMillion["p"], 1e-9)
+}
+
+func TestInjectTieredBillingInfoSkipsTierPricesForNonLinearTier(t *testing.T) {
+	info := makeRelayInfo(`tier("base", max(p, 100) * 2)`, 1, 1000, 0)
+	ok, _, result := TryTieredSettle(info, billingexpr.TokenParams{P: 100, C: 50})
+	require.True(t, ok)
+
+	other := model.NewLogOther()
+	InjectTieredBillingInfo(other, info, result)
+	snap := other.Snapshot()
+	assert.NotContains(t, snap, "tier_prices")
+	assert.Equal(t, "base", snap["matched_tier"])
+}
