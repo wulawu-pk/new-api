@@ -88,7 +88,8 @@ func TestProcessChannelErrorUsesSnapshotWithoutLeakingChannelMetadata(t *testing
 	require.NoError(t, err)
 	require.Equal(t, int64(1), total)
 	require.Len(t, logs, 1)
-	assert.Equal(t, channelSnapshot.ChannelId, logs[0].ChannelId)
+	// peroai: the routing channel is operator data; customers get 0.
+	assert.Zero(t, logs[0].ChannelId)
 	assert.Empty(t, logs[0].ChannelName)
 	userOther, err := common.StrToMap(logs[0].Other)
 	require.NoError(t, err)
