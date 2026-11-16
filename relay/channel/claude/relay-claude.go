@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 
@@ -93,6 +94,12 @@ func FormatClaudeResponseInfo(claudeResponse *dto.ClaudeResponse, oaiResponse *d
 // level of a non-stream response and of the final message_delta event.
 // Credits are not linear in tokens, so they are passed through to tiered_expr
 // settlement as u("credits") / u("provider") instead of being estimated.
+// maxProviderCredits bounds a single request's upstream-reported credits. A
+// real kiro request reports well under 100 credits; anything above this is an
+// upstream fault, so the request falls back to token billing instead of
+// settling an absurd charge.
+const maxProviderCredits = 10000
+
 func captureClaudeProviderUsage(info *relaycommon.RelayInfo, data []byte) {
 	if info == nil {
 		return
@@ -102,15 +109,21 @@ func captureClaudeProviderUsage(info *relaycommon.RelayInfo, data []byte) {
 		return
 	}
 	credits := providerUsage.Get("credits")
-	if credits.Type != gjson.Number || credits.Float() < 0 {
+	if credits.Type != gjson.Number {
 		return
 	}
-	facts := map[string]any{"credits": credits.Float()}
+	creditsValue := credits.Float()
+	if math.IsNaN(creditsValue) || math.IsInf(creditsValue, 0) || creditsValue < 0 || creditsValue > maxProviderCredits {
+		return
+	}
+	facts := map[string]any{"credits": creditsValue}
 	if provider := providerUsage.Get("provider"); provider.Type == gjson.String {
 		facts["provider"] = provider.String()
 	}
 	if percentage := providerUsage.Get("context_usage_percentage"); percentage.Type == gjson.Number {
-		facts["context_usage_percentage"] = percentage.Float()
+		if value := percentage.Float(); !math.IsNaN(value) && !math.IsInf(value, 0) {
+			facts["context_usage_percentage"] = value
+		}
 	}
 	info.ProviderUsage = facts
 }

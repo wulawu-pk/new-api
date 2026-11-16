@@ -38,6 +38,12 @@ jobs:
           IMAGE=$(printf '%s' "$IMAGE" | tr '[:upper:]' '[:lower:]')
           TAGS="${IMAGE}:${SHORT_SHA}"
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            # Tag names flow into image tags and VERSION; accept only the
+            # release shape so a crafted ref name cannot smuggle shell syntax.
+            if ! printf '%s' "${GITHUB_REF_NAME}" | grep -Eq '^peroai-[A-Za-z0-9._-]{1,64}$'; then
+              echo "refusing unexpected tag name" >&2
+              exit 1
+            fi
             TAGS="${TAGS},${IMAGE}:${GITHUB_REF_NAME}"
             VERSION="${GITHUB_REF_NAME}"
           else
@@ -52,7 +58,9 @@ jobs:
           echo "Tags: $TAGS"
 
       - name: Write VERSION
-        run: echo "${{ steps.tags.outputs.version }}" > VERSION
+        env:
+          VERSION_VALUE: ${{ steps.tags.outputs.version }}
+        run: printf '%s\n' "$VERSION_VALUE" > VERSION
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -83,11 +91,14 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Summary
+        env:
+          TAGS_VALUE: ${{ steps.tags.outputs.tags }}
+          DIGEST_VALUE: ${{ steps.build.outputs.digest }}
         run: |
           {
             echo '### Image'
             echo '```'
-            echo "${{ steps.tags.outputs.tags }}" | tr ',' '\n'
-            echo "digest: ${{ steps.build.outputs.digest }}"
+            printf '%s\n' "$TAGS_VALUE" | tr ',' '\n'
+            printf 'digest: %s\n' "$DIGEST_VALUE"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

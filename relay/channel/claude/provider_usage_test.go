@@ -69,6 +69,10 @@ func TestCaptureClaudeProviderUsageIgnoresInvalidCredits(t *testing.T) {
 		`{"provider_usage":{"provider":"kiro"}}`,
 		`{"provider_usage":{"provider":"kiro","credits":"0.1"}}`,
 		`{"provider_usage":{"provider":"kiro","credits":-1}}`,
+		// 1e999 parses as +Inf; it must not settle at the per-request cap.
+		`{"provider_usage":{"provider":"kiro","credits":1e999}}`,
+		`{"provider_usage":{"provider":"kiro","credits":-1e999}}`,
+		`{"provider_usage":{"provider":"kiro","credits":10000.5}}`,
 		`{"provider_usage":null}`,
 	} {
 		info := &relaycommon.RelayInfo{}
@@ -147,4 +151,13 @@ func TestKiroStreamCreditsSettleThroughTieredExpr(t *testing.T) {
 	assert.Equal(t, int(math.Round(0.0442*0.25*quotaPerUnit*groupRatio)), quota)
 	assert.Equal(t, 5525, quota)
 	assert.Nil(t, info.BillingRequestInput.Usage, "frozen request input must not be mutated")
+}
+
+func TestCaptureClaudeProviderUsageDropsNonFinitePercentage(t *testing.T) {
+	info := &relaycommon.RelayInfo{}
+	captureClaudeProviderUsage(info, []byte(`{"provider_usage":{"provider":"kiro","credits":0.5,"context_usage_percentage":1e999}}`))
+	require.NotNil(t, info.ProviderUsage)
+	assert.Equal(t, 0.5, info.ProviderUsage["credits"])
+	_, hasPercentage := info.ProviderUsage["context_usage_percentage"]
+	assert.False(t, hasPercentage)
 }
