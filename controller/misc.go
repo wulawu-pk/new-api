@@ -38,6 +38,13 @@ func TestStatus(c *gin.Context) {
 	return
 }
 
+func versionForStatus(c *gin.Context) string {
+	if identity, ok := middleware.GetSessionAuthIdentity(c); !ok || identity.UserID <= 0 {
+		return ""
+	}
+	return common.Version
+}
+
 func GetStatus(c *gin.Context) {
 
 	cs := console_setting.GetConsoleSetting()
@@ -48,7 +55,8 @@ func GetStatus(c *gin.Context) {
 	legalSetting := system_setting.GetLegalSettings()
 
 	data := gin.H{
-		"version":                     common.Version,
+		// 版本号只给已登录用户（管理员页面和更新检查用），匿名接口不暴露。
+		"version":                     versionForStatus(c),
 		"start_time":                  common.StartTime,
 		"email_verification":          common.EmailVerificationEnabled,
 		"github_oauth":                common.GitHubOAuthEnabled,
