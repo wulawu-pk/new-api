@@ -18,9 +18,18 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ServiceStatus } from '@/features/service-status'
+import { ConsoleShell } from '@/features/console/shell/console-shell'
+import { ConsoleStatus } from '@/features/console/status'
 
-/** Public status page: no auth guard, like the model square. */
+/** Public status page (console window 6): no auth guard, like the plaza. */
 export const Route = createFileRoute('/status/')({
-  component: ServiceStatus,
+  component: StatusPage,
 })
+
+function StatusPage() {
+  return (
+    <ConsoleShell>
+      <ConsoleStatus />
+    </ConsoleShell>
+  )
+}

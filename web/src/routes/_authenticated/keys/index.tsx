@@ -19,21 +19,26 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute } from '@tanstack/react-router'
 import z from 'zod'
 
-import { ApiKeys } from '@/features/keys'
-import { API_KEY_STATUS_OPTIONS } from '@/features/keys/constants'
+import { ConsoleKeys } from '@/features/console/keys'
 
+// peroai v3: /keys is the console key list (window 2). `create` opens the
+// create-key dialog (used by the status-bar `n` shortcut and onboarding).
 const apiKeySearchSchema = z.object({
-  page: z.number().optional().catch(1),
-  pageSize: z.number().optional().catch(undefined),
-  status: z
-    .array(z.enum(API_KEY_STATUS_OPTIONS.map((s) => s.value as `${number}`)))
-    .optional()
-    .catch([]),
-  filter: z.string().optional().catch(''),
-  token: z.string().optional().catch(''),
+  create: z.boolean().optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_authenticated/keys/')({
   validateSearch: apiKeySearchSchema,
-  component: ApiKeys,
+  component: KeysPage,
 })
+
+function KeysPage() {
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  return (
+    <ConsoleKeys
+      openCreate={search.create}
+      onOpenCreateHandled={() => void navigate({ search: {}, replace: true })}
+    />
+  )
+}

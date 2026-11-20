@@ -19,18 +19,15 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { Wallet } from '@/features/wallet'
+import { ConsoleWallet } from '@/features/console/wallet'
 
+// peroai v3: /wallet is the console wallet (window 4). `show_history` is
+// still accepted from payment return links; the history is always shown.
 const walletSearchSchema = z.object({
   show_history: z.boolean().optional(),
 })
 
 export const Route = createFileRoute('/_authenticated/wallet/')({
-  component: RouteComponent,
+  component: ConsoleWallet,
   validateSearch: walletSearchSchema,
 })
-
-function RouteComponent() {
-  const { show_history } = Route.useSearch()
-  return <Wallet initialShowHistory={show_history} />
-}

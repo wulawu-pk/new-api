@@ -16,15 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-import { USAGE_LOGS_DEFAULT_SECTION } from '@/features/usage-logs/section-registry'
+import { ConsoleLogs } from '@/features/console/logs'
 
+// peroai v3: /usage-logs is the console request log (window 3, own logs).
+// The upstream log sections (all users, tasks, drawing, audit) stay at
+// /usage-logs/$section.
 export const Route = createFileRoute('/_authenticated/usage-logs/')({
-  beforeLoad: () => {
-    throw redirect({
-      to: '/usage-logs/$section',
-      params: { section: USAGE_LOGS_DEFAULT_SECTION },
-    })
-  },
+  component: ConsoleLogs,
 })

@@ -16,15 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 
-import { DASHBOARD_DEFAULT_SECTION } from '@/features/dashboard/section-registry'
+import { ConsoleOverview } from '@/features/console/overview'
 
+// peroai v3: /dashboard is the console overview (window 1). The upstream
+// dashboard sections stay at /dashboard/$section for administrators.
 export const Route = createFileRoute('/_authenticated/dashboard/')({
-  beforeLoad: () => {
-    throw redirect({
-      to: '/dashboard/$section',
-      params: { section: DASHBOARD_DEFAULT_SECTION },
-    })
-  },
+  component: ConsoleOverview,
 })

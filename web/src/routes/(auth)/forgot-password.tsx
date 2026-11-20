@@ -18,8 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ForgotPassword } from '@/features/auth/forgot-password'
+import { ResetTerminal } from '@/features/console/auth/reset-terminal'
 
 export const Route = createFileRoute('/(auth)/forgot-password')({
-  component: ForgotPassword,
+  component: ResetTerminal,
 })

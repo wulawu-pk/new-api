@@ -20,16 +20,25 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { sanitizeAuthRedirect } from '@/features/auth/lib/auth-redirect'
-import { SignIn } from '@/features/auth/sign-in'
+import {
+  planFromSearch,
+  savePendingPlan,
+} from '@/features/console/auth/lib/pending-plan'
+import { SignInTerminal } from '@/features/console/auth/sign-in-terminal'
 import { resolveAuthentication } from '@/lib/auth-session'
 import { useAuthStore } from '@/stores/auth-store'
 
+// peroai v3: `plan`, `model` and `client` carry the configuration picked on
+// the landing page; a key in that group is created after sign-in.
 const searchSchema = z.object({
   redirect: z.string().optional(),
+  plan: z.string().optional().catch(undefined),
+  model: z.string().optional().catch(undefined),
+  client: z.string().optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/(auth)/sign-in')({
-  component: SignIn,
+  component: SignInPage,
   validateSearch: searchSchema,
   beforeLoad: async ({ search }) => {
     // 根 guard 可能因为没有会话提示而跳过了 refresh。此处必须回源确认，
@@ -40,6 +49,12 @@ export const Route = createFileRoute('/(auth)/sign-in')({
 
     // 如果已经有用户信息，说明已登录
     if (auth.user) {
+      // Already signed in: keep the landing-page plan for the console.
+      const plan = planFromSearch(search ?? {})
+      if (plan) {
+        savePendingPlan(plan)
+        throw redirect({ to: '/keys', replace: true })
+      }
       const target =
         sanitizeAuthRedirect(search?.redirect, window.location.origin) ??
         '/dashboard'
@@ -47,3 +62,7 @@ export const Route = createFileRoute('/(auth)/sign-in')({
     }
   },
 })
+
+function SignInPage() {
+  return <SignInTerminal search={Route.useSearch()} />
+}

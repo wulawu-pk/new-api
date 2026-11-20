@@ -19,7 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import z from 'zod'
 
-import { Pricing } from '@/features/pricing'
+import { ConsoleModels } from '@/features/console/models'
+import { ConsoleShell } from '@/features/console/shell/console-shell'
 import { getModuleAccessForGuard } from '@/lib/nav-modules'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -53,5 +54,15 @@ export const Route = createFileRoute('/pricing/')({
       }
     }
   },
-  component: Pricing,
+  component: PricingPage,
 })
+
+// peroai v3: the model plaza renders in the console shell (window 5). The
+// search params are still accepted so old links keep working.
+function PricingPage() {
+  return (
+    <ConsoleShell>
+      <ConsoleModels />
+    </ConsoleShell>
+  )
+}
