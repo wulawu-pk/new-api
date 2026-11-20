@@ -44,8 +44,8 @@ import { formatLogQuota, formatNumber, formatQuota } from '@/lib/format'
 
 import { useSelfUser } from '../hooks/use-self-user'
 import { groupName } from '../lib/groups'
-import { CacheHitCell, UsageText } from '../logs/components/cells'
-import { toConsoleLogRow } from '../logs/lib/log-row'
+import { CacheHitCell, UsageText } from '../request-logs/components/cells'
+import { toConsoleLogRow } from '../request-logs/lib/log-row'
 import { ConsolePageHeader } from '../shell/console-shell'
 import { WeekChart } from './components/week-chart'
 import {

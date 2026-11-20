@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { ConsoleLogs } from '@/features/console/logs'
+import { ConsoleLogs } from '@/features/console/request-logs'
 
 // peroai v3: /usage-logs is the console request log (window 3, own logs).
 // The upstream log sections (all users, tasks, drawing, audit) stay at

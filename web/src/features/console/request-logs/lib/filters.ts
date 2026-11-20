@@ -1,0 +1,63 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import dayjs from 'dayjs'
+
+import { LOG_TYPE_ENUM } from '@/features/usage-logs/constants'
+
+export const LOG_RANGES = ['today', '7d', 'month'] as const
+export type LogRange = (typeof LOG_RANGES)[number]
+
+export const LOG_KINDS = ['ok', 'failed'] as const
+export type LogKind = (typeof LOG_KINDS)[number]
+
+export const LOG_PAGE_SIZE = 50
+
+/** Start of a log time range, unix seconds. */
+export function rangeStart(range: LogRange, now: dayjs.Dayjs = dayjs()): number {
+  if (range === 'today') return now.startOf('day').unix()
+  if (range === '7d') return now.startOf('day').subtract(6, 'day').unix()
+  return now.startOf('month').unix()
+}
+
+export function kindToLogType(kind: LogKind): number {
+  return kind === 'failed' ? LOG_TYPE_ENUM.ERROR : LOG_TYPE_ENUM.CONSUME
+}
+
+export type LogFilters = {
+  range: LogRange
+  kind: LogKind
+  group: string
+  model: string
+  page: number
+}
+
+/** Query parameters for /api/log/self and /api/log/self/stat. */
+export function buildLogQuery(filters: LogFilters, now: dayjs.Dayjs = dayjs()) {
+  return {
+    type: kindToLogType(filters.kind),
+    start_timestamp: rangeStart(filters.range, now),
+    end_timestamp: now.unix(),
+    group: filters.group || undefined,
+    model_name: filters.model.trim() || undefined,
+  }
+}
+
+export function pageCount(total: number, pageSize = LOG_PAGE_SIZE): number {
+  return Math.max(1, Math.ceil(total / pageSize))
+}
