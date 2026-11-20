@@ -25,6 +25,8 @@ import { THEME_STORAGE_KEYS } from '@/lib/theme-storage'
 
 // The inline script in index.html must apply the theme class before React
 // mounts; Dark Reader checks `html.dark` only once while the page loads.
+// peroai fork: the v3 console is dark-only, so the script always applies
+// `dark` and ignores saved or system light preferences.
 const html = readFileSync(
   resolve(import.meta.dirname, '../../../index.html'),
   'utf8'
@@ -56,9 +58,10 @@ afterEach(() => {
 })
 
 describe('index.html theme boot script', () => {
-  it('applies the saved dark preference to html before React mounts', () => {
+  it('applies dark before React mounts when the saved preference is light', () => {
     mockSystemDarkMode(false)
-    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'dark')
+    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'light')
+    document.documentElement.classList.add('light')
 
     runBootScript()
 
@@ -66,30 +69,11 @@ describe('index.html theme boot script', () => {
     expect(document.documentElement).not.toHaveClass('light')
   })
 
-  it('applies the saved light preference even when the system is dark', () => {
-    mockSystemDarkMode(true)
-    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'light')
-
-    runBootScript()
-
-    expect(document.documentElement).toHaveClass('light')
-    expect(document.documentElement).not.toHaveClass('dark')
-  })
-
-  it('follows the system dark mode when no preference is saved', () => {
-    mockSystemDarkMode(true)
+  it('applies dark when the system is light and nothing is saved', () => {
+    mockSystemDarkMode(false)
 
     runBootScript()
 
     expect(document.documentElement).toHaveClass('dark')
-  })
-
-  it('follows the system light mode when the saved value is invalid', () => {
-    mockSystemDarkMode(false)
-    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'sepia')
-
-    runBootScript()
-
-    expect(document.documentElement).toHaveClass('light')
   })
 })

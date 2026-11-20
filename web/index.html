@@ -1,8 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="google" content="notranslate" />
 
     <!-- Primary Meta Tags -->
@@ -13,33 +16,20 @@
       content="Unified AI API gateway and admin dashboard."
     />
 
-    <meta name="theme-color" content="#F6F5F0" />
-    <!-- peroai fork: IBM Plex for the peroai preset. media="print" + onload
-         keeps the stylesheet non-blocking; system fonts (PingFang SC /
-         Microsoft YaHei) render until it arrives or if it never does. -->
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
-      media="print"
-      onload="this.onload=null;this.media='all'"
-    />
-    <!-- Resolve the theme before first paint so the page never flashes light
-         and one-shot detectors (e.g. Dark Reader) see the real theme.
-         Keep in sync with ThemeProvider and THEME_STORAGE_KEYS.mode. -->
+    <meta name="theme-color" content="#0B0C0F" />
+    <!-- peroai fork: the v3 console is dark-only (see ThemeProvider
+         forcedTheme). Apply the class before first paint so the page never
+         flashes light and one-shot detectors (e.g. Dark Reader) see it. -->
     <script>
-      ;(function () {
-        var theme = 'system'
-        try {
-          theme = localStorage.getItem('newapi:theme:v1:mode') || 'system'
-        } catch (e) {}
-        if (theme !== 'dark' && theme !== 'light') {
-          theme = window.matchMedia('(prefers-color-scheme: dark)').matches
-            ? 'dark'
-            : 'light'
-        }
-        document.documentElement.classList.add(theme)
-      })()
+      document.documentElement.classList.remove('light')
+      document.documentElement.classList.add('dark')
     </script>
+    <style>
+      html,
+      body {
+        background: #0b0c0f;
+      }
+    </style>
     <!--umami-->
     <!--Google Analytics-->
   </head>

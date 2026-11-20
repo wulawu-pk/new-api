@@ -299,3 +299,20 @@ describe('theme font selection', () => {
     expect(localStorage.getItem('newapi:theme:v1:font')).toBeNull()
   })
 })
+
+describe('forced theme (peroai dark-only console)', () => {
+  it('keeps html dark when a light preference is saved', () => {
+    localStorage.setItem('newapi:theme:v1:mode', 'light')
+
+    render(
+      <ThemeProvider forcedTheme='dark'>
+        <ThemeCustomizationProvider>
+          <ThemeControls />
+        </ThemeCustomizationProvider>
+      </ThemeProvider>
+    )
+
+    expect(document.documentElement).toHaveClass('dark')
+    expect(document.documentElement).not.toHaveClass('light')
+  })
+})

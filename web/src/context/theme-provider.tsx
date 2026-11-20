@@ -41,6 +41,9 @@ type ThemeProviderProps = {
   children: React.ReactNode
   defaultTheme?: Theme
   storageKey?: string
+  /** peroai fork: the v3 console is dark-only. When set, this mode is
+   * applied regardless of the saved preference or the system setting. */
+  forcedTheme?: ResolvedTheme
 }
 
 type ThemeProviderState = {
@@ -76,13 +79,14 @@ export function ThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
   storageKey = THEME_STORAGE_KEYS.mode,
+  forcedTheme,
   ...props
 }: ThemeProviderProps) {
   const [theme, _setTheme] = useState<Theme>(() =>
     readThemePreference(storageKey, THEMES, defaultTheme)
   )
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
-    resolveTheme(theme)
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
+    () => forcedTheme ?? resolveTheme(theme)
   )
 
   useEffect(() => {
@@ -90,7 +94,8 @@ export function ThemeProvider({
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     const applyTheme = () => {
-      const nextResolvedTheme = theme === 'system' ? getSystemTheme() : theme
+      const nextResolvedTheme =
+        forcedTheme ?? (theme === 'system' ? getSystemTheme() : theme)
       root.classList.remove('light', 'dark')
       root.classList.add(nextResolvedTheme)
       setResolvedTheme(nextResolvedTheme)
@@ -101,7 +106,7 @@ export function ThemeProvider({
     mediaQuery.addEventListener('change', applyTheme)
 
     return () => mediaQuery.removeEventListener('change', applyTheme)
-  }, [theme])
+  }, [theme, forcedTheme])
 
   const setTheme = useCallback(
     (theme: Theme) => {

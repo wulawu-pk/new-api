@@ -429,8 +429,8 @@ For commercial licensing, please contact support@quantumnous.com
  *   - `simple-large`: keeps intentionally neutral, high-contrast surfaces.
  *   - `peroai`: paper canvas + white cards are brand tokens (peroai fork). */
 [data-theme-preset]:not([data-theme-preset='default']):not(
-  [data-theme-preset='anthropic']
-):not([data-theme-preset='simple-large']):not([data-theme-preset='peroai']) {
+    [data-theme-preset='anthropic']
+  ):not([data-theme-preset='simple-large']):not([data-theme-preset='peroai']) {
   --card: color-mix(in oklch, var(--primary) 3%, var(--background));
   --popover: color-mix(in oklch, var(--primary) 5%, var(--background));
   --muted: color-mix(in oklch, var(--primary) 7%, var(--background));
@@ -613,165 +613,136 @@ For commercial licensing, please contact support@quantumnous.com
   --skeleton-highlight: oklch(0.41 0.004 60);
 }
 
-/* ── peroai (纸面 / paper) ────────────────────────────────────────────── */
+/* ── peroai (暗色终端 / dark terminal) ─────────────────────────────────── */
 /*
- * peroai brand theme (fork default). Mirrors the landing page tokens in
- * deploy/site/landing/index.html:
- *   bg #F6F5F0 · ink #15171A · muted #62666D · line #E1DFD7 · card #fff
- *   single accent: deep green #1D6B53, light accent #E2EEE8
- * Warm paper canvas, white cards, hairline warm-gray borders, one green
- * accent, very light shadows, no gradients. Opted out of the semantic
- * surface bridge (like Anthropic) so these neutral surfaces win.
+ * peroai brand theme (fork default), v3. Mirrors the design spec in
+ * ai-relay/design/v3/l-ascii.html and the live beta landing page:
+ *   bg #0B0C0F · bg2 #111318 · bg3 #181B22 · line #20242C · faint #3A3F49
+ *   dim #8D929C · fg2 #C4C7CD · fg #ECEAE6
+ *   pink #FF7AB6 is the single accent · ok #62D394 · warn #F2B84B · bad #FF6B6B
+ * Flat panes with 1px borders, 2px corners, no shadows, no gradients.
  *
- * Fonts: IBM Plex Sans / Mono, loaded by a non-blocking stylesheet in
- * index.html (media="print" swapped on load). Until it arrives, or if it is
- * unreachable, system fallbacks render (PingFang SC / Microsoft YaHei for
- * CJK), so rendering never waits on the remote font.
+ * The theme is dark-only: ThemeProvider forces the `dark` class for this
+ * fork, and the same tokens are declared for both modes so a stale saved
+ * "light" preference can never produce a half-light page.
  *
- * peroai is the default preset in this fork. The provider writes no
- * data-theme-preset attribute for the default preset (and none exists before
- * React mounts), so the tokens also apply to a body without the attribute.
- * `:where()` keeps that selector at zero specificity so the Font, Radius and
- * Scale axes still override it. Choosing "default" restores upstream's look.
+ * Fonts: Geist / Geist Mono are bundled with @fontsource (index.css). CJK
+ * text uses the system font (PingFang SC / Microsoft YaHei / Noto Sans SC),
+ * the same stack as the beta landing page, so nothing large is downloaded.
+ *
+ * The `--t-*` tokens are the raw spec palette for the console pages; the
+ * shadcn tokens below map onto them so admin pages share the palette.
+ * The provider writes no data-theme-preset attribute for the default
+ * preset, so `:where()` keeps the bare-body selector at zero specificity.
  */
 [data-theme-preset='peroai'],
-:where(body:not([data-theme-preset])) {
-  --background: oklch(0.97 0.007 97.4); /* #F6F5F0 paper */
-  --foreground: oklch(0.204 0.007 258.4); /* #15171A ink */
+:where(body:not([data-theme-preset])),
+.dark [data-theme-preset='peroai'],
+.dark :where(body:not([data-theme-preset])) {
+  --t-bg: #0b0c0f;
+  --t-bg2: #111318;
+  --t-bg3: #181b22;
+  --t-line: #20242c;
+  --t-faint: #3a3f49;
+  --t-dim: #8d929c;
+  --t-fg2: #c4c7cd;
+  --t-fg: #eceae6;
+  --t-pink: #ff7ab6;
+  --t-ok: #62d394;
+  --t-warn: #f2b84b;
+  --t-bad: #ff6b6b;
+  --t-hi: #6a707b; /* border of the pane being worked on */
+  --t-placeholder: #5d636d;
 
-  --card: oklch(1 0 0); /* #fff */
-  --card-foreground: oklch(0.204 0.007 258.4);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.204 0.007 258.4);
+  --background: var(--t-bg);
+  --foreground: var(--t-fg);
 
-  --primary: oklch(0.474 0.084 168.2); /* #1D6B53 deep green */
-  --primary-foreground: oklch(1 0 0);
+  --card: var(--t-bg);
+  --card-foreground: var(--t-fg);
+  --popover: var(--t-bg2);
+  --popover-foreground: var(--t-fg);
 
-  --secondary: oklch(0.948 0.008 95); /* paper, one step down */
-  --secondary-foreground: oklch(0.204 0.007 258.4);
+  /* Primary actions are ink-on-paper inverted (light fill, dark text);
+   * pink is reserved for focus, selection and hover. */
+  --primary: var(--t-fg);
+  --primary-foreground: var(--t-bg);
 
-  --muted: oklch(0.948 0.008 95);
-  --muted-foreground: oklch(0.509 0.012 261.8); /* #62666D */
-  --accent: oklch(0.938 0.015 164.7); /* #E2EEE8 light green */
-  --accent-foreground: oklch(0.38 0.07 168);
+  --secondary: var(--t-bg3);
+  --secondary-foreground: var(--t-fg2);
 
-  --destructive: oklch(0.55 0.18 27);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.474 0.084 168.2);
-  --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.72 0.13 75);
-  --warning-foreground: oklch(0.204 0.007 258.4);
-  --info: oklch(0.55 0.08 240);
-  --info-foreground: oklch(0.985 0 0);
-  --neutral: oklch(0.509 0.012 261.8);
-  --neutral-foreground: oklch(0.985 0 0);
+  --muted: var(--t-bg2);
+  --muted-foreground: var(--t-dim);
+  --accent: var(--t-bg3);
+  --accent-foreground: var(--t-fg);
 
-  --border: oklch(0.903 0.011 95.2); /* #E1DFD7 hairline */
-  --input: oklch(0.903 0.011 95.2);
-  --ring: oklch(0.474 0.084 168.2);
+  --destructive: var(--t-bad);
+  --destructive-foreground: var(--t-bg);
+  --success: var(--t-ok);
+  --success-foreground: var(--t-bg);
+  --warning: var(--t-warn);
+  --warning-foreground: var(--t-bg);
+  --info: var(--t-fg2);
+  --info-foreground: var(--t-bg);
+  --neutral: var(--t-dim);
+  --neutral-foreground: var(--t-bg);
 
-  /* Green-led, muted chart palette. */
-  --chart-1: oklch(0.474 0.084 168.2);
-  --chart-2: oklch(0.62 0.07 170);
-  --chart-3: oklch(0.509 0.012 261.8);
-  --chart-4: oklch(0.72 0.11 75);
-  --chart-5: oklch(0.6 0.08 240);
+  --border: var(--t-line);
+  --input: var(--t-faint);
+  --ring: var(--t-pink);
 
-  --sidebar: oklch(0.97 0.007 97.4);
-  --sidebar-foreground: oklch(0.204 0.007 258.4);
-  --sidebar-primary: oklch(0.474 0.084 168.2);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.938 0.015 164.7);
-  --sidebar-accent-foreground: oklch(0.38 0.07 168);
-  --sidebar-border: oklch(0.903 0.011 95.2);
-  --sidebar-ring: oklch(0.474 0.084 168.2);
+  --chart-1: var(--t-pink);
+  --chart-2: var(--t-ok);
+  --chart-3: var(--t-fg2);
+  --chart-4: var(--t-warn);
+  --chart-5: var(--t-dim);
 
-  --skeleton-base: oklch(0.94 0.008 95);
-  --skeleton-highlight: oklch(0.97 0.006 95);
-  --table-header: oklch(0.985 0.004 91.4); /* #FBFAF7, as on the landing table */
+  --sidebar: var(--t-bg);
+  --sidebar-foreground: var(--t-fg2);
+  --sidebar-primary: var(--t-pink);
+  --sidebar-primary-foreground: var(--t-bg);
+  --sidebar-accent: var(--t-bg3);
+  --sidebar-accent-foreground: var(--t-fg);
+  --sidebar-border: var(--t-line);
+  --sidebar-ring: var(--t-pink);
+
+  --skeleton-base: var(--t-bg3);
+  --skeleton-highlight: var(--t-line);
+  --table-row: var(--t-bg);
+  --table-header: var(--t-bg);
   --overview-accent-1: var(--chart-1);
   --overview-accent-2: var(--chart-2);
   --overview-accent-3: var(--chart-3);
 
-  /* ≈ 9px base: radius-sm ≈ 5px, md ≈ 7px, lg ≈ 9px, xl ≈ 12px. */
-  --radius: 0.5625rem;
+  /* 2px corners everywhere (radius-sm ≈ 1px, xl ≈ 3px). */
+  --radius: 0.125rem;
 
+  --font-cjk:
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
+    sans-serif;
   --font-ui-sans:
-    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    var(--font-cjk);
   --font-body: var(--font-ui-sans);
   --font-mono:
-    'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'PingFang SC',
-    'Microsoft YaHei', monospace;
+    'Geist Mono Variable', 'Geist Mono', ui-monospace, 'SF Mono', Consolas,
+    var(--font-cjk), monospace;
   /* Tailwind preflight reads this for code/pre/kbd; re-declare it here so it
    * resolves against the peroai --font-mono rather than the :root one. */
   --default-mono-font-family: var(--font-mono);
+
+  color-scheme: dark;
 }
-.dark [data-theme-preset='peroai'],
-.dark :where(body:not([data-theme-preset])) {
-  /* Ink-like dark surfaces with a cool slate tint; the green lifts for
-   * contrast on dark backgrounds. */
-  --background: oklch(0.19 0.006 258); /* ≈ #121417 */
-  --foreground: oklch(0.955 0.006 97); /* paper-tinted text */
-  --card: oklch(0.225 0.007 258);
-  --card-foreground: oklch(0.955 0.006 97);
-  --popover: oklch(0.245 0.007 258);
-  --popover-foreground: oklch(0.955 0.006 97);
-
-  --primary: oklch(0.7 0.105 166); /* lifted #1D6B53 ≈ #4FB08D */
-  --primary-foreground: oklch(0.17 0.02 168);
-  --secondary: oklch(0.27 0.007 258);
-  --secondary-foreground: oklch(0.94 0.006 97);
-
-  --muted: oklch(0.255 0.007 258);
-  --muted-foreground: oklch(0.72 0.01 262);
-  --accent: oklch(0.3 0.04 168); /* dark green wash */
-  --accent-foreground: oklch(0.92 0.03 166);
-
-  --destructive: oklch(0.7 0.19 22);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.7 0.105 166);
-  --success-foreground: oklch(0.17 0.02 168);
-  --warning: oklch(0.78 0.13 75);
-  --warning-foreground: oklch(0.17 0.006 258);
-  --info: oklch(0.72 0.08 240);
-  --info-foreground: oklch(0.17 0.006 258);
-  --neutral: oklch(0.72 0.01 262);
-  --neutral-foreground: oklch(0.17 0.006 258);
-
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.105 166);
-
-  --chart-1: oklch(0.7 0.105 166);
-  --chart-2: oklch(0.78 0.08 170);
-  --chart-3: oklch(0.72 0.01 262);
-  --chart-4: oklch(0.78 0.12 75);
-  --chart-5: oklch(0.72 0.08 240);
-
-  --sidebar: oklch(0.175 0.006 258);
-  --sidebar-foreground: oklch(0.94 0.006 97);
-  --sidebar-primary: oklch(0.7 0.105 166);
-  --sidebar-primary-foreground: oklch(0.17 0.02 168);
-  --sidebar-accent: oklch(0.29 0.035 168);
-  --sidebar-accent-foreground: oklch(0.92 0.03 166);
-  --sidebar-border: oklch(1 0 0 / 9%);
-  --sidebar-ring: oklch(0.7 0.105 166);
-
-  --skeleton-base: oklch(0.27 0.007 258);
-  --skeleton-highlight: oklch(0.34 0.007 258);
-  --table-header: color-mix(in oklch, var(--foreground) 5%, var(--background));
-}
-/* Very light, flat elevation — matches the landing page cards. */
+/* Panes, not floating cards: 1px faint border, no shadow. */
 [data-theme-preset='peroai'] [data-slot='card'],
 :where(body:not([data-theme-preset])) [data-slot='card'] {
-  box-shadow:
-    0 1px 0 rgb(0 0 0 / 0.03),
-    0 12px 32px -24px rgb(20 30 25 / 0.18);
-}
-.dark [data-theme-preset='peroai'] [data-slot='card'],
-.dark :where(body:not([data-theme-preset])) [data-slot='card'] {
   box-shadow: none;
+  border: 1px solid var(--t-faint);
+  --tw-ring-shadow: 0 0 #0000;
+}
+[data-theme-preset='peroai'] ::selection,
+:where(body:not([data-theme-preset])) ::selection {
+  background: var(--t-pink);
+  color: var(--t-bg);
 }
 
 /* ── Font axis ────────────────────────────────────────────────────────────
