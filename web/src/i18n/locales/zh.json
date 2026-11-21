@@ -7411,6 +7411,18 @@
     "Cache hit rate": "缓存命中率",
     "Hit {{rate}}": "命中 {{rate}}",
     "The exchange rate has been updated. Please review and confirm again.": "汇率已更新，请重新确认。",
-    "Invalid redemption code format": "兑换码格式不正确"
+    "Invalid redemption code format": "兑换码格式不正确",
+    "Models ranked": "上榜模型",
+    "No change": "无变化",
+    "Open source, end to end.": "从头到尾，完全开源。",
+    "Rank movement": "排名变化",
+    "The open-source API gateway this project is based on.": "本项目所基于的开源 API 网关。",
+    "This site runs New API, an open-source AI gateway by QuantumNous built on One API.": "本站运行 New API——由 QuantumNous 基于 One API 打造的开源 AI 网关。",
+    "Tokens served": "已处理 Token",
+    "View on GitHub": "在 GitHub 上查看",
+    "{{count}} groups degraded": "{{count}} 个分组降级",
+    "{{share}} of all tokens": "占全部 Token 的 {{share}}",
+    "By clicking sign in, you agree to our": "点击登录即表示你同意我们的",
+    "By creating an account, you agree to our": "创建账户即表示你同意我们的"
   }
 }

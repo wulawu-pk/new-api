@@ -7411,6 +7411,18 @@
     "Cache hit rate": "Cache hit rate",
     "Hit {{rate}}": "Hit {{rate}}",
     "The exchange rate has been updated. Please review and confirm again.": "The exchange rate has been updated. Please review and confirm again.",
-    "Invalid redemption code format": "Invalid redemption code format"
+    "Invalid redemption code format": "Invalid redemption code format",
+    "Models ranked": "Models ranked",
+    "No change": "No change",
+    "Open source, end to end.": "Open source, end to end.",
+    "Rank movement": "Rank movement",
+    "The open-source API gateway this project is based on.": "The open-source API gateway this project is based on.",
+    "This site runs New API, an open-source AI gateway by QuantumNous built on One API.": "This site runs New API, an open-source AI gateway by QuantumNous built on One API.",
+    "Tokens served": "Tokens served",
+    "View on GitHub": "View on GitHub",
+    "{{count}} groups degraded": "{{count}} groups degraded",
+    "{{share}} of all tokens": "{{share}} of all tokens",
+    "By clicking sign in, you agree to our": "By clicking sign in, you agree to our",
+    "By creating an account, you agree to our": "By creating an account, you agree to our"
   }
 }

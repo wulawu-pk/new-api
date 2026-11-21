@@ -7411,6 +7411,18 @@
     "Cache hit rate": "Доля попаданий в кэш",
     "Hit {{rate}}": "Кэш {{rate}}",
     "The exchange rate has been updated. Please review and confirm again.": "Курс обновился. Проверьте данные и подтвердите ещё раз.",
-    "Invalid redemption code format": "Неверный формат кода активации"
+    "Invalid redemption code format": "Неверный формат кода активации",
+    "Models ranked": "Моделей в рейтинге",
+    "No change": "Без изменений",
+    "Open source, end to end.": "Открытый код от начала до конца.",
+    "Rank movement": "Изменение позиции",
+    "The open-source API gateway this project is based on.": "Открытый API-шлюз, на котором основан этот проект.",
+    "This site runs New API, an open-source AI gateway by QuantumNous built on One API.": "Этот сайт работает на New API — открытом ИИ-шлюзе от QuantumNous, построенном на One API.",
+    "Tokens served": "Обработано токенов",
+    "View on GitHub": "Открыть на GitHub",
+    "{{count}} groups degraded": "Деградировавших групп: {{count}}",
+    "{{share}} of all tokens": "{{share}} от всех токенов",
+    "By clicking sign in, you agree to our": "Нажимая «Войти», вы соглашаетесь с нашими документами:",
+    "By creating an account, you agree to our": "Создавая аккаунт, вы соглашаетесь с нашими документами:"
   }
 }

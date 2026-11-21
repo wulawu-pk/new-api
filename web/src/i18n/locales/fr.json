@@ -7411,6 +7411,18 @@
     "Cache hit rate": "Taux de succès du cache",
     "Hit {{rate}}": "Cache {{rate}}",
     "The exchange rate has been updated. Please review and confirm again.": "Le taux de change a été mis à jour. Vérifiez et confirmez à nouveau.",
-    "Invalid redemption code format": "Format de code d'échange invalide"
+    "Invalid redemption code format": "Format de code d'échange invalide",
+    "Models ranked": "Modèles classés",
+    "No change": "Aucun changement",
+    "Open source, end to end.": "Open source, de bout en bout.",
+    "Rank movement": "Évolution du classement",
+    "The open-source API gateway this project is based on.": "La passerelle API open source sur laquelle ce projet est basé.",
+    "This site runs New API, an open-source AI gateway by QuantumNous built on One API.": "Ce site fonctionne avec New API, une passerelle IA open source de QuantumNous construite sur One API.",
+    "Tokens served": "Tokens servis",
+    "View on GitHub": "Voir sur GitHub",
+    "{{count}} groups degraded": "{{count}} groupes dégradés",
+    "{{share}} of all tokens": "{{share}} de tous les tokens",
+    "By clicking sign in, you agree to our": "En cliquant sur Se connecter, vous acceptez notre",
+    "By creating an account, you agree to our": "En créant un compte, vous acceptez notre"
   }
 }

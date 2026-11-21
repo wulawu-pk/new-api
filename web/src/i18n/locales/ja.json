@@ -7411,6 +7411,18 @@
     "Cache hit rate": "キャッシュヒット率",
     "Hit {{rate}}": "ヒット {{rate}}",
     "The exchange rate has been updated. Please review and confirm again.": "為替レートが更新されました。内容を確認して、もう一度確定してください。",
-    "Invalid redemption code format": "引き換えコードの形式が正しくありません"
+    "Invalid redemption code format": "引き換えコードの形式が正しくありません",
+    "Models ranked": "ランク入りモデル",
+    "No change": "変動なし",
+    "Open source, end to end.": "すみずみまでオープンソース。",
+    "Rank movement": "順位の変動",
+    "The open-source API gateway this project is based on.": "本プロジェクトのベースとなったオープンソースの API ゲートウェイ。",
+    "This site runs New API, an open-source AI gateway by QuantumNous built on One API.": "このサイトは、QuantumNous が One API をもとに開発したオープンソースの AI ゲートウェイ New API で動いています。",
+    "Tokens served": "処理済みトークン",
+    "View on GitHub": "GitHub で見る",
+    "{{count}} groups degraded": "{{count}} 個のグループで低下",
+    "{{share}} of all tokens": "全トークンの {{share}}",
+    "By clicking sign in, you agree to our": "サインインをクリックすると、以下に同意したものとみなされます：",
+    "By creating an account, you agree to our": "アカウントを作成すると、以下に同意したものとみなされます："
   }
 }

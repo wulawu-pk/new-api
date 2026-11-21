@@ -7411,6 +7411,18 @@
     "Cache hit rate": "Tỷ lệ trúng cache",
     "Hit {{rate}}": "Trúng {{rate}}",
     "The exchange rate has been updated. Please review and confirm again.": "Tỷ giá đã được cập nhật. Vui lòng kiểm tra và xác nhận lại.",
-    "Invalid redemption code format": "Định dạng mã đổi thưởng không hợp lệ"
+    "Invalid redemption code format": "Định dạng mã đổi thưởng không hợp lệ",
+    "Models ranked": "Mô hình được xếp hạng",
+    "No change": "Không thay đổi",
+    "Open source, end to end.": "Mã nguồn mở từ đầu đến cuối.",
+    "Rank movement": "Biến động thứ hạng",
+    "The open-source API gateway this project is based on.": "Cổng API mã nguồn mở mà dự án này dựa trên.",
+    "This site runs New API, an open-source AI gateway by QuantumNous built on One API.": "Trang này chạy New API, cổng AI mã nguồn mở của QuantumNous được xây dựng trên One API.",
+    "Tokens served": "Token đã phục vụ",
+    "View on GitHub": "Xem trên GitHub",
+    "{{count}} groups degraded": "{{count}} nhóm bị suy giảm",
+    "{{share}} of all tokens": "{{share}} tổng số token",
+    "By clicking sign in, you agree to our": "Khi nhấn đăng nhập, bạn đồng ý với",
+    "By creating an account, you agree to our": "Khi tạo tài khoản, bạn đồng ý với"
   }
 }
