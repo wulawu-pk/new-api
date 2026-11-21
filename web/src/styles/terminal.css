@@ -353,7 +353,7 @@ For commercial licensing, please contact support@quantumnous.com
   }
   & [data-slot='dialog-content'],
   & [data-slot='alert-dialog-content'] {
-    background: var(--t-card);
+    background: var(--t-card), var(--t-bg2);
     border: 0;
     border-radius: var(--t-radius-lg);
     --tw-ring-shadow: 0 0 #0000;

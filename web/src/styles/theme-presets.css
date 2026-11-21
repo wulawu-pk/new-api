@@ -647,7 +647,7 @@ For commercial licensing, please contact support@quantumnous.com
   --t-bg: #09090b;
   --t-bg2: #121215;
   --t-bg3: #1a1a1f;
-  --t-line: rgb(255 255 255 / 0.06);
+  --t-line: rgb(255 255 255 / 0.05);
   --t-faint: #36363e;
   --t-dim: #8d929c;
   --t-fg2: #c4c7cd;
@@ -657,17 +657,24 @@ For commercial licensing, please contact support@quantumnous.com
   --t-warn: #f2b84b;
   --t-bad: #ff6b6b;
   --t-hi: rgb(255 255 255 / 0.16); /* ring of the pane being worked on */
-  --t-hair: rgb(255 255 255 / 0.085);
+  --t-hair: rgb(255 255 255 / 0.075);
   --t-placeholder: #5d636d;
+  /* Cards are nearly the page colour, drawn by a hairline ring and a top
+   * highlight, with a faint pink light in the top-left corner (11-21: the
+   * solid grey #0f0f12 slab read as a dated admin theme). Image layers
+   * only, so a card is see-through; surfaces that must be opaque
+   * (dialogs) add a solid layer under it. */
   --t-card:
-    linear-gradient(180deg, rgb(255 255 255 / 0.028), transparent 140px),
-    #0f0f12;
-  --t-lift:
-    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px var(--t-hair),
-    0 24px 48px -24px rgb(0 0 0 / 0.8), 0 2px 6px -2px rgb(0 0 0 / 0.5);
+    radial-gradient(
+      120% 90% at 0% 0%,
+      rgb(255 122 182 / 0.05),
+      transparent 55%
+    ),
+    linear-gradient(180deg, rgb(255 255 255 / 0.02), rgb(255 255 255 / 0.005)),
+    linear-gradient(rgb(9 9 11 / 0.55), rgb(9 9 11 / 0.55));
+  --t-lift: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px var(--t-hair);
   --t-lift-on:
-    inset 0 1px 0 rgb(255 255 255 / 0.07), 0 0 0 1px var(--t-hi),
-    0 30px 60px -28px rgb(0 0 0 / 0.9), 0 2px 6px -2px rgb(0 0 0 / 0.5);
+    inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px rgb(255 122 182 / 0.35);
 
   --background: var(--t-bg);
   --foreground: var(--t-fg);
