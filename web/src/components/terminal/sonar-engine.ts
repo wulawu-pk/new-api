@@ -102,16 +102,15 @@ function mix(a: Rgb, b: Rgb, t: number): string {
   return `${c(0)},${c(1)},${c(2)}`
 }
 
-/**
- * Glyph energy at a cell from the drifting clusters, 0 … 1. Sums of sines
- * stand in for noise: smooth, cheap and with no visible tiling.
+/*
+ * The drifting clusters are sums of sines (smooth, no visible tiling):
+ *   sin(c·.21 + t·.32)·sin(r·.37 − t·.24) + .8·sin((c + 1.7r)·.09 + t·.16)
+ * Each term is split with sin(a ± b) = sin a cos b ± cos a sin b, so the
+ * per-cell sines are computed once in setup and a frame only multiplies.
  */
-export function clusterEnergy(c: number, r: number, t: number): number {
-  const v =
-    Math.sin(c * 0.21 + t * 0.32) * Math.sin(r * 0.37 - t * 0.24) +
-    Math.sin((c + r * 1.7) * 0.09 + t * 0.16) * 0.8
-  return Math.max(0, Math.min(1, (v - 0.5) * 1.05))
-}
+const KC = 0.21
+const KR = 0.37
+const KD = 0.09
 
 export function createSonar(
   canvas: HTMLCanvasElement,
@@ -119,7 +118,7 @@ export function createSonar(
 ): SonarHandle {
   const ctx = canvas.getContext('2d')
   const reduce = options.reducedMotion ?? false
-  const cell = options.cell ?? 18
+  let cell = options.cell ?? 18
   const interval = (options.interval ?? 3.4) * 1000
   const originX = options.originX ?? 0.5
   const originY = options.originY ?? 0.3
@@ -129,6 +128,14 @@ export function createSonar(
   let cols = 0
   let rows = 0
   let weight = new Float32Array(0)
+  // Per-cell constants: distance to the hub and the sines of the cluster terms.
+  let dist = new Float32Array(0)
+  let sinC = new Float32Array(0)
+  let cosC = new Float32Array(0)
+  let sinR = new Float32Array(0)
+  let cosR = new Float32Array(0)
+  let sinD = new Float32Array(0)
+  let cosD = new Float32Array(0)
   let atlas: HTMLCanvasElement | null = null
   let tile = 0
   let pings: number[] = []
@@ -187,6 +194,8 @@ export function createSonar(
     canvas.width = Math.round(W * dpr)
     canvas.height = Math.round(H * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    // Larger cells on wide screens keep the cell count (and the cost) flat.
+    cell = options.cell ?? (W > 1800 ? 22 : 18)
     cols = Math.ceil(W / cell) + 1
     rows = Math.ceil(H / cell) + 1
     // Fade out towards the edges: an ellipse around the upper middle.
@@ -197,6 +206,24 @@ export function createSonar(
         const dy = (r * cell - H * 0.42) / (H * 0.7)
         const d = Math.sqrt(dx * dx + dy * dy)
         weight[r * cols + c] = Math.max(0, Math.min(1, (1 - d) / 0.45))
+      }
+    }
+    const hubX = W * originX
+    const hubY = H * originY
+    dist = new Float32Array(cols * rows)
+    sinD = new Float32Array(cols * rows)
+    cosD = new Float32Array(cols * rows)
+    sinC = Float32Array.from({ length: cols }, (_, c) => Math.sin(c * KC))
+    cosC = Float32Array.from({ length: cols }, (_, c) => Math.cos(c * KC))
+    sinR = Float32Array.from({ length: rows }, (_, r) => Math.sin(r * KR))
+    cosR = Float32Array.from({ length: rows }, (_, r) => Math.cos(r * KR))
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const k = r * cols + c
+        const x = c * cell + (r % 2 ? cell / 2 : 0)
+        dist[k] = Math.hypot(x - hubX, r * cell - hubY)
+        sinD[k] = Math.sin((c + r * 1.7) * KD)
+        cosD[k] = Math.cos((c + r * 1.7) * KD)
       }
     }
     // Lanes: clients on the left into the hub, the hub out to the models on
@@ -293,30 +320,38 @@ export function createSonar(
       nextPing = now + interval
     }
     pings = pings.filter((p) => (now - p) / 1000 < life)
-    const ox = W * originX
-    const oy = H * originY
     const band = cell * 2.4
     const wake = band * 7
+    const radii = pings.map((p) => ((now - p) / 1000) * speed)
+    const fades = pings.map((p) => 1 - (now - p) / 1000 / life)
+    const s1 = Math.sin(t * 0.32)
+    const c1 = Math.cos(t * 0.32)
+    const s2 = Math.sin(t * 0.24)
+    const c2 = Math.cos(t * 0.24)
+    const s3 = Math.sin(t * 0.16)
+    const c3 = Math.cos(t * 0.16)
     ctx.clearRect(0, 0, W, H)
     for (let r = 0; r < rows; r++) {
       const shift = r % 2 ? cell / 2 : 0
+      const rowWave = sinR[r] * c2 - cosR[r] * s2
       for (let c = 0; c < cols; c++) {
         const k = r * cols + c
         const w = weight[k]
-        if (w < 0.02) continue
+        if (w < 0.02 && boost[k] === 0) continue
         const x = c * cell + shift
         const y = r * cell
-        const base = clusterEnergy(c, r, t)
+        const v =
+          (sinC[c] * c1 + cosC[c] * s1) * rowWave +
+          (sinD[k] * c3 + cosD[k] * s3) * 0.8
+        const base = Math.max(0, Math.min(1, (v - 0.5) * 1.05))
         let crest = 0
         let trail = 0
-        for (const p of pings) {
-          const age = (now - p) / 1000
-          const fade = 1 - age / life
-          const ahead = age * speed - Math.hypot(x - ox, y - oy)
+        for (let i = 0; i < radii.length; i++) {
+          const ahead = radii[i] - dist[k]
           if (ahead > -band && ahead < band) {
-            crest = Math.max(crest, (1 - Math.abs(ahead) / band) * fade)
+            crest = Math.max(crest, (1 - Math.abs(ahead) / band) * fades[i])
           } else if (ahead >= band && ahead < wake) {
-            trail = Math.max(trail, (1 - ahead / wake) * fade)
+            trail = Math.max(trail, (1 - ahead / wake) * fades[i])
           }
         }
         // Clusters glow faintly on their own; a passing ring lights them

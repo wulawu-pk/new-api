@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { clusterEnergy, createSonar, readAccentRgb } from '../sonar-engine'
+import { createSonar, readAccentRgb } from '../sonar-engine'
 
 // jsdom has no canvas: a 2D context that answers the calls the engine makes
 // and counts the glyphs it stamps from the atlas.
@@ -102,16 +102,6 @@ describe('createSonar', () => {
 })
 
 describe('sonar helpers', () => {
-  it('keeps cluster energy within 0 and 1', () => {
-    for (let c = 0; c < 60; c += 7) {
-      for (let r = 0; r < 40; r += 5) {
-        const e = clusterEnergy(c, r, c * 0.3)
-        expect(e).toBeGreaterThanOrEqual(0)
-        expect(e).toBeLessThanOrEqual(1)
-      }
-    }
-  })
-
   it('reads the accent from --t-accent-rgb and falls back to mint', () => {
     const el = document.createElement('div')
     el.style.setProperty('--t-accent-rgb', '91 157 255')
