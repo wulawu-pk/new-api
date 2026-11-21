@@ -26,6 +26,9 @@ For commercial licensing, please contact support@quantumnous.com
  * that activates it. Loaded globally so font-switching is instantaneous
  * with no FOUT once the variable is fetched. */
 @import '@fontsource-variable/lora';
+/* Monospace face for the public landing surface (ASCII art, labels, terminal
+ * mocks). Loaded globally so canvas-based ASCII effects measure real glyphs. */
+@import '@fontsource-variable/jetbrains-mono';
 
 @import './theme.css';
 @import './theme-presets.css';
@@ -479,81 +482,87 @@ For commercial licensing, please contact support@quantumnous.com
   }
 }
 
-/* ── Landing page scroll-triggered animations ── */
-@keyframes landing-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ── Public landing surface: modern + ASCII ──
+ * One signal accent (terminal green) and one monospace face. Canvas effects
+ * read these tokens through `useCssColors`, so both themes stay in sync. */
+:root {
+  --landing-accent: oklch(0.55 0.15 152);
+  --landing-accent-soft: oklch(0.55 0.15 152 / 12%);
 }
-@keyframes landing-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes landing-scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-@keyframes landing-fade-left {
-  from {
-    opacity: 0;
-    transform: translateX(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-@keyframes landing-fade-right {
-  from {
-    opacity: 0;
-    transform: translateX(-24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.dark {
+  --landing-accent: oklch(0.82 0.18 152);
+  --landing-accent-soft: oklch(0.82 0.18 152 / 12%);
 }
 
-.landing-animate-fade-up {
-  animation: landing-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.landing-animate-fade-in {
-  animation: landing-fade-in 0.6s ease-out both;
-}
-.landing-animate-scale-in {
-  animation: landing-scale-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.landing-animate-fade-left {
-  animation: landing-fade-left 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.landing-animate-fade-right {
-  animation: landing-fade-right 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+@theme inline {
+  --color-landing-accent: var(--landing-accent);
+  --color-landing-accent-soft: var(--landing-accent-soft);
+  --font-ascii:
+    'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas,
+    monospace;
 }
 
+/* Dashed hairline drawn with characters' rhythm rather than a solid stroke. */
+.ascii-rule {
+  background-image: linear-gradient(
+    to right,
+    var(--border) 0 6px,
+    transparent 6px 10px
+  );
+  background-size: 10px 1px;
+  background-repeat: repeat-x;
+  height: 1px;
+}
+
+/* Faint character grid behind landing sections. */
+.ascii-grid {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 2.5rem 2.5rem;
+}
+
+@keyframes ascii-caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+.ascii-caret {
+  animation: ascii-caret-blink 1.1s steps(1) infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-  .landing-animate-fade-up,
-  .landing-animate-fade-in,
-  .landing-animate-scale-in,
-  .landing-animate-fade-left,
-  .landing-animate-fade-right {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
+  .ascii-caret {
+    animation: none;
+  }
+}
+
+/* Endless logo rows: content is rendered twice with a 1.5rem gap, so one
+ * loop is half the track plus half a gap. */
+@keyframes landing-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - 0.75rem));
+  }
+}
+.landing-marquee {
+  animation: landing-marquee var(--marquee-duration, 48s) linear infinite;
+}
+.landing-marquee[data-reverse] {
+  animation-direction: reverse;
+}
+.landing-marquee:hover {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-marquee {
+    animation: none;
   }
 }
 
