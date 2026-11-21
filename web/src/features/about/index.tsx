@@ -17,6 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
+import { ArrowUpRight } from 'lucide-react'
+import { motion, useReducedMotion, type Variants } from 'motion/react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
@@ -25,12 +28,16 @@ import AsciiRipple from '@/components/react-bits/ascii-ripple'
 import CipherReveal from '@/components/react-bits/cipher-reveal'
 import { RichContent } from '@/components/rich-content'
 import { Skeleton } from '@/components/ui/skeleton'
-import { LANDING_COLOR_VARS } from '@/features/home/constants'
+import { LANDING_COLOR_VARS, landingAction } from '@/features/home/constants'
 import { useCssColors } from '@/hooks/use-css-colors'
+import { useSystemConfig } from '@/hooks/use-system-config'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import { getAboutContent } from './api'
+
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+const REPO_URL = 'https://github.com/QuantumNous/new-api'
 
 const RIPPLE_TEXT = Array.from(
   { length: 24 },
@@ -41,13 +48,13 @@ const RIPPLE_TEXT = Array.from(
 const linkClass =
   'text-foreground decoration-landing-accent/60 hover:decoration-landing-accent underline decoration-1 underline-offset-4 transition-colors duration-200'
 
-/** Interactive ASCII field: framed panel at the top of the About page. */
-function AboutBanner() {
+/** Interactive ASCII field, framed like a terminal pane. */
+function AsciiPane(props: { className?: string }) {
   const colors = useCssColors(LANDING_COLOR_VARS)
   return (
     <div
       aria-hidden
-      className='border-border bg-muted/30 relative h-56 overflow-hidden rounded-3xl border sm:h-72'
+      className={`border-border bg-muted/30 relative overflow-hidden rounded-2xl border ${props.className ?? ''}`}
     >
       <AsciiRipple
         text={RIPPLE_TEXT}
@@ -60,7 +67,7 @@ function AboutBanner() {
         rain={0.35}
         vignette={0.35}
       />
-      <span className='font-ascii text-muted-foreground bg-background/85 ring-border absolute bottom-4 left-4 rounded-md px-2 py-1 text-[11px] ring-1 backdrop-blur'>
+      <span className='font-ascii text-muted-foreground bg-background/85 ring-border absolute bottom-3 left-3 rounded-md px-2 py-1 text-[11px] ring-1 backdrop-blur'>
         ~/about $ cat README
         <span className='ascii-caret'>_</span>
       </span>
@@ -68,48 +75,29 @@ function AboutBanner() {
   )
 }
 
+type Chapter = {
+  id: string
+  marker: ReactNode
+  title: string
+  detail: ReactNode
+  extra?: ReactNode
+}
+
 function EmptyAboutState() {
   const { t } = useTranslation()
+  const reduce = useReducedMotion()
   const currentYear = new Date().getFullYear()
 
-  const facts = [
+  const item: Variants = {
+    hidden: { opacity: 0, y: reduce ? 0 : 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.65, ease: EASE } },
+  }
+
+  const chapters: Chapter[] = [
     {
-      index: '01',
-      title: t('New API Project Repository:'),
-      body: (
-        <a
-          href='https://github.com/QuantumNous/new-api'
-          target='_blank'
-          rel='noopener noreferrer'
-          className={linkClass}
-        >
-          {t('https://github.com/QuantumNous/new-api')}
-        </a>
-      ),
-    },
-    {
-      index: '02',
-      title: t('Credits'),
-      body: (
+      id: 'one-api',
+      marker: (
         <>
-          <a
-            href='https://github.com/QuantumNous/new-api'
-            target='_blank'
-            rel='noopener noreferrer'
-            className={linkClass}
-          >
-            {t('NewAPI')}
-          </a>{' '}
-          © {currentYear}{' '}
-          <a
-            href='https://github.com/QuantumNous'
-            target='_blank'
-            rel='noopener noreferrer'
-            className={linkClass}
-          >
-            {t('QuantumNous')}
-          </a>{' '}
-          {t('| Based on')}{' '}
           <a
             href='https://github.com/songquanpeng/one-api'
             target='_blank'
@@ -129,15 +117,73 @@ function EmptyAboutState() {
           </a>
         </>
       ),
+      title: t('One API'),
+      detail: t('The open-source API gateway this project is based on.'),
     },
     {
-      index: '03',
+      id: 'new-api',
+      marker: (
+        <>
+          <a
+            href={REPO_URL}
+            target='_blank'
+            rel='noopener noreferrer'
+            className={linkClass}
+          >
+            {t('NewAPI')}
+          </a>{' '}
+          © {currentYear}{' '}
+          <a
+            href='https://github.com/QuantumNous'
+            target='_blank'
+            rel='noopener noreferrer'
+            className={linkClass}
+          >
+            {t('QuantumNous')}
+          </a>
+        </>
+      ),
+      title: t('NewAPI'),
+      detail: (
+        <>
+          {t('New API Project Repository:')}{' '}
+          <a
+            href={REPO_URL}
+            target='_blank'
+            rel='noopener noreferrer'
+            className={linkClass}
+          >
+            {t('https://github.com/QuantumNous/new-api')}
+          </a>
+        </>
+      ),
+      extra: (
+        <>
+          <AsciiPane className='mt-6 aspect-[21/9]' />
+          <ul className='mt-5 flex flex-wrap gap-2'>
+            {['OpenAI', 'Claude', 'Gemini', 'Embeddings', 'Images'].map(
+              (chip) => (
+                <li
+                  key={chip}
+                  className='border-border font-ascii rounded-full border px-3.5 py-1 text-xs'
+                >
+                  {chip}
+                </li>
+              )
+            )}
+          </ul>
+        </>
+      ),
+    },
+    {
+      id: 'license',
+      marker: 'AGPL-3.0',
       title: t('License'),
-      body: (
+      detail: (
         <>
           {t('This project must be used in compliance with the')}{' '}
           <a
-            href='https://github.com/QuantumNous/new-api/blob/main/LICENSE'
+            href={`${REPO_URL}/blob/main/LICENSE`}
             target='_blank'
             rel='noopener noreferrer'
             className={linkClass}
@@ -148,55 +194,139 @@ function EmptyAboutState() {
         </>
       ),
     },
+    {
+      id: 'this-site',
+      marker: '~/about',
+      title: t('No About Content Set'),
+      detail: t(
+        'The administrator has not configured any about content yet. You can set it in the settings page, supporting HTML or URL.'
+      ),
+    },
   ]
 
   return (
     <section className='px-4 pt-28 pb-24 sm:px-6 lg:pt-32'>
-      <div className='mx-auto w-full max-w-7xl'>
-        <AboutBanner />
+      <div className='mx-auto grid w-full max-w-7xl grid-cols-1 items-start gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20'>
+        <motion.div
+          initial='hidden'
+          animate='visible'
+          variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+          className='lg:sticky lg:top-28'
+        >
+          <motion.p
+            variants={item}
+            className='font-ascii text-muted-foreground text-xs tracking-wide uppercase'
+          >
+            [ {t('About')} ]
+          </motion.p>
+          <CipherReveal
+            as='h1'
+            text={t('Open source, end to end.')}
+            trigger='mount'
+            align='left'
+            fontSize='clamp(2.25rem, 4.6vw, 3.75rem)'
+            lineHeight={1.06}
+            letterSpacing='-0.03em'
+            className='mt-5 text-balance'
+          />
+          <motion.p
+            variants={item}
+            className='text-muted-foreground mt-6 max-w-xl text-base leading-relaxed text-pretty sm:text-lg'
+          >
+            {t(
+              'This site runs New API, an open-source AI gateway by QuantumNous built on One API.'
+            )}
+          </motion.p>
+          <motion.div variants={item} className='mt-8'>
+            <a
+              href={REPO_URL}
+              target='_blank'
+              rel='noopener noreferrer'
+              className={landingAction.secondary}
+            >
+              {t('View on GitHub')}
+              <ArrowUpRight className='size-4' strokeWidth={1.75} aria-hidden />
+            </a>
+          </motion.div>
+        </motion.div>
 
-        <div className='mt-14 grid grid-cols-1 items-start gap-12 lg:grid-cols-[1fr_1.2fr] lg:gap-20'>
-          <div className='lg:sticky lg:top-28'>
+        <motion.ol
+          initial='hidden'
+          animate='visible'
+          variants={{ visible: { transition: { staggerChildren: 0.14 } } }}
+          className='relative'
+        >
+          <motion.span
+            aria-hidden
+            variants={{
+              hidden: { scaleY: reduce ? 1 : 0 },
+              visible: { scaleY: 1, transition: { duration: 1.1, ease: EASE } },
+            }}
+            className='bg-border absolute top-1.5 bottom-1.5 left-[5px] w-px origin-top'
+          />
+          {chapters.map((chapter, index) => (
+            <motion.li
+              key={chapter.id}
+              variants={item}
+              className='relative pb-14 pl-10 last:pb-0 sm:pb-16 sm:pl-14'
+            >
+              <span
+                aria-hidden
+                className='bg-foreground ring-background absolute top-0.5 left-0 size-[11px] rounded-full ring-4'
+              />
+              <p className='font-ascii text-muted-foreground text-xs tracking-[0.12em] uppercase'>
+                <span className='text-landing-accent'>
+                  {String(index + 1).padStart(2, '0')}
+                </span>{' '}
+                · {chapter.marker}
+              </p>
+              <h2 className='mt-3 text-xl font-semibold tracking-tight sm:text-2xl'>
+                {chapter.title}
+              </h2>
+              <p className='text-muted-foreground mt-3 max-w-xl text-base leading-relaxed text-pretty'>
+                {chapter.detail}
+              </p>
+              {chapter.extra}
+            </motion.li>
+          ))}
+        </motion.ol>
+      </div>
+    </section>
+  )
+}
+
+/** Administrator-written markdown beside a sticky identity column. */
+function MarkdownAbout(props: { content: string }) {
+  const { t } = useTranslation()
+  const { systemName } = useSystemConfig()
+
+  return (
+    <section className='px-4 pt-28 pb-24 sm:px-6 lg:pt-32'>
+      <div className='mx-auto grid w-full max-w-7xl grid-cols-1 items-start gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:gap-16'>
+        <aside className='flex flex-col gap-6 lg:sticky lg:top-28'>
+          <div>
             <p className='font-ascii text-muted-foreground text-xs tracking-wide uppercase'>
               [ {t('About')} ]
             </p>
-            <CipherReveal
-              as='h1'
-              text={t('No About Content Set')}
-              trigger='mount'
-              align='left'
-              fontSize='clamp(2rem, 4vw, 3.25rem)'
-              lineHeight={1.08}
-              className='mt-4 text-balance'
+            <h1 className='mt-4 text-[clamp(2rem,4vw,3rem)] leading-[1.08] font-semibold tracking-tight text-balance'>
+              {systemName || t('About')}
+            </h1>
+          </div>
+          <AsciiPane className='hidden aspect-[4/3] lg:block' />
+        </aside>
+        <article className='border-border overflow-hidden rounded-3xl border'>
+          <header className='border-border font-ascii text-muted-foreground flex items-center justify-between border-b px-5 py-3 text-xs'>
+            <span>about.md</span>
+            <span aria-hidden>●●●</span>
+          </header>
+          <div className='px-5 py-8 sm:px-10 sm:py-12'>
+            <RichContent
+              mode='markdown'
+              content={props.content}
+              className='prose-neutral dark:prose-invert max-w-none'
             />
-            <p className='text-muted-foreground mt-5 max-w-md text-base leading-relaxed text-pretty sm:text-lg'>
-              {t(
-                'The administrator has not configured any about content yet. You can set it in the settings page, supporting HTML or URL.'
-              )}
-            </p>
           </div>
-
-          <div className='border-border divide-border divide-y border-y'>
-            {facts.map((fact) => (
-              <article
-                key={fact.index}
-                className='grid grid-cols-[3.5rem_1fr] gap-4 py-8 sm:grid-cols-[5rem_1fr] sm:gap-6 sm:py-10'
-              >
-                <p className='font-ascii text-landing-accent pt-1 text-sm'>
-                  {fact.index}
-                </p>
-                <div>
-                  <h2 className='text-xl font-semibold tracking-tight sm:text-2xl'>
-                    {fact.title}
-                  </h2>
-                  <p className='text-muted-foreground mt-3 max-w-lg text-base leading-relaxed text-pretty'>
-                    {fact.body}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
+        </article>
       </div>
     </section>
   )
@@ -264,24 +394,7 @@ export function About() {
 
   return (
     <PublicLayout showMainContainer={false}>
-      <section className='px-4 pt-28 pb-24 sm:px-6 lg:pt-32'>
-        <div className='mx-auto w-full max-w-4xl'>
-          <AboutBanner />
-          <article className='border-border mt-10 overflow-hidden rounded-3xl border'>
-            <header className='border-border font-ascii text-muted-foreground flex items-center justify-between border-b px-5 py-3 text-xs'>
-              <span>about.md</span>
-              <span aria-hidden>●●●</span>
-            </header>
-            <div className='px-5 py-8 sm:px-10 sm:py-12'>
-              <RichContent
-                mode='markdown'
-                content={rawContent}
-                className='prose-neutral dark:prose-invert max-w-none'
-              />
-            </div>
-          </article>
-        </div>
-      </section>
+      <MarkdownAbout content={rawContent} />
       <Footer />
     </PublicLayout>
   )
