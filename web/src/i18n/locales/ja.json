@@ -7471,6 +7471,7 @@
     "Create a key and pick its group": "Create a key and pick its group",
     "Create it": "Create it",
     "Created a key in the 「{{group}}」 group": "Created a key in the 「{{group}}」 group",
+    "You already have a key in the 「{{group}}」 group ({{name}}); use it directly": "You already have a key in the 「{{group}}」 group ({{name}}); use it directly",
     "Created {{name}}; the key is copied": "Created {{name}}; the key is copied",
     "Creating…": "Creating…",
     "Credited": "Credited",

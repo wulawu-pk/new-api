@@ -52,3 +52,28 @@ export async function createKeyAndFetch(
   }
   return { id: match.id, name: match.name, key: withSkPrefix(reveal.data.key) }
 }
+
+/** 1 = enabled (2 disabled, 3 expired, 4 exhausted). */
+const KEY_ENABLED = 1
+
+/**
+ * The automatic key for a landing-page plan: a key only depends on its group
+ * (any model in the group works with it), so when the user already has an
+ * enabled key in that group nothing is created. Otherwise one key is made.
+ * Only the first 100 keys are checked; if the list cannot be read, a key is
+ * created as before.
+ */
+export async function ensureGroupKey(
+  payload: ApiKeyFormData,
+  fallbackError: string
+): Promise<{ created: boolean; name: string }> {
+  const list = await getApiKeys({ p: 1, size: 100 })
+  const existing = list.success
+    ? (list.data?.items ?? []).find(
+        (item) => item.group === payload.group && item.status === KEY_ENABLED
+      )
+    : undefined
+  if (existing) return { created: false, name: existing.name }
+  const made = await createKeyAndFetch(payload, fallbackError)
+  return { created: true, name: made.name }
+}

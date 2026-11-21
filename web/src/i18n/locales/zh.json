@@ -7471,6 +7471,7 @@
     "Create a key and pick its group": "创建 Key，选好分组",
     "Create it": "创建",
     "Created a key in the 「{{group}}」 group": "已创建「{{group}}」分组的 Key",
+    "You already have a key in the 「{{group}}」 group ({{name}}); use it directly": "「{{group}}」分组已有 Key（{{name}}），直接用它就行",
     "Created {{name}}; the key is copied": "已创建 {{name}}，Key 已复制",
     "Creating…": "正在创建…",
     "Credited": "到账额度",

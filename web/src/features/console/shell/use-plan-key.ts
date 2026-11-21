@@ -27,13 +27,14 @@ import { useAuthStore } from '@/stores/auth-store'
 
 import { consumePendingPlan } from '../auth/lib/pending-plan'
 import { autoKeyName, buildCreateKeyPayload } from '../keys/lib/create-key'
-import { createKeyAndFetch } from '../keys/lib/create-key-flow'
+import { ensureGroupKey } from '../keys/lib/create-key-flow'
 import { groupName } from '../lib/groups'
 
 /**
  * After the first sign-in that carries a landing-page plan (sign-up, sign-in,
- * or the MFA step in between), create one key in the chosen group, then
- * show the key list. The server validates the group.
+ * or the MFA step in between), make sure the user has a key in the chosen
+ * group — create one only if there is no enabled key there yet — then show
+ * the key list. The server validates the group.
  */
 export function usePlanKey(): void {
   const { t } = useTranslation()
@@ -54,13 +55,21 @@ export function usePlanKey(): void {
       limit: '',
       expiry: 'never',
     })
-    void createKeyAndFetch(payload, t('Failed to create key'))
-      .then(() => {
-        toast.success(
-          t('Created a key in the 「{{group}}」 group', {
-            group: groupName(plan.group, t),
-          })
-        )
+    void ensureGroupKey(payload, t('Failed to create key'))
+      .then((result) => {
+        const group = groupName(plan.group, t)
+        if (result.created) {
+          toast.success(
+            t('Created a key in the 「{{group}}」 group', { group })
+          )
+        } else {
+          toast.info(
+            t(
+              'You already have a key in the 「{{group}}」 group ({{name}}); use it directly',
+              { group, name: result.name }
+            )
+          )
+        }
         void queryClient.invalidateQueries({ queryKey: ['console'] })
         void navigate({ to: '/keys' })
       })
