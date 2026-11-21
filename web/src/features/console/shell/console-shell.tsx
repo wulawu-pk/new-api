@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next'
 
 import { SignOutDialog } from '@/components/sign-out-dialog'
 import { SkeletonText } from '@/components/terminal/data-states'
+import { RelayCanvas } from '@/components/terminal/relay-canvas'
 import { RollingNumber } from '@/components/terminal/rolling-number'
 import { TermLogo } from '@/components/terminal/term-logo'
 import { useScrambleText } from '@/components/terminal/use-scramble'
@@ -349,6 +350,13 @@ export function ConsoleShell(props: { children: ReactNode }) {
 
   return (
     <div className='text-t-fg flex min-h-svh flex-col'>
+      {/* The sign-in page's relay animation, in its quiet backdrop mode, behind
+       * every console page. Panes are solid, so it shows between them and
+       * through the frosted window and status bars. */}
+      <RelayCanvas
+        backdrop
+        className='pointer-events-none fixed inset-0 -z-10 opacity-45'
+      />
       <header className='border-t-line bg-t-bg/75 sticky top-0 z-10 flex h-[58px] items-center gap-5 border-b px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl max-md:h-auto max-md:flex-wrap max-md:gap-x-4 max-md:gap-y-1 max-md:pt-2.5'>
         <TermLogo />
         <nav

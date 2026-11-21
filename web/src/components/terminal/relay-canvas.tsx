@@ -24,6 +24,8 @@ import { createRelay, type RelayHandle } from './relay-engine'
 
 type RelayCanvasProps = {
   labels?: boolean
+  /** Quiet page backdrop: no P at the centre, no text on the requests. */
+  backdrop?: boolean
   /** Hold the current frame, e.g. while a transition over it plays. */
   paused?: boolean
   className?: string
@@ -63,6 +65,7 @@ export const RelayCanvas = forwardRef<RelayCanvasRef, RelayCanvasProps>(
         window.matchMedia('(prefers-reduced-motion: reduce)').matches
       const relay = createRelay(canvas, labelRef.current, {
         labels: props.labels,
+        backdrop: props.backdrop,
         reducedMotion,
       })
       handle.current = relay
@@ -73,7 +76,7 @@ export const RelayCanvas = forwardRef<RelayCanvasRef, RelayCanvasProps>(
         relay.destroy()
         handle.current = null
       }
-    }, [props.labels])
+    }, [props.labels, props.backdrop])
 
     useEffect(() => {
       handle.current?.setPaused(Boolean(props.paused))

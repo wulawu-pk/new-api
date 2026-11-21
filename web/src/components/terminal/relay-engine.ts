@@ -64,6 +64,12 @@ type Surface = {
 export type RelayOptions = {
   /** Draw client and model labels at the lane ends (needs ≥520px width). */
   labels?: boolean
+  /**
+   * Quiet mode for a page backdrop: no P and ring where the lanes meet and
+   * no text on the requests. Cards cover the middle, so only scraps of the
+   * P would show, and the moving text would run under page titles.
+   */
+  backdrop?: boolean
   clients?: string[]
   models?: string[]
   reducedMotion?: boolean
@@ -358,6 +364,10 @@ export function createRelay(
         ring[r * cols + c] = rd[idx] / 255
       }
     }
+    if (options.backdrop) {
+      mask.fill(0)
+      ring.fill(0)
+    }
     const x0 = showLabels ? Math.min(120, W * 0.17) : 6
     const x1 = showLabels ? W - Math.min(150, W * 0.2) : W - 6
     const ys = (n: number) =>
@@ -617,6 +627,7 @@ export function createRelay(
       ctx.beginPath()
       ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2)
       ctx.fill()
+      if (options.backdrop) continue
       const fade = p.side
         ? Math.min((p.t - 0.22) / 0.14, (1 - p.t) / 0.12)
         : Math.min(p.t / 0.1, (0.62 - p.t) / 0.14)
