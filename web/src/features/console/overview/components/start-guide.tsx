@@ -160,8 +160,7 @@ export function StartGuide(props: StartGuideProps) {
                   aria-hidden='true'
                   className={cn(
                     'relative z-[1] flex size-8 shrink-0 items-center justify-center rounded-lg border font-mono text-xs',
-                    step.done &&
-                      'border-t-ok/30 bg-[color-mix(in_srgb,var(--t-ok)_12%,var(--t-bg2))] text-t-ok',
+                    step.done && 'border-t-ok/30 bg-t-ok/10 text-t-ok',
                     !step.done &&
                       index === current &&
                       't-node-live border-t-pink/50 bg-t-bg2 text-t-pink',
