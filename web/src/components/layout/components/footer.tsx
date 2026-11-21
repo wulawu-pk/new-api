@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { Fragment, useMemo } from 'react'
+import { Fragment, useId, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useStatus } from '@/hooks/use-status'
@@ -162,6 +162,7 @@ export function Footer(props: FooterProps) {
   const displayName = systemName || props.name || 'New API'
   const isDemoSiteMode = Boolean(demoSiteEnabled)
   const currentYear = new Date().getFullYear()
+  const patternId = `footer-ascii-${useId().replaceAll(/[^a-zA-Z0-9-]/g, '')}`
 
   const fallbackColumns = useMemo<FooterColumnProps[]>(
     () => [
@@ -248,52 +249,119 @@ export function Footer(props: FooterProps) {
 
   return (
     <footer
-      className={cn('border-border/40 relative z-10 border-t', props.className)}
+      className={cn(
+        'border-border/60 relative z-10 overflow-hidden border-t px-4 sm:px-6',
+        props.className
+      )}
     >
-      <div className='mx-auto max-w-6xl px-6 py-12 md:py-16'>
-        <div className='flex flex-col justify-between gap-10 md:flex-row md:gap-16'>
-          {/* Brand column */}
-          <div className='shrink-0'>
-            <Link to='/' className='group flex items-center gap-2.5'>
+      <div className='mx-auto w-full max-w-7xl pt-14 pb-8 md:pt-20'>
+        <div className='grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-20'>
+          <div className='flex flex-col gap-5'>
+            <Link
+              to='/'
+              className='group focus-visible:ring-ring flex w-fit items-center gap-2.5 rounded-full focus-visible:ring-2 focus-visible:outline-none'
+            >
               <img
                 src={displayLogo}
                 alt={displayName}
-                className='size-7 rounded-lg object-contain'
+                className='size-8 rounded-md object-contain transition-transform duration-300 group-hover:scale-105'
               />
-              <span className='text-sm font-semibold tracking-tight'>
+              <span className='text-base font-semibold tracking-tight'>
                 {displayName}
               </span>
             </Link>
-            <p className='text-muted-foreground/60 mt-3 max-w-[200px] text-xs leading-relaxed'>
+            <p className='text-muted-foreground max-w-xs text-sm leading-relaxed'>
               {t('Powerful API Management Platform')}
+            </p>
+            <p
+              aria-hidden
+              className='font-ascii text-muted-foreground/70 flex items-center gap-2 text-xs'
+            >
+              <span className='bg-landing-accent size-1.5 rounded-full' />
+              <span>
+                $ status --gateway
+                <span className='text-landing-accent'> ok</span>
+                <span className='ascii-caret'>_</span>
+              </span>
             </p>
           </div>
 
-          {/* Links columns */}
           {isDemoSiteMode && (
-            <div className='grid grid-cols-3 gap-8 md:gap-16'>
+            <div className='grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3'>
               {displayColumns.map((column, index) => (
-                <div key={index}>
-                  <p className='text-muted-foreground/50 mb-3 text-xs font-medium tracking-wider uppercase'>
-                    {t(column.title)}
+                <nav
+                  key={column.title}
+                  aria-label={t(column.title)}
+                  className='min-w-0'
+                >
+                  <p className='font-ascii text-muted-foreground mb-5 text-[11px] tracking-[0.14em] uppercase'>
+                    [{String(index + 1).padStart(2, '0')}] {t(column.title)}
                   </p>
-                  <ul className='space-y-2.5'>
-                    {column.links.map((link, linkIndex) => (
-                      <li key={linkIndex}>
+                  <ul className='space-y-3'>
+                    {column.links.map((link) => (
+                      <li key={link.href}>
                         <FooterLinkItem link={link} />
                       </li>
                     ))}
                   </ul>
-                </div>
+                </nav>
               ))}
             </div>
           )}
         </div>
 
+        {/* Giant wordmark filled with a field of ASCII glyphs. */}
+        <div aria-hidden className='text-foreground mt-14 select-none sm:mt-20'>
+          <svg
+            viewBox='0 0 720 150'
+            className='h-auto w-full'
+            focusable='false'
+          >
+            <defs>
+              <pattern
+                id={patternId}
+                width='9'
+                height='11'
+                patternUnits='userSpaceOnUse'
+              >
+                <text
+                  x='0'
+                  y='9'
+                  className='font-ascii'
+                  style={{ fontSize: '10px' }}
+                  fill='currentColor'
+                >
+                  +
+                </text>
+              </pattern>
+            </defs>
+            <text
+              x='360'
+              y='140'
+              textAnchor='middle'
+              textLength='712'
+              lengthAdjust='spacingAndGlyphs'
+              fill={`url(#${patternId})`}
+              stroke='currentColor'
+              strokeOpacity='0.14'
+              strokeWidth='1'
+              className='font-sans'
+              style={{
+                fontSize: '188px',
+                fontWeight: 800,
+                letterSpacing: '-0.04em',
+              }}
+            >
+              {displayName}
+            </text>
+          </svg>
+        </div>
+
         {/* Copyright + optional legal links inline on the left, project
             attribution on the right; wraps on narrow screens. */}
-        <div className='border-border/30 mt-12 flex flex-col items-center justify-between gap-x-3 gap-y-2 border-t pt-6 sm:flex-row'>
-          <div className='text-muted-foreground/40 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
+        <div className='ascii-rule mt-8' aria-hidden />
+        <div className='flex flex-col items-center justify-between gap-x-3 gap-y-2 pt-6 sm:flex-row'>
+          <div className='text-muted-foreground/60 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:justify-start'>
             <span>
               &copy; {currentYear} {displayName}.{' '}
               {props.copyright ?? t('footer.defaultCopyright')}

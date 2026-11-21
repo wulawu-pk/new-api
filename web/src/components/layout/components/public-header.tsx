@@ -17,6 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { ArrowRight, Menu, X } from 'lucide-react'
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+} from 'motion/react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -39,6 +46,15 @@ import type { TopNavLink } from '../types'
 import { HeaderLogo } from './header-logo'
 
 const AUTH_PROMPT_SECONDS = 5
+const EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+
+const primaryAction = cn(
+  'bg-foreground text-background hover:bg-foreground/85 inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors duration-200 active:scale-[0.98]',
+  focusRing
+)
 
 type AuthPromptTarget = {
   title: string
@@ -76,7 +92,8 @@ export function PublicHeader(props: PublicHeaderProps) {
 
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [scrolled, setScrolled] = useState(false)
+  const reduce = useReducedMotion()
+  const [condensed, setCondensed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [authPromptTarget, setAuthPromptTarget] =
     useState<AuthPromptTarget | null>(null)
@@ -104,36 +121,45 @@ export function PublicHeader(props: PublicHeaderProps) {
       src={systemLogo}
       loading={loading}
       logoLoaded={logoLoaded}
-      className='size-full rounded-lg object-contain'
+      className='size-full rounded-md object-contain'
     />
   )
   if (customLogo) logoContent = customLogo
-  if (loading) logoContent = <Skeleton className='size-full rounded-lg' />
+  if (loading) logoContent = <Skeleton className='size-full rounded-md' />
 
-  let authContent = (
-    <Button
-      size='sm'
-      className='h-8 rounded-lg px-3.5 text-xs font-medium'
-      render={<Link to='/sign-in' />}
-    >
+  let authContent: ReactNode = (
+    <Link to='/sign-in' className={primaryAction}>
       {t('Sign in')}
-    </Button>
+      <ArrowRight className='size-3.5' strokeWidth={1.75} aria-hidden />
+    </Link>
   )
   if (isAuthenticated) authContent = <ProfileDropdown />
-  if (loading) authContent = <Skeleton className='h-8 w-20 rounded-lg' />
+  if (loading) authContent = <Skeleton className='h-9 w-24 rounded-full' />
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    onScroll()
+    let frame = 0
+    const update = () => {
+      frame = 0
+      setCondensed(window.scrollY > 24)
+    }
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update)
+    }
+    update()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
   }, [])
 
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : ''
-    return () => {
-      document.body.style.overflow = ''
+    if (!mobileOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false)
     }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
   }, [mobileOpen])
 
   useEffect(() => {
@@ -167,266 +193,294 @@ export function PublicHeader(props: PublicHeaderProps) {
   }, [authPromptTarget?.href, navigate])
 
   const handleNavLinkClick = useCallback(
-    (
-      event: React.MouseEvent<HTMLAnchorElement>,
-      link: TopNavLink,
-      closeMobile = false
-    ) => {
+    (event: React.MouseEvent<HTMLAnchorElement>, link: TopNavLink) => {
+      setMobileOpen(false)
       if (link.disabled) {
         event.preventDefault()
         return
       }
-
-      if (link.requiresAuth) {
-        event.preventDefault()
-        if (closeMobile) {
-          setMobileOpen(false)
-        }
-        setAuthPromptSecondsLeft(AUTH_PROMPT_SECONDS)
-        setAuthPromptTarget({
-          title: t(link.title),
-          href: link.href,
-        })
-        return
-      }
-
-      if (closeMobile) {
-        setMobileOpen(false)
-      }
+      if (!link.requiresAuth) return
+      event.preventDefault()
+      setAuthPromptSecondsLeft(AUTH_PROMPT_SECONDS)
+      setAuthPromptTarget({ title: t(link.title), href: link.href })
     },
     [t]
   )
 
-  return (
-    <>
-      <header className='pointer-events-none fixed inset-x-0 top-0 z-50'>
-        <div
+  const layoutTransition = { duration: reduce ? 0 : 0.45, ease: EASE }
+  const pillTransition = reduce
+    ? { duration: 0 }
+    : { type: 'spring' as const, bounce: 0, duration: 0.4 }
+
+  const renderLink = (
+    link: TopNavLink,
+    index: number,
+    variant: 'bar' | 'menu'
+  ) => {
+    const isActive = pathname === link.href
+    const label = t(link.title)
+    const className =
+      variant === 'bar'
+        ? cn(
+            'relative flex h-9 min-w-0 items-center gap-1.5 rounded-full px-3 text-sm font-medium transition-colors duration-200',
+            focusRing,
+            isActive
+              ? 'text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+            link.disabled && 'pointer-events-none opacity-50'
+          )
+        : cn(
+            'flex h-12 items-center gap-3 rounded-2xl px-4 text-[15px] font-medium transition-colors duration-200',
+            focusRing,
+            isActive
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground hover:bg-muted/60',
+            link.disabled && 'pointer-events-none opacity-50'
+          )
+    const content = (
+      <>
+        {variant === 'bar' && isActive && (
+          <motion.span
+            layoutId='public-header-indicator'
+            transition={pillTransition}
+            style={{ borderRadius: 9999 }}
+            className='bg-muted absolute inset-0'
+          />
+        )}
+        <span
+          aria-hidden
           className={cn(
-            'pointer-events-auto mx-auto transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
-            scrolled ? 'max-w-[52rem] px-3 pt-3' : 'max-w-7xl px-4 pt-0 md:px-6'
+            'font-ascii relative text-[10px] tabular-nums',
+            isActive ? 'text-landing-accent' : 'text-muted-foreground/60'
           )}
         >
-          <nav
-            className={cn(
-              'flex items-center justify-between gap-2 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]',
-              scrolled
-                ? 'bg-background/60 ring-border/50 h-12 rounded-2xl pr-1.5 pl-4 shadow-[0_2px_16px_-6px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.02)] ring-[0.5px] backdrop-blur-2xl dark:shadow-[0_2px_16px_-6px_rgba(0,0,0,0.4)]'
-                : 'h-16 px-2'
-            )}
-          >
-            {/* Logo */}
-            <div className='@container/system-brand flex min-w-0 flex-1 items-center gap-1 lg:min-w-36'>
-              <Link
-                to={homeUrl}
-                className='group flex min-w-0 items-center gap-2.5'
-              >
-                <div className='flex size-7 shrink-0 items-center justify-center transition-all duration-300 group-hover:scale-105'>
-                  {logoContent}
-                </div>
-                <span
-                  className='max-w-48 truncate text-sm font-semibold tracking-tight'
-                  title={displaySiteName}
-                >
-                  {loading ? (
-                    <Skeleton className='h-4 w-16' />
-                  ) : (
-                    displaySiteName
-                  )}
-                </span>
-              </Link>
-              <SystemUpdateAction presentation='version' />
-            </div>
-
-            {/* Desktop nav */}
-            <div className='hidden min-w-0 items-center gap-0.5 lg:flex'>
-              {links.map((link) => {
-                const isActive = pathname === link.href
-                if (link.external) {
-                  return (
-                    <a
-                      key={`${link.title}:${link.href}`}
-                      href={link.href}
-                      title={t(link.title)}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      aria-disabled={link.disabled}
-                      tabIndex={link.disabled ? -1 : undefined}
-                      onClick={(event) => handleNavLinkClick(event, link)}
-                      className={cn(
-                        'text-muted-foreground hover:text-foreground min-w-0 truncate rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200',
-                        link.disabled && 'pointer-events-none opacity-50'
-                      )}
-                    >
-                      {t(link.title)}
-                    </a>
-                  )
-                }
-                return (
-                  <Link
-                    key={`${link.title}:${link.href}`}
-                    to={link.href}
-                    title={t(link.title)}
-                    disabled={link.disabled}
-                    onClick={(event) => handleNavLinkClick(event, link)}
-                    className={cn(
-                      'min-w-0 truncate rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-200',
-                      isActive
-                        ? 'text-foreground'
-                        : 'text-muted-foreground hover:text-foreground',
-                      link.disabled && 'pointer-events-none opacity-50'
-                    )}
-                  >
-                    {t(link.title)}
-                  </Link>
-                )
-              })}
-
-              {(showLanguageSwitcher ||
-                showThemeSwitch ||
-                showNotifications) && (
-                <div className='bg-border/40 mx-2 h-4 w-px' />
-              )}
-
-              {showLanguageSwitcher && <LanguageSwitcher />}
-              {showThemeSwitch && <ThemeSwitch />}
-              {showNotifications && (
-                <NotificationPopover
-                  open={notifications.popoverOpen}
-                  onOpenChange={notifications.setPopoverOpen}
-                  unreadCount={notifications.unreadCount}
-                  activeTab={notifications.activeTab}
-                  onTabChange={notifications.setActiveTab}
-                  notice={notifications.notice}
-                  announcements={notifications.announcements}
-                  loading={notifications.loading}
-                />
-              )}
-
-              {showAuthButtons && (
-                <>
-                  <div className='bg-border/40 mx-1 h-4 w-px' />
-                  {authContent}
-                </>
-              )}
-            </div>
-
-            {/* Mobile: compact actions + hamburger */}
-            <div className='flex shrink-0 items-center gap-2 lg:hidden'>
-              {showThemeSwitch && <ThemeSwitch />}
-              {showAuthButtons && !loading && isAuthenticated && (
-                <ProfileDropdown />
-              )}
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon'
-                className='size-9'
-                onClick={() => setMobileOpen((v) => !v)}
-                aria-label={t('Toggle navigation menu')}
-              >
-                <div className='relative size-4'>
-                  <span
-                    className={cn(
-                      'absolute inset-x-0 block h-[1.5px] origin-center rounded-full bg-current transition-all duration-300',
-                      mobileOpen ? 'top-[7px] rotate-45' : 'top-[3px]'
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'absolute inset-x-0 top-[7px] block h-[1.5px] rounded-full bg-current transition-all duration-300',
-                      mobileOpen ? 'scale-x-0 opacity-0' : 'opacity-100'
-                    )}
-                  />
-                  <span
-                    className={cn(
-                      'absolute inset-x-0 block h-[1.5px] origin-center rounded-full bg-current transition-all duration-300',
-                      mobileOpen ? 'top-[7px] -rotate-45' : 'top-[11px]'
-                    )}
-                  />
-                </div>
-              </Button>
-            </div>
-          </nav>
-        </div>
-      </header>
-
-      {/* Mobile full-screen overlay */}
-      <div
-        className={cn(
-          'bg-background/98 fixed inset-0 z-40 backdrop-blur-2xl transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:pointer-events-none lg:hidden',
-          mobileOpen
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0'
+          {String(index + 1).padStart(2, '0')}
+        </span>
+        <span className='relative truncate'>{label}</span>
+        {variant === 'menu' && isActive && (
+          <span className='font-ascii text-muted-foreground ml-auto text-xs'>
+            {'<'} {t('You are here')}
+          </span>
         )}
-      >
-        <div className='flex h-full flex-col justify-between px-8 pt-20 pb-10'>
-          <nav className='flex flex-col gap-1'>
-            {links.map((link, i) => {
-              const isActive = pathname === link.href
-              const linkClassName = cn(
-                'flex items-center gap-3 py-3 text-base font-medium tracking-tight transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
-                mobileOpen
-                  ? 'translate-y-0 opacity-100'
-                  : 'translate-y-4 opacity-0',
-                isActive ? 'text-foreground' : 'text-muted-foreground',
-                link.disabled && 'pointer-events-none opacity-50'
-              )
-              const transitionStyle = {
-                transitionDelay: mobileOpen ? `${100 + i * 50}ms` : '0ms',
-              }
-              if (link.external) {
-                return (
-                  <a
-                    key={`${link.title}:${link.href}`}
-                    href={link.href}
-                    target='_blank'
-                    rel='noopener noreferrer'
-                    aria-disabled={link.disabled}
-                    tabIndex={link.disabled ? -1 : undefined}
-                    onClick={(event) => handleNavLinkClick(event, link, true)}
-                    className={linkClassName}
-                    style={transitionStyle}
-                  >
-                    {t(link.title)}
-                  </a>
-                )
-              }
-              return (
-                <Link
-                  key={`${link.title}:${link.href}`}
-                  to={link.href}
-                  disabled={link.disabled}
-                  onClick={(event) => handleNavLinkClick(event, link, true)}
-                  className={linkClassName}
-                  style={transitionStyle}
-                >
-                  {t(link.title)}
-                </Link>
-              )
-            })}
-          </nav>
+      </>
+    )
 
-          <div
-            className={cn(
-              'flex flex-col gap-3 transition-all duration-500',
-              mobileOpen
-                ? 'translate-y-0 opacity-100'
-                : 'translate-y-4 opacity-0'
-            )}
-            style={{ transitionDelay: mobileOpen ? '250ms' : '0ms' }}
-          >
-            {showAuthButtons && (
-              <Link
-                to={isAuthenticated ? '/dashboard' : '/sign-in'}
-                onClick={() => setMobileOpen(false)}
-                className='bg-foreground text-background inline-flex h-10 items-center justify-center rounded-lg text-sm font-medium transition-opacity hover:opacity-90 active:opacity-80'
+    if (link.external) {
+      return (
+        <a
+          href={link.href}
+          title={label}
+          target='_blank'
+          rel='noopener noreferrer'
+          aria-disabled={link.disabled}
+          tabIndex={link.disabled ? -1 : undefined}
+          onClick={(event) => handleNavLinkClick(event, link)}
+          className={className}
+        >
+          {content}
+        </a>
+      )
+    }
+    return (
+      <Link
+        to={link.href}
+        title={label}
+        disabled={link.disabled}
+        aria-current={isActive ? 'page' : undefined}
+        onClick={(event) => handleNavLinkClick(event, link)}
+        className={className}
+      >
+        {content}
+      </Link>
+    )
+  }
+
+  return (
+    <>
+      <header className='pointer-events-none fixed inset-x-0 top-0 z-50 px-3 pt-2 sm:px-6'>
+        <LayoutGroup>
+          <div className='mx-auto flex w-full max-w-7xl justify-center'>
+            <motion.nav
+              layout
+              aria-label={t('Primary')}
+              initial={{ opacity: 0, y: reduce ? 0 : -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                layout: layoutTransition,
+                duration: 0.6,
+                ease: EASE,
+              }}
+              style={{ borderRadius: 9999 }}
+              className={cn(
+                'pointer-events-auto relative flex items-center',
+                condensed
+                  ? 'bg-background/80 ring-border h-14 w-full gap-2 pr-2 pl-4 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.25)] ring-1 backdrop-blur-xl lg:w-auto lg:gap-4'
+                  : 'h-16 w-full justify-between gap-4 px-1'
+              )}
+            >
+              <motion.div
+                layout='position'
+                transition={layoutTransition}
+                className={cn(
+                  // `@container` uses inline-size containment, so the brand
+                  // needs a definite width instead of shrinking to content.
+                  '@container/system-brand flex min-w-0 flex-1 items-center gap-1 lg:min-w-36',
+                  condensed && 'lg:w-48 lg:flex-none'
+                )}
               >
-                {isAuthenticated ? t('Go to Dashboard') : t('Sign in')}
-              </Link>
-            )}
+                <Link
+                  to={homeUrl}
+                  className={cn(
+                    'group flex min-w-0 items-center gap-2.5 rounded-full',
+                    focusRing
+                  )}
+                >
+                  <span className='flex size-7 shrink-0 items-center justify-center transition-transform duration-300 group-hover:scale-105'>
+                    {logoContent}
+                  </span>
+                  <span
+                    className='max-w-44 truncate text-[15px] font-semibold tracking-tight'
+                    title={displaySiteName}
+                  >
+                    {loading ? (
+                      <Skeleton className='h-4 w-16' />
+                    ) : (
+                      displaySiteName
+                    )}
+                  </span>
+                </Link>
+                <SystemUpdateAction presentation='version' />
+              </motion.div>
+
+              <motion.ul
+                layout='position'
+                transition={layoutTransition}
+                className={cn(
+                  'hidden min-w-0 items-center gap-0.5 lg:flex',
+                  !condensed && 'absolute left-1/2 -translate-x-1/2'
+                )}
+              >
+                {links.map((link, index) => (
+                  <li key={`${link.title}:${link.href}`} className='min-w-0'>
+                    {renderLink(link, index, 'bar')}
+                  </li>
+                ))}
+              </motion.ul>
+
+              <motion.div
+                layout='position'
+                transition={layoutTransition}
+                className='flex shrink-0 items-center gap-1'
+              >
+                <div className='hidden items-center gap-0.5 lg:flex'>
+                  {showLanguageSwitcher && <LanguageSwitcher />}
+                  {showThemeSwitch && <ThemeSwitch />}
+                  {showNotifications && (
+                    <NotificationPopover
+                      open={notifications.popoverOpen}
+                      onOpenChange={notifications.setPopoverOpen}
+                      unreadCount={notifications.unreadCount}
+                      activeTab={notifications.activeTab}
+                      onTabChange={notifications.setActiveTab}
+                      notice={notifications.notice}
+                      announcements={notifications.announcements}
+                      loading={notifications.loading}
+                    />
+                  )}
+                  {showAuthButtons && (
+                    <span className='ml-1.5'>{authContent}</span>
+                  )}
+                </div>
+
+                <div className='flex items-center gap-1 lg:hidden'>
+                  {showThemeSwitch && <ThemeSwitch />}
+                  {showAuthButtons && !loading && isAuthenticated && (
+                    <ProfileDropdown />
+                  )}
+                  <button
+                    type='button'
+                    onClick={() => setMobileOpen((value) => !value)}
+                    aria-expanded={mobileOpen}
+                    aria-controls='public-header-menu'
+                    aria-label={t('Toggle navigation menu')}
+                    className={cn(
+                      'hover:bg-muted flex size-11 items-center justify-center rounded-full transition-colors duration-200',
+                      focusRing
+                    )}
+                  >
+                    {mobileOpen ? (
+                      <X className='size-5' strokeWidth={1.75} />
+                    ) : (
+                      <Menu className='size-5' strokeWidth={1.75} />
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.nav>
           </div>
-        </div>
-      </div>
+        </LayoutGroup>
+
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              id='public-header-menu'
+              initial={{ opacity: 0, y: reduce ? 0 : -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{
+                opacity: 0,
+                y: reduce ? 0 : -6,
+                transition: { duration: 0.15 },
+              }}
+              transition={{ duration: 0.3, ease: EASE }}
+              className='bg-background ring-border pointer-events-auto mx-auto mt-2 w-full max-w-7xl rounded-[28px] p-2 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.3)] ring-1 lg:hidden'
+            >
+              <p className='font-ascii text-muted-foreground/70 px-4 pt-2 pb-1 text-[11px]'>
+                {'// '}
+                {displaySiteName}
+              </p>
+              <ul>
+                {links.map((link, index) => (
+                  <li key={`${link.title}:${link.href}`}>
+                    {renderLink(link, index, 'menu')}
+                  </li>
+                ))}
+              </ul>
+              <div className='ascii-rule mx-4 my-2' aria-hidden />
+              <div className='flex items-center justify-between gap-2 px-2 pb-1'>
+                <div className='flex items-center gap-0.5'>
+                  {showLanguageSwitcher && <LanguageSwitcher />}
+                  {showNotifications && (
+                    <NotificationPopover
+                      open={notifications.popoverOpen}
+                      onOpenChange={notifications.setPopoverOpen}
+                      unreadCount={notifications.unreadCount}
+                      activeTab={notifications.activeTab}
+                      onTabChange={notifications.setActiveTab}
+                      notice={notifications.notice}
+                      announcements={notifications.announcements}
+                      loading={notifications.loading}
+                    />
+                  )}
+                </div>
+                {showAuthButtons && (
+                  <Link
+                    to={isAuthenticated ? '/dashboard' : '/sign-in'}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(primaryAction, 'h-11 px-5')}
+                  >
+                    {isAuthenticated ? t('Go to Dashboard') : t('Sign in')}
+                    <ArrowRight
+                      className='size-4'
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </header>
 
       <Dialog
         open={!!authPromptTarget}
