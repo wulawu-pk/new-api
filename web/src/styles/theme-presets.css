@@ -642,20 +642,19 @@ For commercial licensing, please contact support@quantumnous.com
 :where(body:not([data-theme-preset])),
 .dark [data-theme-preset='peroai'],
 .dark :where(body:not([data-theme-preset])) {
-  /* Same palette as the beta landing page (deploy/site/beta). 11-22, after
-   * the dark pages of refactor/ui-v4: a cool slate charcoal instead of near
-   * black, and panes as solid surfaces one step lighter than the page with
-   * a white hairline. No pink corner light, no see-through gradient, no
-   * shadow: the earlier translucent cards let the backdrop grid through
-   * and read muddy and dated. Pink stays for focus and selection only. */
+  /* Same palette as the beta landing page (deploy/site/beta), after the
+   * cards of the refactor/ui-v4 landing page (11-22): a charcoal page, panes
+   * barely lighter than it, lifted by a white hairline and a long soft
+   * shadow rather than by a grey fill, and neutral, bright text. The
+   * earlier #1A1C20 cards with cool grey text read washed out. */
   --t-bg: #121417;
-  --t-bg2: #1a1c20;
-  --t-bg3: #23262b;
-  --t-line: rgb(255 255 255 / 0.06);
-  --t-faint: #3b3f47;
-  --t-dim: #9aa0a9;
-  --t-fg2: #c9ccd2;
-  --t-fg: #eeede9;
+  --t-bg2: #15171a;
+  --t-bg3: #1e2024;
+  --t-line: rgb(255 255 255 / 0.07);
+  --t-faint: #3a3b3f;
+  --t-dim: #b2b3b6;
+  --t-fg2: #dadad7;
+  --t-fg: #f1f0ec;
   /* The one accent, an RGB triplet set on :root (see "Accent" below) so
    * stylesheets and the canvas can mix their own alpha into it. */
   --t-accent: rgb(var(--t-accent-rgb));
@@ -665,12 +664,12 @@ For commercial licensing, please contact support@quantumnous.com
   --t-bad: #ff6b6b;
   --t-hi: rgb(255 255 255 / 0.16); /* ring of the pane being worked on */
   --t-hair: rgb(255 255 255 / 0.09);
-  --t-placeholder: #676d77;
+  --t-placeholder: #6c6e73;
   /* An image layer (not a colour) so callers can stack it over another
    * background, e.g. `background: var(--t-card), var(--t-bg2)`. */
   --t-card: linear-gradient(var(--t-bg2), var(--t-bg2));
-  --t-lift: 0 0 0 1px var(--t-hair);
-  --t-lift-on: 0 0 0 1px var(--t-hi);
+  --t-lift: 0 0 0 1px var(--t-hair), 0 40px 80px -40px rgb(0 0 0 / 0.6);
+  --t-lift-on: 0 0 0 1px var(--t-hi), 0 40px 80px -40px rgb(0 0 0 / 0.6);
 
   --background: var(--t-bg);
   --foreground: var(--t-fg);

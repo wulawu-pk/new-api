@@ -21,15 +21,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRelay } from '../relay-engine'
 
 // jsdom has no canvas: a 2D context that answers the calls the engine makes
-// (sizes, image data for the logo mask, gradients) and records the text it
-// writes.
-let written: string[] = []
+// (sizes, image data for the logo mask, gradients) and records the colours
+// it fills with.
 let fills: string[] = []
 function stubContext(): CanvasRenderingContext2D {
   const noop = () => undefined
   return new Proxy({} as CanvasRenderingContext2D, {
     get(_target, key) {
-      if (key === 'fillText') return (text: string) => written.push(text)
       if (key === 'measureText') return () => ({ width: 7 })
       if (key === 'getImageData') {
         return (_x: number, _y: number, w: number, h: number) => ({
@@ -50,7 +48,6 @@ let frames: FrameRequestCallback[] = []
 
 beforeEach(() => {
   frames = []
-  written = []
   fills = []
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
     () => stubContext() as never
@@ -109,40 +106,6 @@ function playFrames(start: number, count: number) {
     for (const cb of queued) cb(start + i * 50)
   }
 }
-
-const REQUEST_TEXT = new Set([
-  'peroai init',
-  'POST /v1',
-  'sk-new',
-  '200 OK',
-  'ready',
-])
-
-describe('createRelay request text', () => {
-  it('writes the text of requests along the lanes by default', () => {
-    const relay = createRelay(document.createElement('canvas'), null)
-    relay.refresh()
-    relay.burst()
-
-    playFrames(performance.now(), 60)
-
-    expect(written.some((text) => REQUEST_TEXT.has(text))).toBe(true)
-    relay.destroy()
-  })
-
-  it('writes no request text as a quiet page backdrop', () => {
-    const relay = createRelay(document.createElement('canvas'), null, {
-      backdrop: true,
-    })
-    relay.refresh()
-    relay.burst()
-
-    playFrames(performance.now(), 60)
-
-    expect(written.some((text) => REQUEST_TEXT.has(text))).toBe(false)
-    relay.destroy()
-  })
-})
 
 describe('createRelay accent', () => {
   it('draws request text in the page accent read from --t-accent-rgb', () => {

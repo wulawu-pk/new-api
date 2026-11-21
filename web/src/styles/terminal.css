@@ -348,6 +348,16 @@ For commercial licensing, please contact support@quantumnous.com
     }
   }
 
+  /* Grid under the sonar backdrop (SonarBackdrop): 40px lines that fade
+   * out from the top middle, as on the refactor/ui-v4 landing page. */
+  .t-backdrop-grid {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 60% 50% at 50% 30%, #000, transparent);
+  }
+
   /* A faint light follows the pointer across a pane (the console shell
    * writes --mx / --my). */
   .t-pane::after {
