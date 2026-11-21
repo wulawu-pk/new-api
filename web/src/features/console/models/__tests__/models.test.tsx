@@ -116,6 +116,28 @@ describe('price rows', () => {
   })
 })
 
+const TWO_GROUPS = {
+  success: true,
+  data: [
+    model({}),
+    model({
+      model_name: 'gpt-6.2-sol',
+      enable_groups: ['gpt-pro', 'deepseek'],
+    }),
+    model({ model_name: 'deepseek-v4-pro', enable_groups: ['deepseek'] }),
+  ],
+  vendors: [],
+  group_ratio: { 'gpt-pro': 0.5, deepseek: 0.65 },
+  usable_group: { 'gpt-pro': 'GPT', deepseek: 'DS' },
+}
+
+function groupButton(name: RegExp) {
+  return within(screen.getByRole('group', { name: 'Model groups' })).getByRole(
+    'button',
+    { name }
+  )
+}
+
 describe('console model plaza', () => {
   it('names the failed endpoint when prices cannot load', async () => {
     vi.mocked(pricingApi.getPricing).mockResolvedValue({
@@ -127,36 +149,81 @@ describe('console model plaza', () => {
     expect(await screen.findByText('/api/pricing')).toBeInTheDocument()
   })
 
-  it('filters by group and by name', async () => {
-    vi.mocked(pricingApi.getPricing).mockResolvedValue({
-      success: true,
-      data: [
-        model({}),
-        model({ model_name: 'deepseek-v4-pro', enable_groups: ['deepseek'] }),
-      ],
-      vendors: [],
-      group_ratio: { 'gpt-pro': 0.5, deepseek: 0.65 },
-      usable_group: { 'gpt-pro': 'GPT', deepseek: 'DS' },
-    } as never)
+  it('shows only the first group until another group is picked from the list', async () => {
+    vi.mocked(pricingApi.getPricing).mockResolvedValue(TWO_GROUPS as never)
     const user = userEvent.setup()
     renderConsole(<ConsoleModels />)
 
     expect(
       await screen.findByRole('region', { name: 'GPT Enterprise' })
     ).toBeInTheDocument()
-    await user.click(
-      within(screen.getByRole('group', { name: 'Filter by group' })).getByRole(
-        'button',
-        { name: 'DeepSeek' }
-      )
+    expect(
+      screen.queryByRole('region', { name: 'DeepSeek' })
+    ).not.toBeInTheDocument()
+    expect(groupButton(/^GPT Enterprise/)).toHaveAttribute(
+      'aria-pressed',
+      'true'
     )
+
+    await user.click(groupButton(/^DeepSeek/))
+
+    expect(screen.getByRole('region', { name: 'DeepSeek' })).toBeInTheDocument()
     expect(
       screen.queryByRole('region', { name: 'GPT Enterprise' })
     ).not.toBeInTheDocument()
-    expect(screen.getByText('deepseek-v4-pro')).toBeInTheDocument()
+  })
 
-    await user.click(screen.getByRole('button', { name: 'All' }))
+  it('a group passed from the link opens first and a pick is reported back', async () => {
+    vi.mocked(pricingApi.getPricing).mockResolvedValue(TWO_GROUPS as never)
+    const onGroupChange = vi.fn()
+    const user = userEvent.setup()
+    renderConsole(
+      <ConsoleModels group='deepseek' onGroupChange={onGroupChange} />
+    )
+
+    expect(
+      await screen.findByRole('region', { name: 'DeepSeek' })
+    ).toBeInTheDocument()
+    await user.click(groupButton(/^GPT Enterprise/))
+    expect(onGroupChange).toHaveBeenCalledWith('gpt-pro')
+  })
+
+  it('arrow keys on the group list move to the next group and wrap around', async () => {
+    vi.mocked(pricingApi.getPricing).mockResolvedValue(TWO_GROUPS as never)
+    const user = userEvent.setup()
+    renderConsole(<ConsoleModels />)
+
+    await screen.findByRole('region', { name: 'GPT Enterprise' })
+    groupButton(/^GPT Enterprise/).focus()
+    await user.keyboard('{ArrowDown}')
+    expect(groupButton(/^DeepSeek/)).toHaveFocus()
+    expect(screen.getByRole('region', { name: 'DeepSeek' })).toBeInTheDocument()
+
+    await user.keyboard('{ArrowDown}')
+    expect(groupButton(/^GPT Enterprise/)).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+  })
+
+  it('a search shows every group with a match and says when nothing matches', async () => {
+    vi.mocked(pricingApi.getPricing).mockResolvedValue(TWO_GROUPS as never)
+    const user = userEvent.setup()
+    renderConsole(<ConsoleModels />)
+
+    await screen.findByRole('region', { name: 'GPT Enterprise' })
+    await user.type(screen.getByLabelText('Search model'), 'gpt-6.2')
+
+    expect(
+      screen.getByRole('region', { name: 'GPT Enterprise' })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'DeepSeek' })).toBeInTheDocument()
+    expect(screen.getAllByText('gpt-6.2-sol')).toHaveLength(2)
+    expect(screen.queryByText('gpt-6-astra')).not.toBeInTheDocument()
+
+    await user.clear(screen.getByLabelText('Search model'))
     await user.type(screen.getByLabelText('Search model'), 'nothing-like-this')
     expect(screen.getByText('No model with that name.')).toBeInTheDocument()
+    expect(screen.queryAllByRole('region')).toHaveLength(0)
   })
 })

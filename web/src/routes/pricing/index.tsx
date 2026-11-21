@@ -58,11 +58,22 @@ export const Route = createFileRoute('/pricing/')({
 })
 
 // peroai v3: the model plaza renders in the console shell (window 5). The
-// search params are still accepted so old links keep working.
+// search params are still accepted so old links keep working; `group`
+// opens that group and follows the group the user picks.
 function PricingPage() {
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
   return (
     <ConsoleShell>
-      <ConsoleModels />
+      <ConsoleModels
+        group={search.group}
+        onGroupChange={(group) =>
+          void navigate({
+            search: (prev) => ({ ...prev, group }),
+            replace: true,
+          })
+        }
+      />
     </ConsoleShell>
   )
 }

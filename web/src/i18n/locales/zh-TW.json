@@ -7626,6 +7626,10 @@
     "Sign-in, notifications and language. Sign-in sessions, access tokens and linked accounts are under Security & Access.": "登入方式、通知和語言。登入裝置、存取權杖和第三方帳號在「安全與存取」。",
     "Turn off": "關閉",
     "Two-step verification": "兩步驟驗證",
-    "Used to sign in and to get password reset links.": "用來登入和接收重設密碼連結。"
+    "Used to sign in and to get password reset links.": "用來登入和接收重設密碼連結。",
+    "Model groups": "模型分組",
+    "Search all groups": "在所有分組裡搜尋模型",
+    "{{count}} matches": "符合 {{count}} 個",
+    "“{{query}}” in {{count}} groups": "「{{query}}」出現在 {{count}} 個分組"
   }
 }

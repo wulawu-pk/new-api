@@ -7626,6 +7626,10 @@
     "Sign-in, notifications and language. Sign-in sessions, access tokens and linked accounts are under Security & Access.": "登录方式、通知和语言。登录设备、访问令牌和第三方账号在「安全与访问」。",
     "Turn off": "关闭",
     "Two-step verification": "两步验证",
-    "Used to sign in and to get password reset links.": "用来登录和接收重置密码链接。"
+    "Used to sign in and to get password reset links.": "用来登录和接收重置密码链接。",
+    "Model groups": "模型分组",
+    "Search all groups": "在所有分组里搜模型",
+    "{{count}} matches": "匹配 {{count}} 个",
+    "“{{query}}” in {{count}} groups": "「{{query}}」出现在 {{count}} 个分组"
   }
 }

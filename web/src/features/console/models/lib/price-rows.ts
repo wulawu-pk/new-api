@@ -226,3 +226,20 @@ export function formatUSD(value: number | null | undefined): string {
   }
   return `$${value.toFixed(4)}`
 }
+
+/** `×0.5`, `$0.25 / credit` or "per image / second" for a group header. */
+export function groupRatioLabel(
+  group: PriceGroup,
+  t: (key: string) => string
+): string {
+  if (group.credit) {
+    const credit = group.rows.find((row) => row.kind === 'credit')
+    return credit && credit.kind === 'credit'
+      ? `${formatUSD(credit.price)} / credit`
+      : t('By credit')
+  }
+  if (group.rows.every((row) => row.kind === 'image' || row.kind === 'video')) {
+    return t('Per image / second')
+  }
+  return `×${Number(group.ratio.toFixed(4))}`
+}

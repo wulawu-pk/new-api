@@ -7626,6 +7626,10 @@
     "Sign-in, notifications and language. Sign-in sessions, access tokens and linked accounts are under Security & Access.": "Sign-in, notifications and language. Sign-in sessions, access tokens and linked accounts are under Security & Access.",
     "Turn off": "Turn off",
     "Two-step verification": "Two-step verification",
-    "Used to sign in and to get password reset links.": "Used to sign in and to get password reset links."
+    "Used to sign in and to get password reset links.": "Used to sign in and to get password reset links.",
+    "Model groups": "Model groups",
+    "Search all groups": "Search all groups",
+    "{{count}} matches": "{{count}} matches",
+    "“{{query}}” in {{count}} groups": "“{{query}}” in {{count}} groups"
   }
 }
