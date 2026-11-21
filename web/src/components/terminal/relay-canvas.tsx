@@ -24,6 +24,8 @@ import { createRelay, type RelayHandle } from './relay-engine'
 
 type RelayCanvasProps = {
   labels?: boolean
+  /** Hold the current frame, e.g. while a transition over it plays. */
+  paused?: boolean
   className?: string
 }
 
@@ -72,6 +74,10 @@ export const RelayCanvas = forwardRef<RelayCanvasRef, RelayCanvasProps>(
         handle.current = null
       }
     }, [props.labels])
+
+    useEffect(() => {
+      handle.current?.setPaused(Boolean(props.paused))
+    }, [props.paused])
 
     return (
       <div

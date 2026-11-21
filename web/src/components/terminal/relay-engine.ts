@@ -74,6 +74,8 @@ export type RelayHandle = {
   /** Sends a quick train of requests through the selected lane. */
   burst: () => void
   select: (client: number, models: string[], model: number) => void
+  /** Holds the animation on its current frame (true) or lets it run again. */
+  setPaused: (paused: boolean) => void
   destroy: () => void
 }
 
@@ -98,6 +100,11 @@ const LOGO = ' .:-=+*#%@'
 const STEPS = 24
 /** Water steps per second; independent of the display's frame rate. */
 const STEP = 1 / 90
+/** At most ~60 drawn frames a second, also on 120/144 Hz screens. */
+const MIN_FRAME_MS = 1000 / 62
+/** Above this many CSS pixels (about 1200×750) the water is sampled more
+ * coarsely: a full-screen canvas otherwise costs most of a frame. */
+const LARGE_AREA = 900_000
 
 // Wave constants (speed, viscosity, damping, pull back to flat).
 const C2 = 0.02 + 0.55 * 0.4
@@ -269,6 +276,7 @@ export function createRelay(
   let running = false
   let visible = false
   let lastTime = 0
+  let paused = false
   let acc = 0
   let lastDrop = -1e9
   let seen = false
@@ -433,7 +441,7 @@ export function createRelay(
     }
     // Same size (only the selection changed): keep the water and its ripples.
     if (!surface || surface.width !== W || surface.height !== H) {
-      surface = createSurface(W, H, ch / 3)
+      surface = createSurface(W, H, W * H > LARGE_AREA ? ch / 2 : ch / 3)
     }
     return true
   }
@@ -674,13 +682,17 @@ export function createRelay(
 
   function loop(now: number) {
     if (!running) return
-    const dt = Math.min(0.1, (now - lastTime) / 1000 || 0)
-    lastTime = now
-    frame(now, dt)
+    if (now - lastTime >= MIN_FRAME_MS) {
+      const dt = Math.min(0.1, (now - lastTime) / 1000 || 0)
+      lastTime = now
+      frame(now, dt)
+    }
     requestAnimationFrame(loop)
   }
   function start() {
-    if (running || reduce || !ready || !visible || document.hidden) return
+    if (running || paused || reduce || !ready || !visible || document.hidden) {
+      return
+    }
     running = true
     lastTime = performance.now()
     requestAnimationFrame(loop)
@@ -783,6 +795,11 @@ export function createRelay(
       if (seen) drop(hub.x, hub.y, hub.R * 0.8, 0.28)
       seen = true
       frame(performance.now(), 0)
+    },
+    setPaused(next) {
+      paused = next
+      if (paused) stop()
+      else start()
     },
     destroy() {
       stop()

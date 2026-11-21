@@ -205,8 +205,22 @@ export function ConsoleShell(props: { children: ReactNode }) {
     const el = bodyRef.current
     if (!el) return
     crtOn.current = true
+    // The whole page switches on; panes rising in on top of that would be
+    // a second, competing motion. Skip their rise for panes already here
+    // and for any that mount during the switch-on.
+    const settlePanes = () => {
+      for (const animation of el.getAnimations?.({ subtree: true }) ?? []) {
+        if ((animation as CSSAnimation).animationName === 't-rise') {
+          animation.finish()
+        }
+      }
+    }
     el.classList.add('t-crt-on')
-    const timer = window.setTimeout(() => el.classList.remove('t-crt-on'), 600)
+    settlePanes()
+    const timer = window.setTimeout(() => {
+      el.classList.remove('t-crt-on')
+      settlePanes()
+    }, 600)
     return () => window.clearTimeout(timer)
   }, [])
 

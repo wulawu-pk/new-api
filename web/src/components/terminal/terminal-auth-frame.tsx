@@ -36,6 +36,11 @@ type TerminalAuthFrameProps = {
   /** Disable Esc → home while a request is running. */
   busy?: boolean
   relayRef?: React.Ref<RelayCanvasRef>
+  /**
+   * Hold the background animation, e.g. while the dialog switches off
+   * (CRT off), so the transition has the main thread to itself.
+   */
+  stillBackground?: boolean
 }
 
 function FrameKbd(props: { children: ReactNode }) {
@@ -74,6 +79,7 @@ export const TerminalAuthFrame = forwardRef<
     <div className='bg-t-bg text-t-fg relative h-svh min-h-[640px] overflow-hidden'>
       <RelayCanvas
         ref={props.relayRef}
+        paused={props.stillBackground}
         className='absolute inset-0 opacity-45'
       />
       <div className='text-t-dim absolute top-0 right-4 left-4 z-[3] flex h-[54px] items-center justify-between text-[13px]'>

@@ -272,6 +272,7 @@ export function SignUpTerminal(props: { search: AuthSearch }) {
       title={t('peroai sign up')}
       busy={motion.busy}
       boxClassName={motion.boxClassName}
+      stillBackground={motion.crtOff}
       relayRef={relay}
     >
       <AuthTabs mode='up' search={props.search} />

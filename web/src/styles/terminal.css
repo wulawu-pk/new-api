@@ -192,12 +192,30 @@ For commercial licensing, please contact support@quantumnous.com
   .t-shake {
     animation: t-shake 0.38s;
   }
+  /* CRT off / on animate only transform, opacity and filter, which the
+   * browser runs on the compositor: they stay smooth while the main thread
+   * is busy (the console mounting, data arriving). The pink glow of the
+   * collapsing line is its own layer that only fades, not a box-shadow
+   * keyframe, which would have pulled the animation onto the main thread. */
   .t-crt-off {
+    position: relative;
     transform-origin: 50% 50%;
+    will-change: transform, opacity, filter;
     animation: t-crt-off 0.56s cubic-bezier(0.6, 0, 0.4, 1) forwards;
+  }
+  .t-crt-off::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--t-radius-lg);
+    box-shadow: 0 0 28px 2px var(--t-pink);
+    opacity: 0;
+    pointer-events: none;
+    animation: t-crt-glow 0.56s cubic-bezier(0.6, 0, 0.4, 1) forwards;
   }
   .t-crt-on {
     transform-origin: 50% 40%;
+    will-change: transform, opacity, filter;
     animation: t-crt-on 0.52s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   /* Panes rise in one after another when they mount (page load, page
@@ -289,12 +307,22 @@ For commercial licensing, please contact support@quantumnous.com
   48% {
     transform: scale(1, 0.006);
     filter: brightness(2.6);
-    box-shadow: 0 0 28px 2px var(--t-pink);
     opacity: 1;
   }
   100% {
     transform: scale(0, 0.006);
     filter: brightness(3);
+    opacity: 0;
+  }
+}
+@keyframes t-crt-glow {
+  30% {
+    opacity: 0;
+  }
+  48% {
+    opacity: 1;
+  }
+  100% {
     opacity: 0;
   }
 }
@@ -321,6 +349,7 @@ For commercial licensing, please contact support@quantumnous.com
   .t-shake,
   .t-crt-off,
   .t-crt-on,
+  .t-crt-off::after,
   .t-pane,
   .t-bracket {
     animation: none !important;

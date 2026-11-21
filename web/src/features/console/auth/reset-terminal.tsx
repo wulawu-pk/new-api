@@ -107,6 +107,7 @@ export function ResetTerminal() {
       title={t('peroai reset password')}
       busy={motion.busy}
       boxClassName={motion.boxClassName}
+      stillBackground={motion.crtOff}
       relayRef={relay}
     >
       <p className='text-t-dim m-0 text-[13.5px] leading-[1.7]'>
