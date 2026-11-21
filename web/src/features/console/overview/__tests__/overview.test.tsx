@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen } from '@testing-library/react'
 import dayjs from 'dayjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -84,6 +84,7 @@ afterEach(() => {
   cleanup()
   vi.clearAllMocks()
   useAuthStore.getState().auth.reset('idle')
+  localStorage.clear()
 })
 
 describe('overview data', () => {
@@ -134,21 +135,82 @@ describe('overview data', () => {
 })
 
 describe('console overview page', () => {
-  it('shows the getting-started checklist to a user without requests', async () => {
+  it('shows the start guide with no step done to a new user without a key', async () => {
     selfUser(0, 0)
     renderConsole(<ConsoleOverview />)
 
-    expect(await screen.findByText('Start here')).toBeInTheDocument()
-    expect(screen.getByText('3 steps left')).toBeInTheDocument()
-    expect(screen.queryByText('Tips')).not.toBeInTheDocument()
+    expect(
+      await screen.findByText('Three steps to connect peroai')
+    ).toBeInTheDocument()
+    expect(screen.getByText('0 of 3 done')).toBeInTheDocument()
+    expect(
+      screen.getByText('Create a key to fill in the real command')
+    ).toBeInTheDocument()
+    expect(screen.getByText('Tips')).toBeInTheDocument()
   })
 
-  it('shows tips instead of the checklist once the user has made requests', async () => {
+  it('ticks off every step and fills the request with the masked key once the user is set up', async () => {
+    selfUser(12, 500000)
+    vi.mocked(keysApi.getApiKeys).mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            id: 7,
+            name: 'codex',
+            key: 'pMH8**********03Sb',
+            status: 1,
+            group: 'gpt-pro',
+          },
+        ],
+        total: 1,
+        page: 1,
+        page_size: 20,
+      },
+    } as never)
+    renderConsole(<ConsoleOverview />)
+
+    expect(await screen.findByText('3 of 3 done')).toBeInTheDocument()
+    expect(screen.getByText('codex')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Authorization: Bearer sk-…03Sb/)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Copy command' })
+    ).toBeInTheDocument()
+  })
+
+  it('folds the guide away on request and brings it back from the header', async () => {
+    selfUser(12, 500000)
+    renderConsole(<ConsoleOverview />)
+    await screen.findByText('Three steps to connect peroai')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide guide' }))
+
+    expect(
+      screen.queryByText('Three steps to connect peroai')
+    ).not.toBeInTheDocument()
+    expect(localStorage.getItem('peroai:start-guide-hidden')).toBe('1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Setup guide' }))
+
+    expect(
+      screen.getByText('Three steps to connect peroai')
+    ).toBeInTheDocument()
+    expect(localStorage.getItem('peroai:start-guide-hidden')).toBeNull()
+  })
+
+  it('keeps the guide folded on the next visit after it was hidden', async () => {
+    localStorage.setItem('peroai:start-guide-hidden', '1')
     selfUser(12, 500000)
     renderConsole(<ConsoleOverview />)
 
-    expect(await screen.findByText('Tips')).toBeInTheDocument()
-    expect(screen.queryByText('Start here')).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('button', { name: 'Setup guide' })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Three steps to connect peroai')
+    ).not.toBeInTheDocument()
   })
 
   it('tells a new user how to make the first request when there are no logs', async () => {

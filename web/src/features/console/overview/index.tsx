@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
 import dayjs from 'dayjs'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AsciiBar } from '@/components/terminal/ascii-bar'
@@ -40,6 +40,7 @@ import { errorReason } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
 import { RollingNumber } from '@/components/terminal/rolling-number'
 import { Button } from '@/components/ui/button'
+import { useStatus } from '@/hooks/use-status'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatLogQuota, formatNumber, formatQuota } from '@/lib/format'
 
@@ -48,9 +49,10 @@ import { groupName } from '../lib/groups'
 import { CacheHitCell, UsageText } from '../request-logs/components/cells'
 import { toConsoleLogRow } from '../request-logs/lib/log-row'
 import { ConsolePageHeader } from '../shell/console-shell'
+import { StartGuide } from './components/start-guide'
 import { WeekChart } from './components/week-chart'
 import {
-  useHasKeys,
+  useFirstKey,
   useMonthRequestTotals,
   useMonthUsage,
   useRecentRequests,
@@ -62,6 +64,12 @@ import {
   formatPercentFloor,
   sumUsage,
 } from './lib/overview-data'
+import {
+  apiBase,
+  readGuideHidden,
+  sampleModel,
+  writeGuideHidden,
+} from './lib/start-guide'
 
 const RECENT_ROWS = 5
 const CACHE_SAMPLE = 100
@@ -104,8 +112,13 @@ export function ConsoleOverview() {
   const usage = useMonthUsage()
   const totals = useMonthRequestTotals()
   const recent = useRecentRequests(CACHE_SAMPLE)
-  const isNewUser = self.data != null && self.data.request_count === 0
-  const hasKeys = useHasKeys(isNewUser)
+  const firstKey = useFirstKey()
+  const { status } = useStatus()
+  const [guideHidden, setGuideHidden] = useState(readGuideHidden)
+  const showGuide = (hidden: boolean) => {
+    writeGuideHidden(hidden)
+    setGuideHidden(hidden)
+  }
 
   const now = useMemo(() => dayjs(), [])
   const monthUsage = useMemo(() => {
@@ -181,7 +194,35 @@ export function ConsoleOverview() {
       <ConsolePageHeader
         title={t('Overview')}
         description={t('Usage this month so far.')}
+        actions={
+          guideHidden ? (
+            <Button
+              size='sm'
+              variant='outline'
+              className='rounded-full'
+              onClick={() => showGuide(false)}
+            >
+              {t('Setup guide')}
+            </Button>
+          ) : undefined
+        }
       />
+
+      {!guideHidden && self.data && !firstKey.isPending && (
+        <StartGuide
+          keyDone={firstKey.data != null}
+          topUpDone={balance > 0}
+          requestDone={self.data.request_count > 0}
+          apiKey={firstKey.data ?? null}
+          base={apiBase(status?.server_address)}
+          model={sampleModel(
+            recent.data?.[0]?.model_name,
+            firstKey.data?.group ?? undefined
+          )}
+          balance={formatQuota(balance)}
+          onHide={() => showGuide(true)}
+        />
+      )}
 
       <Pane title={<b>{t('Month to date')}</b>}>
         <div className='grid grid-cols-[1.4fr_1fr_1fr_1fr] max-md:grid-cols-2'>
@@ -267,35 +308,28 @@ export function ConsoleOverview() {
             ))}
         </Pane>
 
-        {isNewUser ? (
-          <OnboardingPane
-            topUpDone={balance > 0}
-            keyDone={hasKeys.data === true}
-          />
-        ) : (
-          <Pane title={<b>{t('Tips')}</b>}>
-            <div className='text-t-fg2 flex flex-col gap-3 px-[18px] pt-[22px] pb-[18px] text-sm leading-[1.7]'>
-              {[
-                t('Claude Code: set the Base URL to {{url}}, without /v1.', {
-                  url: 'https://api.peroai.cc',
-                }),
-                t(
-                  'A key belongs to one group; create separate keys for GPT and Claude.'
-                ),
-                t(
-                  'Charges are recorded per request in Logs; billing follows the logs.'
-                ),
-              ].map((tip) => (
-                <div key={tip} className='grid grid-cols-[18px_1fr] gap-2'>
-                  <span className='text-t-pink font-mono' aria-hidden='true'>
-                    ▸
-                  </span>
-                  <span>{tip}</span>
-                </div>
-              ))}
-            </div>
-          </Pane>
-        )}
+        <Pane title={<b>{t('Tips')}</b>}>
+          <div className='text-t-fg2 flex flex-col gap-3 px-[18px] pt-[22px] pb-[18px] text-sm leading-[1.7]'>
+            {[
+              t('Claude Code: set the Base URL to {{url}}, without /v1.', {
+                url: 'https://api.peroai.cc',
+              }),
+              t(
+                'A key belongs to one group; create separate keys for GPT and Claude.'
+              ),
+              t(
+                'Charges are recorded per request in Logs; billing follows the logs.'
+              ),
+            ].map((tip) => (
+              <div key={tip} className='grid grid-cols-[18px_1fr] gap-2'>
+                <span className='text-t-pink font-mono' aria-hidden='true'>
+                  ▸
+                </span>
+                <span>{tip}</span>
+              </div>
+            ))}
+          </div>
+        </Pane>
       </div>
 
       <Pane
@@ -370,81 +404,5 @@ export function ConsoleOverview() {
         </div>
       </Pane>
     </>
-  )
-}
-
-function OnboardingPane(props: { topUpDone: boolean; keyDone: boolean }) {
-  const { t } = useTranslation()
-  const steps = [
-    { done: true, label: t('Sign up for an account'), action: null },
-    {
-      done: props.topUpDone,
-      label: t('Top up: ¥1 buys $1 of credit'),
-      action: (
-        <Button size='sm' variant='outline' render={<Link to='/wallet' />}>
-          {t('Open wallet')}
-        </Button>
-      ),
-    },
-    {
-      done: props.keyDone,
-      label: t('Create a key and pick its group'),
-      action: (
-        <Button
-          size='sm'
-          variant='outline'
-          render={<Link to='/keys' search={{ create: true }} />}
-        >
-          {t('Create Key')}
-        </Button>
-      ),
-    },
-    {
-      done: false,
-      label: t('Send the first request with the configuration'),
-      action: (
-        <Button size='sm' variant='outline' render={<a href='/' />}>
-          {t('See configuration')}
-        </Button>
-      ),
-    },
-  ]
-  const left = steps.filter((step) => !step.done).length
-  return (
-    <Pane
-      title={
-        <>
-          <b>{t('Start here')}</b>
-          {'　'}
-          {left > 0
-            ? t('{{count}} steps left', { count: left })
-            : t('All done')}
-        </>
-      }
-    >
-      <ol className='text-t-fg2 m-0 flex list-none flex-col gap-1.5 px-[18px] pt-[22px] pb-4 text-sm'>
-        {steps.map((step) => (
-          <li
-            key={step.label}
-            data-done={step.done ? 'true' : undefined}
-            className='grid min-h-[34px] grid-cols-[44px_1fr_auto] items-center gap-2'
-          >
-            <span
-              className={`font-mono ${step.done ? 'text-t-ok' : 'text-t-dim'}`}
-              aria-hidden='true'
-            >
-              {step.done ? '[x]' : '[ ]'}
-            </span>
-            <span className={step.done ? 'text-t-dim line-through' : ''}>
-              {step.label}
-              <span className='sr-only'>
-                {step.done ? t('(done)') : t('(to do)')}
-              </span>
-            </span>
-            <span>{step.done ? null : step.action}</span>
-          </li>
-        ))}
-      </ol>
-    </Pane>
   )
 }

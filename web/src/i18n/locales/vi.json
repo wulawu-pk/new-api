@@ -7633,6 +7633,18 @@
     "“{{query}}” in {{count}} groups": "“{{query}}” in {{count}} groups",
     "My requests": "My requests",
     "Whose requests": "Whose requests",
-    "{{count}} in total, {{size}} per page": "{{count}} in total, {{size}} per page"
+    "{{count}} in total, {{size}} per page": "{{count}} in total, {{size}} per page",
+    "Three steps to connect peroai": "Three steps to connect peroai",
+    "Create a key, top up and send the first request; each step ticks itself off.": "Create a key, top up and send the first request; each step ticks itself off.",
+    "Hide guide": "Hide guide",
+    "{{done}} of {{total}} done": "{{done}} of {{total}} done",
+    "Claude and GPT need separate keys; the group sets the route and price.": "Claude and GPT need separate keys; the group sets the route and price.",
+    "Requests fail once the balance runs out.": "Requests fail once the balance runs out.",
+    "Run the command on the right; it shows up in the logs within seconds.": "Run the command on the right; it shows up in the logs within seconds.",
+    "First request": "First request",
+    "Create a key to fill in the real command": "Create a key to fill in the real command",
+    "Copy command": "Copy command",
+    "Key group": "Key group",
+    "API address": "API address"
   }
 }

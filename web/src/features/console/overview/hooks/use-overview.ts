@@ -21,6 +21,7 @@ import dayjs from 'dayjs'
 
 import { getUserQuotaDates } from '@/features/dashboard/api'
 import { getApiKeys } from '@/features/keys/api'
+import type { ApiKey } from '@/features/keys/types'
 import { getUserLogs } from '@/features/usage-logs/api'
 import { LOG_TYPE_ENUM } from '@/features/usage-logs/constants'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
@@ -94,15 +95,20 @@ export function useRecentRequests(pageSize: number) {
   })
 }
 
-/** Whether the user has created any key (for the onboarding checklist). */
-export function useHasKeys(enabled: boolean) {
+/**
+ * The key the start guide builds its sample request on: the newest enabled
+ * one, else the newest of any status, else null (no key yet).
+ */
+export function useFirstKey() {
   return useQuery({
-    queryKey: ['console', 'overview', 'has-keys'],
-    queryFn: async () => {
-      const response = requireServerSuccess(await getApiKeys({ p: 1, size: 1 }))
-      return (response.data?.total ?? 0) > 0
+    queryKey: ['console', 'overview', 'first-key'],
+    queryFn: async (): Promise<ApiKey | null> => {
+      const response = requireServerSuccess(
+        await getApiKeys({ p: 1, size: 20 })
+      )
+      const items = response.data?.items ?? []
+      return items.find((key) => key.status === 1) ?? items[0] ?? null
     },
-    enabled,
     meta: { errorToast: false },
   })
 }
