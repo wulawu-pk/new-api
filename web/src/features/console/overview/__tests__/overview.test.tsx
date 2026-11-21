@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as dashboardApi from '@/features/dashboard/api'
 import * as keysApi from '@/features/keys/api'
+import * as pricingApi from '@/features/pricing/api'
 import * as profileApi from '@/features/profile/api'
 import * as logsApi from '@/features/usage-logs/api'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
@@ -38,6 +39,7 @@ import {
 
 vi.mock('@/features/dashboard/api', () => ({ getUserQuotaDates: vi.fn() }))
 vi.mock('@/features/keys/api', () => ({ getApiKeys: vi.fn() }))
+vi.mock('@/features/pricing/api', () => ({ getPricing: vi.fn() }))
 vi.mock('@/features/profile/api', () => ({ getUserProfile: vi.fn() }))
 vi.mock('@/features/usage-logs/api', () => ({ getUserLogs: vi.fn() }))
 
@@ -66,6 +68,13 @@ function selfUser(requestCount: number, quota: number) {
 
 beforeEach(() => {
   signIn()
+  vi.mocked(pricingApi.getPricing).mockResolvedValue({
+    success: true,
+    data: [],
+    vendors: [],
+    group_ratio: {},
+    usable_group: {},
+  } as never)
   vi.mocked(dashboardApi.getUserQuotaDates).mockResolvedValue({
     success: true,
     data: [],
