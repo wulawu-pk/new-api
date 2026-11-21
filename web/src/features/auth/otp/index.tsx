@@ -20,6 +20,8 @@ import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { AuthLayout } from '../auth-layout'
+import { AuthHeading } from '../components/auth-heading'
+import { AUTH_LINK_CLASS } from '../constants'
 import { OtpForm } from './components/otp-form'
 
 export function Otp() {
@@ -27,24 +29,21 @@ export function Otp() {
   return (
     <AuthLayout>
       <div className='w-full space-y-8'>
-        <div className='space-y-3'>
-          <h2 className='text-center text-2xl font-semibold tracking-tight sm:text-left'>
-            {t('Security verification')}
-          </h2>
-          <p className='text-muted-foreground text-left text-sm sm:text-base'>
-            {t('Verify your identity to finish signing in.')}
-          </p>
-          <p className='text-muted-foreground text-left text-sm sm:text-base'>
-            {t('Session expired?')}{' '}
-            <Link
-              to='/sign-in'
-              className='hover:text-primary font-medium underline underline-offset-4'
-            >
-              {t('Re-login')}
-            </Link>
-            .
-          </p>
-        </div>
+        <AuthHeading
+          command='auth verify --2fa'
+          title={t('Security verification')}
+          description={
+            <>
+              {t('Verify your identity to finish signing in.')}
+              <span className='mt-2 block'>
+                {t('Session expired?')}{' '}
+                <Link to='/sign-in' className={AUTH_LINK_CLASS}>
+                  {t('Re-login')}
+                </Link>
+              </span>
+            </>
+          }
+        />
 
         <OtpForm />
       </div>
