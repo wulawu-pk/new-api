@@ -53,7 +53,7 @@ export function AsciiBar(props: AsciiBarProps) {
     >
       <i
         className={cn(
-          'block h-full',
+          't-grow-x block h-full',
           props.tone === 'pink' ? 'bg-t-pink' : 'bg-t-fg2'
         )}
         style={{ width: `${pct.toFixed(1)}%` }}

@@ -234,6 +234,67 @@ For commercial licensing, please contact support@quantumnous.com
     animation-delay: 180ms;
   }
 
+  /* ── Motion inside the panes (same layer as the beta landing page) ──
+   * Panes rising in as whole blocks is not enough: their rows, bars and
+   * numbers come in one by one too, and a few small loops keep the screen
+   * alive while nobody touches it. */
+
+  /* Bars grow from zero: proportion bars sideways, columns upwards in turn
+   * (--i is the column index). */
+  .t-grow-x {
+    transform-origin: left;
+    animation: t-grow-x 800ms var(--t-ease) 120ms backwards;
+  }
+  .t-grow-y {
+    transform-origin: bottom;
+    animation: t-grow-y 700ms var(--t-spring) backwards;
+    animation-delay: calc(120ms + var(--i, 0) * 45ms);
+  }
+
+  /* The pane being worked on: its dot breathes. */
+  .t-pane[data-active='true'] > .t-pane-title::before {
+    animation: t-breathe 2.6s ease-in-out infinite;
+  }
+
+  /* Status-bar light: a ring spreads out from it now and then. */
+  .t-live {
+    position: relative;
+    display: inline-block;
+  }
+  .t-live::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--t-ok);
+    opacity: 0;
+    animation: t-ping 2.8s var(--t-ease) infinite;
+  }
+
+  /* A faint light follows the pointer across a pane (the console shell
+   * writes --mx / --my). */
+  .t-pane::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(
+      420px circle at var(--mx, 50%) var(--my, 50%),
+      rgb(255 255 255 / 0.035),
+      transparent 45%
+    );
+    transition: opacity 500ms var(--t-ease);
+  }
+  .t-pane:hover::after {
+    opacity: 1;
+  }
+
   /* Native selects styled as terminal inputs: CSS chevron, no OS arrow. */
   .t-select {
     appearance: none;
@@ -281,6 +342,34 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 1;
     transform: none;
     filter: none;
+  }
+}
+@keyframes t-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes t-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes t-breathe {
+  50% {
+    box-shadow:
+      0 0 0 5px rgb(255 122 182 / 0.06),
+      0 0 14px rgb(255 122 182 / 0.85);
+  }
+}
+@keyframes t-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  70%,
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
   }
 }
 @keyframes t-shake {
@@ -351,8 +440,15 @@ For commercial licensing, please contact support@quantumnous.com
   .t-crt-on,
   .t-crt-off::after,
   .t-pane,
-  .t-bracket {
+  .t-bracket,
+  .t-grow-x,
+  .t-grow-y,
+  .t-pane > .t-pane-title::before {
     animation: none !important;
+  }
+  .t-live::after,
+  .t-pane::after {
+    display: none;
   }
   .t-tab-mark {
     transition: none;

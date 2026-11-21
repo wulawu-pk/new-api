@@ -52,7 +52,7 @@ export function AsciiSpark(props: AsciiSparkProps) {
       aria-label={props.label}
       className={cn('flex h-5 items-end gap-[3px]', props.className)}
     >
-      {props.cells.map((cell) => {
+      {props.cells.map((cell, index) => {
         if (cell.value == null) {
           return (
             <i
@@ -73,11 +73,16 @@ export function AsciiSpark(props: AsciiSparkProps) {
             title={cell.title}
             data-warn={warn ? 'true' : undefined}
             className={cn(
-              'block min-w-[3px] flex-1',
+              't-grow-y block min-w-[3px] flex-1',
               warn ? 'bg-t-warn' : 'bg-t-fg2',
               props.cellClassName
             )}
-            style={{ height: `${sparkHeight(cell.value).toFixed(0)}%` }}
+            style={
+              {
+                height: `${sparkHeight(cell.value).toFixed(0)}%`,
+                '--i': index,
+              } as React.CSSProperties
+            }
           />
         )
       })}

@@ -51,11 +51,16 @@ export function WeekChart(props: { days: DaySpend[] }) {
               <span
                 data-testid='week-column'
                 className={cn(
-                  'block w-full max-w-7',
+                  't-grow-y block w-full max-w-7',
                   today ? 'bg-t-pink' : 'bg-t-fg2',
                   day.quota <= 0 && 'bg-t-faint h-px'
                 )}
-                style={day.quota > 0 ? { height: `${height}%` } : undefined}
+                style={
+                  {
+                    height: day.quota > 0 ? `${height}%` : undefined,
+                    '--i': index,
+                  } as React.CSSProperties
+                }
               />
             </div>
           )

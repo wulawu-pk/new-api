@@ -29,6 +29,7 @@ import { useTranslation } from 'react-i18next'
 
 import { SignOutDialog } from '@/components/sign-out-dialog'
 import { SkeletonText } from '@/components/terminal/data-states'
+import { RollingNumber } from '@/components/terminal/rolling-number'
 import { TermLogo } from '@/components/terminal/term-logo'
 import { useScrambleText } from '@/components/terminal/use-scramble'
 import { Button } from '@/components/ui/button'
@@ -66,9 +67,17 @@ function apiHost(serverAddress: unknown): string {
 type TabMark = { x: number; w: number; shown: boolean }
 type TabSlide = { from: TabMark; to: TabMark; startedAt: number }
 
-// Same curve as --t-ease in theme-presets.css.
+// Same curves as --t-ease and --t-spring in theme-presets.css. The block
+// slides on the spring where the browser understands linear() easing.
 const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
-const SLIDE_MS = 420
+const SPRING =
+  'linear(0, 0.0663, 0.2153, 0.3916, 0.5618, 0.708, 0.8234, 0.9081, 0.9656, 1.0013, 1.0208, 1.0289, 1.0299, 1.0269, 1.022, 1.0166, 1.0117, 1.0076, 1.0044, 1.0021, 1.0006, 0.9997, 0.9993, 0.9991, 0.9991, 0.9992, 0.9994, 0.9996, 1)'
+const canSpring =
+  typeof CSS !== 'undefined' &&
+  typeof CSS.supports === 'function' &&
+  CSS.supports('transition-timing-function', 'linear(0, 1)')
+const SLIDE_EASE = canSpring ? SPRING : EASE
+const SLIDE_MS = canSpring ? 620 : 420
 
 /**
  * The selected-tab block, its slide in progress, and the last page.
@@ -122,7 +131,7 @@ function playTabSlide(el: HTMLElement | null, slide: TabSlide): () => void {
         },
         { transform: `translateX(${slide.to.x}px)`, width: `${slide.to.w}px` },
       ],
-      { duration: SLIDE_MS, delay: -elapsed, easing: EASE }
+      { duration: SLIDE_MS, delay: -elapsed, easing: SLIDE_EASE }
     )
   })
 }
@@ -206,13 +215,12 @@ export function ConsoleShell(props: { children: ReactNode }) {
     if (!el) return
     crtOn.current = true
     // The whole page switches on; panes rising in on top of that would be
-    // a second, competing motion. Skip their rise for panes already here
-    // and for any that mount during the switch-on.
+    // a second, competing motion. Skip their rise (and the table rows
+    // dropping in) for panes already here and any that mount during it.
     const settlePanes = () => {
       for (const animation of el.getAnimations?.({ subtree: true }) ?? []) {
-        if ((animation as CSSAnimation).animationName === 't-rise') {
-          animation.finish()
-        }
+        const name = (animation as CSSAnimation).animationName
+        if (name === 't-rise' || name === 'tableRowEnter') animation.finish()
       }
     }
     el.classList.add('t-crt-on')
@@ -222,6 +230,41 @@ export function ConsoleShell(props: { children: ReactNode }) {
       settlePanes()
     }, 600)
     return () => window.clearTimeout(timer)
+  }, [])
+
+  // A faint light on the pane under the pointer follows it (`.t-pane::after`
+  // reads --mx / --my). At most one update per frame; touch has no hover.
+  useEffect(() => {
+    const body = bodyRef.current
+    if (!body || prefersReducedMotion()) return
+    let frame = 0
+    let last: PointerEvent | null = null
+    const onMove = (event: PointerEvent) => {
+      if (event.pointerType === 'touch') return
+      last = event
+      if (frame) return
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        const target = last?.target
+        if (!last || !(target instanceof Element)) return
+        const pane = target.closest<HTMLElement>('.t-pane')
+        if (!pane) return
+        const box = pane.getBoundingClientRect()
+        pane.style.setProperty(
+          '--mx',
+          `${Math.round(last.clientX - box.left)}px`
+        )
+        pane.style.setProperty(
+          '--my',
+          `${Math.round(last.clientY - box.top)}px`
+        )
+      })
+    }
+    body.addEventListener('pointermove', onMove, { passive: true })
+    return () => {
+      body.removeEventListener('pointermove', onMove)
+      window.cancelAnimationFrame(frame)
+    }
   }, [])
 
   // A shell that mounts mid-slide (to or from /pricing, /status) carries on
@@ -267,8 +310,8 @@ export function ConsoleShell(props: { children: ReactNode }) {
     return whenDrawn(main, () => {
       main.animate(
         [
-          { opacity: 0, transform: 'translateY(8px)' },
-          { opacity: 1, transform: 'none' },
+          { opacity: 0, transform: 'translateY(8px)', filter: 'blur(4px)' },
+          { opacity: 1, transform: 'none', filter: 'blur(0px)' },
         ],
         { duration: 420, easing: EASE }
       )
@@ -355,7 +398,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
             <>
               <span className='max-md:hidden'>{t('Balance')}</span>
               <b className='text-t-fg font-mono text-sm font-medium'>
-                {balance ?? <SkeletonText />}
+                {balance ? <RollingNumber text={balance} /> : <SkeletonText />}
               </b>
               <Button
                 size='sm'
@@ -411,7 +454,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
           )}
           <span>
             <span
-              className={statusLoaded ? 'text-t-ok' : 'text-t-warn'}
+              className={statusLoaded ? 't-live text-t-ok' : 'text-t-warn'}
               aria-hidden='true'
             >
               ●

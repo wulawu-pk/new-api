@@ -741,6 +741,39 @@ For commercial licensing, please contact support@quantumnous.com
   --t-radius: 10px;
   --t-radius-lg: 16px;
   --t-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Sliding markers settle like a spring: a damped-spring step response
+   * sampled into linear(), 3% overshoot over ~0.6s. Same as the landing page. */
+  --t-spring: linear(
+    0,
+    0.0663,
+    0.2153,
+    0.3916,
+    0.5618,
+    0.708,
+    0.8234,
+    0.9081,
+    0.9656,
+    1.0013,
+    1.0208,
+    1.0289,
+    1.0299,
+    1.0269,
+    1.022,
+    1.0166,
+    1.0117,
+    1.0076,
+    1.0044,
+    1.0021,
+    1.0006,
+    0.9997,
+    0.9993,
+    0.9991,
+    0.9991,
+    0.9992,
+    0.9994,
+    0.9996,
+    1
+  );
   --radius: var(--t-radius);
 
   --font-cjk:

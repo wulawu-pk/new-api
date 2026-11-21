@@ -38,6 +38,7 @@ import {
 } from '@/components/terminal/data-states'
 import { errorReason } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
+import { RollingNumber } from '@/components/terminal/rolling-number'
 import { Button } from '@/components/ui/button'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatLogQuota, formatNumber, formatQuota } from '@/lib/format'
@@ -138,22 +139,34 @@ export function ConsoleOverview() {
 
   let balanceValue: React.ReactNode = <SkeletonText />
   if (self.isError) balanceValue = '—'
-  else if (self.data) balanceValue = formatQuota(balance)
+  else if (self.data) {
+    balanceValue = <RollingNumber text={formatQuota(balance)} />
+  }
 
   let requestsValue: React.ReactNode = <SkeletonText />
   if (usage.isError) requestsValue = '—'
-  else if (usage.data) requestsValue = formatNumber(monthUsage.count, locale)
+  else if (usage.data) {
+    requestsValue = (
+      <RollingNumber text={formatNumber(monthUsage.count, locale)} />
+    )
+  }
 
   let availValue: React.ReactNode = <SkeletonText />
   if (totals.isError) availValue = '—'
   else if (totals.data) {
-    availValue = avail == null ? '—' : formatPercentFloor(avail)
+    availValue =
+      avail == null ? '—' : <RollingNumber text={formatPercentFloor(avail)} />
   }
 
   let cacheValue: React.ReactNode = <SkeletonText />
   if (recent.isError) cacheValue = '—'
   else if (recent.data) {
-    cacheValue = cacheRate == null ? '—' : formatPercentFloor(cacheRate)
+    cacheValue =
+      cacheRate == null ? (
+        '—'
+      ) : (
+        <RollingNumber text={formatPercentFloor(cacheRate)} />
+      )
   }
 
   const kpiError = self.isError || usage.isError || totals.isError

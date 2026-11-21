@@ -30,6 +30,15 @@ export function sparkHeight(value: number): number {
   return 25 + 75 * Math.max(0, Math.min(1, (value - 80) / 20))
 }
 
+/** Whether the user asked the system for reduced motion. */
+export function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
 /** Frames of the submit-button spinner. */
 export const SPIN_FRAMES = ['|', '/', '-', '\\'] as const
 
@@ -39,4 +48,40 @@ export function errorReason(error: unknown): string | undefined {
   if (error instanceof Error && error.message) return error.message
   if (typeof error === 'string') return error
   return undefined
+}
+
+export type ParsedNumber = {
+  prefix: string
+  value: number
+  decimals: number
+  grouped: boolean
+  suffix: string
+}
+
+/** Splits an already formatted value such as "$1,234.50" or "99.4%". */
+export function parseFormattedNumber(text: string): ParsedNumber | null {
+  const match = /^([^\d-]*)(-?\d[\d,]*(?:\.\d+)?)(.*)$/.exec(text.trim())
+  if (!match) return null
+  const digits = match[2]
+  const value = Number(digits.replaceAll(',', ''))
+  if (!Number.isFinite(value)) return null
+  return {
+    prefix: match[1],
+    value,
+    decimals: (digits.split('.')[1] ?? '').length,
+    grouped: digits.includes(','),
+    suffix: match[3],
+  }
+}
+
+/** Writes `value` in the shape of a parsed number (prefix, decimals, grouping, suffix). */
+export function formatLikeNumber(target: ParsedNumber, value: number): string {
+  let digits = value.toFixed(target.decimals)
+  if (target.grouped) {
+    const [whole, fraction] = digits.split('.')
+    digits =
+      whole.replaceAll(/\B(?=(\d{3})+(?!\d))/g, ',') +
+      (fraction ? `.${fraction}` : '')
+  }
+  return target.prefix + digits + target.suffix
 }
