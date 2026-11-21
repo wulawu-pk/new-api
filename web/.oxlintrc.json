@@ -21,6 +21,7 @@
     ".tanstack",
     ".eslintrc.cjs",
     "src/components/ui",
+    "src/components/react-bits",
     "src/routeTree.gen.ts"
   ],
   "rules": {

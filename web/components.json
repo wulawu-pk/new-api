@@ -21,18 +21,18 @@
   "menuColor": "inverted",
   "menuAccent": "subtle",
   "registries": {
-    "@ai-elements": "https://registry.ai-sdk.dev/{name}.json"
-  },
-  "@reactbits-starter": {
-		"url": "https://registry.collectui.pro/api/r/reactbits/starter/{name}.json",
-		"headers": {
-				"Authorization": "Bearer ${REACTBITS_LICENSE_KEY}"
-		}
-	},
-	"@reactbits-pro": {
-		"url": "https://registry.collectui.pro/api/r/reactbits/pro/{name}.json",
-		"headers": {
-				"Authorization": "Bearer ${REACTBITS_LICENSE_KEY}"
-		}
-	}
+    "@ai-elements": "https://registry.ai-sdk.dev/{name}.json",
+    "@reactbits-starter": {
+      "url": "https://registry.collectui.pro/api/r/reactbits/starter/{name}.json",
+      "headers": {
+        "Authorization": "Bearer ${REACTBITS_LICENSE_KEY}"
+      }
+    },
+    "@reactbits-pro": {
+      "url": "https://registry.collectui.pro/api/r/reactbits/pro/{name}.json",
+      "headers": {
+        "Authorization": "Bearer ${REACTBITS_LICENSE_KEY}"
+      }
+    }
+  }
 }
