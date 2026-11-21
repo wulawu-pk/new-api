@@ -16,11 +16,15 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
-import { PageTransition } from '@/components/page-transition'
+import { Footer } from '@/components/layout/components/footer'
+import { getPerfMetricsSummary } from '@/features/performance-metrics/api'
+import { formatNumber } from '@/lib/format'
+import { requireServerSuccess } from '@/lib/server-error-message'
 
 import {
   LoadingSkeleton,
@@ -32,16 +36,11 @@ import {
   PricingGroupSectionView,
 } from './components'
 import type { ModelPerfBadgeData } from './components/model-perf-badge'
+import { VendorFacets } from './components/vendor-facets'
 import { EXCLUDED_GROUPS, FILTER_ALL, VIEW_MODES } from './constants'
 import { useFilters } from './hooks/use-filters'
 import { usePricingData } from './hooks/use-pricing-data'
-import {
-  buildGroupSections,
-  collectModelNames,
-} from './lib/group-sections'
-import { getPerfMetricsSummary } from '@/features/performance-metrics/api'
-import { requireServerSuccess } from '@/lib/server-error-message'
-import { useQuery } from '@tanstack/react-query'
+import { buildGroupSections, collectModelNames } from './lib/group-sections'
 
 /** Cap on models per perf request; the backend rejects larger batches. */
 const MAX_PERF_MODELS = 50
@@ -199,45 +198,55 @@ export function Pricing() {
     )
   }
 
+  const endpointTypeCount = useMemo(
+    () =>
+      new Set(
+        (models || []).flatMap((model) => model.supported_endpoint_types ?? [])
+      ).size,
+    [models]
+  )
+  const vendorCount = useMemo(
+    () =>
+      new Set((models || []).map((model) => model.vendor_name).filter(Boolean))
+        .size,
+    [models]
+  )
+
   if (isLoading) {
     return (
       <PublicLayout showMainContainer={false}>
-        <div className='mx-auto w-full max-w-[1800px] px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8'>
+        <div className='mx-auto w-full max-w-[1600px] px-4 pt-28 pb-10 sm:px-6'>
           <LoadingSkeleton viewMode={viewMode} />
         </div>
       </PublicLayout>
     )
   }
 
+  const metrics = [
+    { label: t('Models'), value: models?.length || 0 },
+    { label: t('Vendors'), value: vendorCount },
+    { label: t('Groups'), value: availableGroups.length },
+    { label: t('Endpoint Type'), value: endpointTypeCount },
+  ]
+
   return (
     <PublicLayout showMainContainer={false}>
-      <div className='relative'>
+      <div className='relative px-4 pt-28 pb-20 sm:px-6 lg:pt-32'>
         <div
           aria-hidden
-          className='pointer-events-none absolute inset-x-0 top-0 h-[600px] opacity-20 dark:opacity-[0.10]'
-          style={{
-            background: [
-              'radial-gradient(ellipse 60% 50% at 20% 20%, oklch(0.72 0.18 250 / 80%) 0%, transparent 70%)',
-              'radial-gradient(ellipse 50% 40% at 80% 15%, oklch(0.65 0.15 200 / 60%) 0%, transparent 70%)',
-              'radial-gradient(ellipse 40% 35% at 50% 70%, oklch(0.70 0.12 280 / 40%) 0%, transparent 70%)',
-            ].join(', '),
-            maskImage:
-              'linear-gradient(to bottom, black 40%, transparent 100%)',
-            WebkitMaskImage:
-              'linear-gradient(to bottom, black 40%, transparent 100%)',
-          }}
+          className='ascii-grid pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_0%,black,transparent)] opacity-40'
         />
-        <PageTransition className='relative mx-auto w-full max-w-[1800px] px-3 pt-16 pb-8 sm:px-6 sm:pt-20 sm:pb-10 xl:px-8'>
-          <header className='mx-auto mb-5 max-w-3xl pt-5 text-center sm:mb-10 sm:pt-10'>
-            <h1 className='text-[clamp(2rem,5.5vw,3.5rem)] leading-[1.15] font-bold tracking-tight'>
-              {t('Model Square')}
-            </h1>
-            <p className='text-muted-foreground/80 mt-3 text-sm sm:mt-4 sm:text-base'>
+        <div className='mx-auto w-full max-w-[1600px]'>
+          <header className='mx-auto flex max-w-4xl flex-col items-center text-center'>
+            <p className='font-ascii text-muted-foreground text-xs tracking-wide uppercase'>
+              [ {t('Model Square')} ]
+            </p>
+            <h1 className='mt-5 text-[clamp(2.5rem,6vw,4.75rem)] leading-[0.98] font-semibold tracking-[-0.04em] text-balance'>
               {t('This site currently has {{count}} models enabled', {
                 count: models?.length || 0,
               })}
-            </p>
-            <p className='text-muted-foreground/60 mx-auto mt-2 max-w-2xl text-xs leading-relaxed sm:text-sm'>
+            </h1>
+            <p className='text-muted-foreground mt-6 max-w-2xl text-base leading-relaxed text-pretty sm:text-lg'>
               {t(
                 'Discover curated AI models, compare pricing and capabilities, and choose the right model for every scenario.'
               )}
@@ -249,11 +258,36 @@ export function Pricing() {
               placeholder={t(
                 'Search model name, provider, endpoint, or tag...'
               )}
-              className='mx-auto mt-4 max-w-2xl sm:mt-6'
+              className='mt-9 w-full max-w-2xl'
             />
           </header>
 
-          <div className='grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]'>
+          <dl className='border-border lg:divide-border mx-auto mt-14 grid max-w-5xl grid-cols-2 gap-y-8 border-y py-8 lg:grid-cols-4 lg:divide-x'>
+            {metrics.map((metric) => (
+              <div
+                key={metric.label}
+                className='flex flex-col items-center gap-2 px-4'
+              >
+                <dt className='text-muted-foreground order-2 text-xs tracking-[0.12em] uppercase'>
+                  {metric.label}
+                </dt>
+                <dd className='font-ascii order-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl'>
+                  {formatNumber(metric.value)}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className='mt-14'>
+            <VendorFacets
+              vendors={vendors || []}
+              models={models || []}
+              value={vendorFilter}
+              onChange={setVendorFilter}
+            />
+          </div>
+
+          <div className='mt-6 grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]'>
             <PricingSidebar
               quotaTypeFilter={quotaTypeFilter}
               endpointTypeFilter={endpointTypeFilter}
@@ -272,10 +306,10 @@ export function Pricing() {
               models={models || []}
               hasActiveFilters={hasActiveFilters}
               onClearFilters={clearFilters}
-              className='hover-scrollbar sticky top-20 hidden max-h-[calc(100dvh-6rem)] self-start overflow-y-auto xl:block'
+              className='hover-scrollbar sticky top-24 hidden max-h-[calc(100dvh-7rem)] self-start overflow-y-auto xl:block'
             />
 
-            <main className='min-w-0 space-y-4'>
+            <main className='min-w-0 space-y-6'>
               <PricingToolbar
                 filteredCount={filteredModels.length}
                 totalCount={models?.length}
@@ -333,8 +367,9 @@ export function Pricing() {
               showRechargePrice={showRechargePrice}
             />
           )}
-        </PageTransition>
+        </div>
       </div>
+      <Footer />
     </PublicLayout>
   )
 }

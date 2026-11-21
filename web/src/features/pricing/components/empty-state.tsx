@@ -32,8 +32,14 @@ export function EmptyState(props: EmptyStateProps) {
   const hasSearch = Boolean(props.searchQuery?.trim())
 
   return (
-    <div className='flex min-h-[320px] flex-col items-center justify-center rounded-lg border border-dashed px-6 py-12 text-center'>
-      <Search className='text-muted-foreground/40 mb-3 size-10' />
+    <div className='border-border flex min-h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed px-6 py-12 text-center'>
+      <Search className='text-muted-foreground/50 mb-3 size-8' />
+      <p
+        aria-hidden
+        className='font-ascii text-muted-foreground/70 mb-3 text-xs'
+      >
+        $ grep --models &quot;{props.searchQuery?.trim() || '*'}&quot;
+      </p>
 
       <h3 className='text-foreground mb-1 text-base font-semibold'>
         {t('No models found')}

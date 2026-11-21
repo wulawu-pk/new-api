@@ -133,35 +133,33 @@ export function PricingGroupSectionView(props: PricingGroupSectionProps) {
     <section
       id={`group-${sectionKey}`}
       aria-labelledby={`group-${sectionKey}-title`}
-      className='flex flex-col gap-3'
+      className='flex scroll-mt-28 flex-col gap-4'
     >
-      <header className='flex flex-wrap items-start justify-between gap-x-4 gap-y-2'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <GroupBadge group={sectionKey} />
-            <h2
-              id={`group-${sectionKey}-title`}
-              className='text-foreground min-w-0 text-base font-semibold break-words'
-            >
-              {props.section.description}
-            </h2>
-            {props.section.creditPrice != null ? (
-              <span className='bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 font-mono text-[11px] tabular-nums'>
-                {formatCreditPrice(props.section.creditPrice)} / {t('credit')}
+      <header className='border-border flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-dashed pb-3'>
+        <div className='flex min-w-0 flex-wrap items-center gap-2.5'>
+          <GroupBadge group={sectionKey} />
+          <h2
+            id={`group-${sectionKey}-title`}
+            className='min-w-0 text-lg font-semibold tracking-tight break-words'
+          >
+            {props.section.description}
+          </h2>
+          {props.section.creditPrice != null ? (
+            <span className='border-border font-ascii text-muted-foreground rounded-full border px-2 py-0.5 text-[11px] tabular-nums'>
+              {formatCreditPrice(props.section.creditPrice)} / {t('credit')}
+            </span>
+          ) : (
+            props.section.ratio != null &&
+            props.section.ratio !== 1 && (
+              <span className='border-border font-ascii text-muted-foreground rounded-full border px-2 py-0.5 text-[11px] tabular-nums'>
+                ×{props.section.ratio}
               </span>
-            ) : (
-              props.section.ratio != null &&
-              props.section.ratio !== 1 && (
-                <span className='bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 font-mono text-[11px] tabular-nums'>
-                  ×{props.section.ratio}
-                </span>
-              )
-            )}
-          </div>
-          <p className='text-muted-foreground mt-1 text-xs'>
-            {t('{{count}} models', { count: props.section.models.length })}
-          </p>
+            )
+          )}
         </div>
+        <p className='font-ascii text-muted-foreground text-xs'>
+          {t('{{count}} models', { count: props.section.models.length })}
+        </p>
       </header>
 
       {props.viewMode === 'card' ? (
@@ -181,7 +179,7 @@ export function PricingGroupSectionView(props: PricingGroupSectionProps) {
           ))}
         </div>
       ) : (
-        <div className='bg-card overflow-hidden rounded-xl border'>
+        <div className='border-border bg-background overflow-hidden rounded-2xl border'>
           <div className='overflow-x-auto'>
             <table className='w-full min-w-[720px] border-collapse text-left'>
               <thead>

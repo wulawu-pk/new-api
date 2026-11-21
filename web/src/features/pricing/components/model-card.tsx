@@ -38,8 +38,8 @@ import {
 } from '../lib/dynamic-price'
 import { parseTags } from '../lib/filters'
 import { isTokenBasedModel } from '../lib/model-helpers'
-import { summarizeSpecialExpression } from '../lib/special-price'
 import { formatPrice, formatRequestPrice } from '../lib/price'
+import { summarizeSpecialExpression } from '../lib/special-price'
 import { taskPriceLabel, taskUsageUnitLabel } from '../lib/task-price-display'
 import type { PricingModel, PriceType, TokenUnit } from '../types'
 import { ModelBillingModeBadge } from './model-billing-mode-badge'
@@ -325,11 +325,11 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
   }
 
   return (
-    <Card className='hover:ring-foreground/20 h-full min-w-0 gap-3 transition-colors'>
+    <Card className='hover:ring-foreground/25 h-full min-w-0 gap-3 rounded-2xl transition-[box-shadow,transform] duration-300 hover:-translate-y-0.5'>
       <CardHeader className='flex flex-row items-start gap-3'>
         <div
           aria-hidden
-          className='bg-muted/50 flex size-10 shrink-0 items-center justify-center rounded-lg'
+          className='border-border bg-background flex size-10 shrink-0 items-center justify-center rounded-xl border'
         >
           {modelIcon || (
             <span className='text-muted-foreground text-sm font-bold'>
@@ -339,7 +339,7 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
         </div>
         <div className='min-w-0 flex-1'>
           <h3
-            className='line-clamp-2 font-mono text-[15px] leading-snug font-semibold [overflow-wrap:anywhere]'
+            className='font-ascii line-clamp-2 text-[15px] leading-snug font-semibold [overflow-wrap:anywhere]'
             title={props.model.model_name}
           >
             {props.model.model_name}
@@ -430,7 +430,7 @@ export const ModelCard = memo(function ModelCard(props: ModelCardProps) {
       <CardFooter className='mt-auto border-0 bg-transparent pt-0'>
         <ModelPerfBadge
           perf={props.perf}
-          className='border-border/60 border-t pt-2'
+          className='border-border border-t border-dashed pt-2'
         >
           <Button
             variant='ghost'

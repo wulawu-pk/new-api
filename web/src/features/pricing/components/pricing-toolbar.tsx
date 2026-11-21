@@ -86,7 +86,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
   const sortLabels = getSortLabels(t)
 
   return (
-    <div className='bg-card rounded-xl border p-3'>
+    <div className='border-border bg-background/85 rounded-2xl border p-2 backdrop-blur sm:pl-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div className='flex items-center gap-2'>
           <Button
@@ -105,17 +105,20 @@ export function PricingToolbar(props: PricingToolbarProps) {
             )}
           </Button>
 
-          <div className='text-muted-foreground flex items-baseline gap-1 text-sm'>
-            <span className='text-foreground font-semibold tabular-nums'>
+          <div className='font-ascii text-muted-foreground flex items-baseline gap-1.5 text-xs'>
+            <span aria-hidden className='text-landing-accent'>
+              $
+            </span>
+            <span className='text-foreground text-sm font-semibold tabular-nums'>
               {props.filteredCount.toLocaleString()}
             </span>
-            <span>{props.filteredCount === 1 ? t('model') : t('models')}</span>
             {props.totalCount != null &&
               props.filteredCount !== props.totalCount && (
-                <span className='text-muted-foreground/60 text-xs'>
+                <span className='tabular-nums'>
                   / {props.totalCount.toLocaleString()}
                 </span>
               )}
+            <span>{props.filteredCount === 1 ? t('model') : t('models')}</span>
           </div>
         </div>
 
