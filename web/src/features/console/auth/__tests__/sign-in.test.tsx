@@ -21,6 +21,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import * as authApi from '@/features/auth/api'
+import { STATUS_QUERY_KEY } from '@/lib/status-query'
 import { useAuthStore, type AuthBundle } from '@/stores/auth-store'
 
 import { renderConsole } from '../../__tests__/render-console'
@@ -150,5 +151,36 @@ describe('terminal sign-in', () => {
       model: 'gpt-6-astra',
       client: 'Codex',
     })
+  })
+
+  it('asks for the email when sign-up is email-only, and still accepts a username', async () => {
+    stubMatchMedia(true)
+    vi.mocked(authApi.login).mockResolvedValue({
+      success: true,
+      data: BUNDLE,
+    } as never)
+    const user = userEvent.setup()
+    const { queryClient } = renderConsole(
+      <SignInTerminal search={{}} />,
+      '/sign-in'
+    )
+    queryClient.setQueryData(STATUS_QUERY_KEY, { email_verification: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByLabelText('Email')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    )
+    expect(screen.getByText('Please enter your email')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Username or email')).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Email'), 'root')
+    await user.type(screen.getByLabelText('Password'), 'secret-pass')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() =>
+      expect(authApi.login).toHaveBeenCalledWith(
+        expect.objectContaining({ username: 'root', password: 'secret-pass' })
+      )
+    )
   })
 })

@@ -92,6 +92,11 @@ export function SignInTerminal(props: { search: AuthSearch }) {
   const passwordLoginEnabled =
     (status?.password_login_enabled ?? true) !== false
   const encrypt = status?.password_login_encryption_enabled === true
+  // Mirrors the sign-up dialog: with email verification on, people sign up
+  // with an email only (the username is generated and never shown), so the
+  // field asks for the email. The server still matches username OR email,
+  // so admins and older accounts can type a username here.
+  const emailMode = Boolean(status?.email_verification)
   const hasAlternatives = Boolean(
     status?.passkey_login ||
     status?.wechat_login ||
@@ -109,7 +114,9 @@ export function SignInTerminal(props: { search: AuthSearch }) {
     if (motion.busy) return
     const next: typeof errors = {}
     if (!username.trim()) {
-      next.username = t('Please enter your username or email')
+      next.username = emailMode
+        ? t('Please enter your email')
+        : t('Please enter your username or email')
     }
     if (!password) next.password = t('Please enter your password')
     setErrors(next)
@@ -185,13 +192,14 @@ export function SignInTerminal(props: { search: AuthSearch }) {
             <>
               <TermField
                 id='auth-user'
-                label={t('Username or email')}
+                label={emailMode ? t('Email') : t('Username or email')}
                 error={errors.username}
               >
                 <Input
                   id='auth-user'
                   ref={userRef}
                   autoComplete='username'
+                  inputMode={emailMode ? 'email' : undefined}
                   placeholder='name@example.com'
                   value={username}
                   aria-invalid={Boolean(errors.username) || undefined}
