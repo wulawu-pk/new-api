@@ -18,8 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Profile } from '@/features/profile'
+import { ConsoleAccount } from '@/features/console/account'
 
+// peroai v3: account pages render in the console shell (see
+// features/console/lib/windows.ts ACCOUNT_PATHS).
 export const Route = createFileRoute('/_authenticated/profile/')({
-  component: Profile,
+  component: ConsoleAccount,
 })

@@ -59,9 +59,20 @@ export function findConsoleWindow(pathname: string): ConsoleWindow | undefined {
   )
 }
 
+/**
+ * Account pages: rendered in the console shell but not numbered windows;
+ * reached from 「账户」 in the status bar.
+ */
+export const ACCOUNT_PATHS: readonly string[] = ['/profile', '/security']
+
+/** Whether a path is one of the account pages. */
+export function isAccountPath(pathname: string): boolean {
+  return ACCOUNT_PATHS.includes(normalize(pathname))
+}
+
 /** Whether a route under `_authenticated` renders in the console shell. */
 export function isConsolePath(pathname: string): boolean {
-  return findConsoleWindow(pathname) !== undefined
+  return findConsoleWindow(pathname) !== undefined || isAccountPath(pathname)
 }
 
 /** Keys typed into text fields or while a dialog is open are not shortcuts. */

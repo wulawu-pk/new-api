@@ -17,22 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Languages, Loader2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 
 import { Combobox } from '@/components/ui/combobox'
 import { TitledCard } from '@/components/ui/titled-card'
-import {
-  INTERFACE_LANGUAGE_OPTIONS,
-  normalizeInterfaceLanguage,
-} from '@/i18n/languages'
-import { handleServerError } from '@/lib/handle-server-error'
-import { createServerError } from '@/lib/server-error-message'
-import { useAuthStore } from '@/stores/auth-store'
+import { INTERFACE_LANGUAGE_OPTIONS } from '@/i18n/languages'
 
-import { updateUserLanguage } from '../api'
-import { parseUserSettings } from '../lib'
+import { useLanguagePreference } from '../hooks/use-language-preference'
 import type { UserProfile } from '../types'
 
 type LanguagePreferencesCardProps = {
@@ -41,61 +32,8 @@ type LanguagePreferencesCardProps = {
 }
 
 export function LanguagePreferencesCard(props: LanguagePreferencesCardProps) {
-  const { t, i18n } = useTranslation()
-  const { auth } = useAuthStore()
-  const [saving, setSaving] = useState(false)
-
-  const savedLanguage = useMemo(() => {
-    const settings = parseUserSettings(props.profile?.setting)
-    return normalizeInterfaceLanguage(settings.language || i18n.language)
-  }, [props.profile?.setting, i18n.language])
-
-  const [currentLanguage, setCurrentLanguage] = useState(savedLanguage)
-
-  useEffect(() => {
-    setCurrentLanguage(savedLanguage)
-  }, [savedLanguage])
-
-  const handleLanguageChange = async (language: string | null) => {
-    if (!language) return
-    const nextLanguage = normalizeInterfaceLanguage(language)
-    if (nextLanguage === currentLanguage) return
-
-    const previousLanguage = currentLanguage
-    setCurrentLanguage(nextLanguage)
-    setSaving(true)
-    await i18n.changeLanguage(nextLanguage)
-
-    try {
-      const response = await updateUserLanguage(nextLanguage)
-      if (!response.success) {
-        throw createServerError(response, t('Failed to update settings'))
-      }
-
-      if (auth.user) {
-        const existingSetting =
-          typeof auth.user.setting === 'string'
-            ? parseUserSettings(auth.user.setting)
-            : (auth.user.setting ?? {})
-        auth.setUser({
-          ...auth.user,
-          setting: JSON.stringify({
-            ...existingSetting,
-            language: nextLanguage,
-          }),
-        })
-      }
-
-      props.onProfileUpdate()
-      toast.success(t('Language preference saved'))
-    } catch (error) {
-      setCurrentLanguage(previousLanguage)
-      await i18n.changeLanguage(previousLanguage)
-      handleServerError(error, t('Failed to update settings'))
-    } finally {
-      setSaving(false)
-    }
-  }
+  const { t } = useTranslation()
+  const preference = useLanguagePreference(props.profile, props.onProfileUpdate)
 
   return (
     <TitledCard
@@ -120,13 +58,15 @@ export function LanguagePreferencesCard(props: LanguagePreferencesCardProps) {
               value: language.code,
               label: language.label,
             }))}
-            value={currentLanguage}
-            onValueChange={handleLanguageChange}
-            disabled={saving}
+            value={preference.language}
+            onValueChange={(language) =>
+              void preference.changeLanguage(language)
+            }
+            disabled={preference.saving}
             className='w-full sm:w-48'
             placeholder={t('Select language')}
           />
-          {saving && (
+          {preference.saving && (
             <Loader2 className='text-muted-foreground size-4 animate-spin' />
           )}
         </div>

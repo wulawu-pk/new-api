@@ -19,7 +19,12 @@ For commercial licensing, please contact support@quantumnous.com
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { groupName, ratioLabel, sortGroups } from '../groups'
-import { findConsoleWindow, isConsolePath, isShortcutTarget } from '../windows'
+import {
+  findConsoleWindow,
+  isAccountPath,
+  isConsolePath,
+  isShortcutTarget,
+} from '../windows'
 
 afterEach(() => {
   document.body.innerHTML = ''
@@ -34,6 +39,14 @@ describe('console windows', () => {
     expect(findConsoleWindow('/usage-logs')?.key).toBe('logs')
     expect(findConsoleWindow('/pricing')?.key).toBe('models')
     expect(findConsoleWindow('/status')?.key).toBe('status')
+  })
+
+  it('renders the account pages in the console shell without a numbered window', () => {
+    expect(isConsolePath('/profile')).toBe(true)
+    expect(isConsolePath('/security/')).toBe(true)
+    expect(findConsoleWindow('/profile')).toBeUndefined()
+    expect(isAccountPath('/security')).toBe(true)
+    expect(isAccountPath('/keys')).toBe(false)
   })
 
   it('leaves admin and sub-pages in the old layout', () => {

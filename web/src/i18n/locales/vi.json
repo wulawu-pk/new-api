@@ -7612,6 +7612,20 @@
     "Context over 200K is billed at the long-context price.": "Context over 200K is billed at the long-context price.",
     "Weekdays 9–12 and 14–18 Beijing time cost ×2; off-peak prices are shown. Chat API only.": "Weekdays 9–12 and 14–18 Beijing time cost ×2; off-peak prices are shown. Chat API only.",
     "Images · Video": "Images · Video",
-    "Images are billed per image in 1K / 2K / 4K tiers; video is billed per second through the async /v1/videos API.": "Images are billed per image in 1K / 2K / 4K tiers; video is billed per second through the async /v1/videos API."
+    "Images are billed per image in 1K / 2K / 4K tiers; video is billed per second through the async /v1/videos API.": "Images are billed per image in 1K / 2K / 4K tiers; video is billed per second through the async /v1/videos API.",
+    "Joined": "Joined",
+    "Language": "Language",
+    "Linked accounts, signed-in devices, access tokens for scripts, and account deletion. Password, two-step verification and Passkey are on the account page.": "Linked accounts, signed-in devices, access tokens for scripts, and account deletion. Password, two-step verification and Passkey are on the account page.",
+    "New backup codes": "New backup codes",
+    "Not enabled": "Not enabled",
+    "Notifications & preferences": "Notifications & preferences",
+    "Registering…": "Registering…",
+    "Sign in with your fingerprint, face or security key.": "Sign in with your fingerprint, face or security key.",
+    "Sign-in also asks for a code from your authenticator app.": "Sign-in also asks for a code from your authenticator app.",
+    "Sign-in verification": "Sign-in verification",
+    "Sign-in, notifications and language. Sign-in sessions, access tokens and linked accounts are under Security & Access.": "Sign-in, notifications and language. Sign-in sessions, access tokens and linked accounts are under Security & Access.",
+    "Turn off": "Turn off",
+    "Two-step verification": "Two-step verification",
+    "Used to sign in and to get password reset links.": "Used to sign in and to get password reset links."
   }
 }

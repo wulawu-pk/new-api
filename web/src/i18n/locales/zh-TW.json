@@ -7612,6 +7612,20 @@
     "Context over 200K is billed at the long-context price.": "超過 200K 上下文按長上下文價計費。",
     "Weekdays 9–12 and 14–18 Beijing time cost ×2; off-peak prices are shown. Chat API only.": "工作日北京時間 9–12、14–18 點價格 ×2，這裡顯示平時價。只支援 Chat 介面。",
     "Images · Video": "生圖 · 影片",
-    "Images are billed per image in 1K / 2K / 4K tiers; video is billed per second through the async /v1/videos API.": "圖片按張計費，按尺寸分 1K / 2K / 4K 三檔；影片按秒計費，走 /v1/videos 非同步任務。"
+    "Images are billed per image in 1K / 2K / 4K tiers; video is billed per second through the async /v1/videos API.": "圖片按張計費，按尺寸分 1K / 2K / 4K 三檔；影片按秒計費，走 /v1/videos 非同步任務。",
+    "Joined": "註冊時間",
+    "Language": "語言",
+    "Linked accounts, signed-in devices, access tokens for scripts, and account deletion. Password, two-step verification and Passkey are on the account page.": "第三方帳號綁定、已登入的裝置、給腳本用的存取權杖，以及刪除帳號。密碼、兩步驟驗證和 Passkey 在帳戶頁。",
+    "New backup codes": "重新產生備用碼",
+    "Not enabled": "未開啟",
+    "Notifications & preferences": "通知與偏好",
+    "Registering…": "註冊中…",
+    "Sign in with your fingerprint, face or security key.": "用指紋、臉部或安全金鑰登入，不用輸入密碼。",
+    "Sign-in also asks for a code from your authenticator app.": "登入時還要輸入驗證器 App 上的驗證碼。",
+    "Sign-in verification": "登入驗證",
+    "Sign-in, notifications and language. Sign-in sessions, access tokens and linked accounts are under Security & Access.": "登入方式、通知和語言。登入裝置、存取權杖和第三方帳號在「安全與存取」。",
+    "Turn off": "關閉",
+    "Two-step verification": "兩步驟驗證",
+    "Used to sign in and to get password reset links.": "用來登入和接收重設密碼連結。"
   }
 }

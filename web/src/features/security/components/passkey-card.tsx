@@ -17,9 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { AlertTriangle, KeyRound, Loader2, ShieldAlert } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 
 import { StatusBadge } from '@/components/status-badge'
 import {
@@ -43,15 +42,11 @@ import {
 } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { usePasskeyManagement } from '@/features/auth/passkey'
-import {
-  SecureVerificationDialog,
-  useSecureVerification,
-} from '@/features/auth/secure-verification'
+import { SecureVerificationDialog } from '@/features/auth/secure-verification'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatTimestampRelative } from '@/lib/format'
-import { handleServerError } from '@/lib/handle-server-error'
-import { AuthOperationError } from '@/lib/secure-verification'
+
+import { usePasskeyActions } from '../hooks/use-passkey-actions'
 
 interface PasskeyCardProps {
   loading: boolean
@@ -61,6 +56,7 @@ export function PasskeyCard({ loading: pageLoading }: PasskeyCardProps) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const passkey = usePasskeyActions()
   const {
     status,
     statusError,
@@ -71,42 +67,15 @@ export function PasskeyCard({ loading: pageLoading }: PasskeyCardProps) {
     supported,
     enabled,
     lastUsed,
-    register,
-    remove,
-  } = usePasskeyManagement()
+    verification,
+  } = passkey
 
-  const verification = useSecureVerification()
+  const handleRegister = () => void passkey.register()
 
-  const handleRegister = useCallback(async () => {
-    if (registering || removing || verification.isActive) return
-    const proof = await verification.requestVerification({
-      scope: 'passkey.register',
-    })
-    if (!proof) return
-    try {
-      await register(proof.proof_token)
-      toast.success(t('Passkey registered successfully'))
-    } catch (error) {
-      const failure = AuthOperationError.from(error)
-      if (failure.code !== 'AUTH_CANCELLED') handleServerError(failure)
-    }
-  }, [register, registering, removing, t, verification])
-
-  const handleRemove = useCallback(async () => {
-    if (registering || removing || verification.isActive) return
+  const handleRemove = () => {
     setConfirmOpen(false)
-    const proof = await verification.requestVerification({
-      scope: 'passkey.delete',
-    })
-    if (!proof) return
-    try {
-      await remove(proof.proof_token)
-      toast.success(t('Passkey removed successfully'))
-    } catch (error) {
-      const failure = AuthOperationError.from(error)
-      if (failure.code !== 'AUTH_CANCELLED') handleServerError(failure)
-    }
-  }, [registering, remove, removing, t, verification])
+    void passkey.remove()
+  }
 
   if (pageLoading || loading) {
     return (

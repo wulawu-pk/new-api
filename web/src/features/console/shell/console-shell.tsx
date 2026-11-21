@@ -37,6 +37,7 @@ import { consumeConsoleCrtOn, prefersReducedMotion } from '../lib/crt'
 import {
   CONSOLE_WINDOWS,
   findConsoleWindow,
+  isAccountPath,
   isShortcutTarget,
 } from '../lib/windows'
 import { usePlanKey } from './use-plan-key'
@@ -66,8 +67,9 @@ export function ConsoleKbd(props: { children: ReactNode }) {
 /**
  * Console shell: tmux-style window bar on top, status bar at the bottom.
  * Replaces the sidebar layout for the user pages (overview, keys, logs,
- * wallet, models, status). Number keys 1–6 switch windows; `n` creates a
- * key. Admin pages keep the old layout and are reached via 「管理」.
+ * wallet, models, status) and the account pages (profile, security).
+ * Number keys 1–6 switch windows; `n` creates a key. Admin pages keep the
+ * old layout and are reached via 「管理」.
  */
 export function ConsoleShell(props: { children: ReactNode }) {
   const { t } = useTranslation()
@@ -81,6 +83,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
   const [signOutOpen, setSignOutOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
   const current = findConsoleWindow(pathname)
+  const onAccountPage = isAccountPath(pathname)
 
   useScrambleText()
   usePlanKey()
@@ -218,7 +221,15 @@ export function ConsoleShell(props: { children: ReactNode }) {
             </Link>
           )}
           {signedIn && (
-            <Link to='/profile' data-scramble='' className='hover:text-t-fg'>
+            <Link
+              to='/profile'
+              data-scramble=''
+              aria-current={onAccountPage ? 'page' : undefined}
+              className={cn(
+                'hover:text-t-fg',
+                onAccountPage && 'text-t-fg border-t-pink border-b'
+              )}
+            >
               {t('Account')}
             </Link>
           )}

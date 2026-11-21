@@ -17,9 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Bell, Loader2, Mail, Server, Webhook } from 'lucide-react'
-import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 
 import { PasswordInput } from '@/components/password-input'
 import { Button } from '@/components/ui/button'
@@ -33,17 +31,10 @@ import {
   SettingsSwitchField,
 } from '@/features/system-settings/components/settings-form-layout'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
-import {
-  formatQuota,
-  parseQuotaFromDollars,
-  quotaUnitsToDollars,
-} from '@/lib/format'
-import { handleServerError } from '@/lib/handle-server-error'
-import { ROLE } from '@/lib/roles'
+import { formatQuota, quotaUnitsToDollars } from '@/lib/format'
 
-import { updateUserSettings } from '../../api'
 import { NOTIFICATION_METHODS } from '../../constants'
-import { normalizeUserSettings } from '../../lib/user-settings'
+import { useNotificationSettings } from '../../hooks/use-notification-settings'
 import type { UserProfile, NotifyType } from '../../types'
 
 const NOTIFICATION_ICONS: Record<NotifyType, typeof Mail> = {
@@ -73,61 +64,13 @@ export function NotificationTab({
   quotaRemindThreshold,
 }: NotificationTabProps) {
   const { t } = useTranslation()
-  const role = profile?.role ?? 0
-  const isAdmin = role >= ROLE.ADMIN
-  const [loading, setLoading] = useState(false)
-  const [settings, setSettings] = useState(() => normalizeUserSettings())
-  const [thresholdInput, setThresholdInput] = useState('')
-
-  // Update form field helper
-  const updateField = useCallback(
-    <K extends keyof typeof settings>(
-      field: K,
-      value: (typeof settings)[K]
-    ) => {
-      setSettings((prev) => ({ ...prev, [field]: value }))
-    },
-    []
-  )
-
-  useEffect(() => {
-    if (profile?.setting) {
-      const next = normalizeUserSettings(profile.setting)
-      setSettings(next)
-      // 0 means the site default and shows as an empty input.
-      setThresholdInput(
-        next.quota_warning_threshold
-          ? String(quotaUnitsToDollars(next.quota_warning_threshold))
-          : ''
-      )
-    }
-  }, [profile])
-
-  const handleSave = async () => {
-    try {
-      setLoading(true)
-      const { record_ip_log: _recordIpLog, ...notificationSettings } = settings
-      const response = await updateUserSettings(notificationSettings)
-
-      if (response.success) {
-        toast.success(t('Settings updated successfully'))
-        onUpdate()
-      } else {
-        handleServerError(response, t('Failed to update settings'))
-      }
-    } catch (error) {
-      handleServerError(error, t('Failed to update settings'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  const form = useNotificationSettings(profile, onUpdate)
+  const settings = form.settings
+  const updateField = form.updateField
+  const isAdmin = form.isAdmin
   const notifyType = settings.notify_type
-  // Switches the user never chose: reminders stay on, and root alone gets
-  // channel notifications.
-  const quotaWarningEnabled = settings.quota_warning_enabled ?? true
-  const channelNotifyEnabled =
-    settings.channel_notify_enabled ?? role >= ROLE.SUPER_ADMIN
+  const quotaWarningEnabled = form.quotaWarningEnabled
+  const channelNotifyEnabled = form.channelNotifyEnabled
   const tokensOnly = getCurrencyDisplay().meta.kind === 'tokens'
 
   return (
@@ -347,17 +290,8 @@ export function NotificationTab({
                         className='h-9'
                         min={0}
                         step={tokensOnly ? 1 : 0.000001}
-                        value={thresholdInput}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setThresholdInput(value)
-                          updateField(
-                            'quota_warning_threshold',
-                            value.trim() === ''
-                              ? 0
-                              : parseQuotaFromDollars(Number(value))
-                          )
-                        }}
+                        value={form.thresholdInput}
+                        onChange={(e) => form.changeThreshold(e.target.value)}
                         placeholder={String(
                           quotaUnitsToDollars(quotaRemindThreshold)
                         )}
@@ -440,9 +374,9 @@ export function NotificationTab({
 
       {/* Save Button */}
       <div className='flex justify-end'>
-        <Button onClick={handleSave} disabled={loading}>
-          {loading && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
-          {loading ? t('Saving...') : t('Save Settings')}
+        <Button onClick={() => void form.save()} disabled={form.saving}>
+          {form.saving && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+          {form.saving ? t('Saving...') : t('Save Settings')}
         </Button>
       </div>
     </div>

@@ -18,8 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { Security } from '@/features/security'
+import { ConsoleSecurity } from '@/features/console/account/security'
 
+// peroai v3: account pages render in the console shell (see
+// features/console/lib/windows.ts ACCOUNT_PATHS).
 export const Route = createFileRoute('/_authenticated/security/')({
-  component: Security,
+  component: ConsoleSecurity,
 })
