@@ -36,40 +36,11 @@ describe('start guide sample request', () => {
     ])
   })
 
-  it('uses the latest chat model called in the key group, skipping image models and other groups', () => {
-    const recent = [
-      { model_name: 'gpt-image-2.6-sunburst', group: 'image-all' },
-      { model_name: 'gpt-6.2-astra', group: 'gpt-pro' },
-      { model_name: 'claude-image-x', group: 'claude-kiro' },
-      { model_name: 'claude-opus-5-5', group: 'claude-kiro' },
-    ]
-
-    expect(sampleModel(recent, 'claude-kiro', [])).toBe('claude-opus-5-5')
-    expect(sampleModel(recent, 'gpt-pro', [])).toBe('gpt-6.2-astra')
-  })
-
-  it('falls back to the family default when the group serves it', () => {
-    const recent = [
-      { model_name: 'gpt-image-2.6-sunburst', group: 'image-all' },
-    ]
-
-    expect(
-      sampleModel(recent, 'claude-kiro', [
-        'claude-opus-5-5',
-        'claude-sonnet-5-5',
-      ])
-    ).toBe('claude-sonnet-5-5')
-  })
-
-  it('uses the first chat model of a group without the family default', () => {
-    expect(
-      sampleModel([], 'deepseek', ['deepseek-image-x', 'deepseek-v4'])
-    ).toBe('deepseek-v4')
-  })
-
-  it('keeps the family default when the group models are unknown', () => {
-    expect(sampleModel([], 'claude-kiro', [])).toBe('claude-sonnet-5-5')
-    expect(sampleModel([], undefined, [])).toBe('gpt-6.2-astra')
+  it('uses the last model called, else the default of the key family', () => {
+    expect(sampleModel('deepseek-v4', 'gpt-pro')).toBe('deepseek-v4')
+    expect(sampleModel(undefined, 'claude-kiro')).toBe('claude-sonnet-5-5')
+    expect(sampleModel(undefined, 'gpt-pro')).toBe('gpt-6.2-astra')
+    expect(sampleModel(undefined, undefined)).toBe('gpt-6.2-astra')
   })
 
   it('takes the configured server address without a trailing slash and falls back to this origin', () => {

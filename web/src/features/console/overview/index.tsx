@@ -40,7 +40,6 @@ import { errorReason } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
 import { RollingNumber } from '@/components/terminal/rolling-number'
 import { Button } from '@/components/ui/button'
-import { usePricingData } from '@/features/pricing/hooks/use-pricing-data'
 import { useStatus } from '@/hooks/use-status'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatLogQuota, formatNumber, formatQuota } from '@/lib/format'
@@ -114,17 +113,6 @@ export function ConsoleOverview() {
   const totals = useMonthRequestTotals()
   const recent = useRecentRequests(CACHE_SAMPLE)
   const firstKey = useFirstKey()
-  const pricing = usePricingData()
-  const keyGroup = firstKey.data?.group || undefined
-  const groupModels = useMemo(
-    () =>
-      keyGroup
-        ? pricing.models
-            .filter((model) => model.enable_groups?.includes(keyGroup))
-            .map((model) => model.model_name)
-        : [],
-    [pricing.models, keyGroup]
-  )
   const { status } = useStatus()
   const [guideHidden, setGuideHidden] = useState(readGuideHidden)
   const showGuide = (hidden: boolean) => {
@@ -227,7 +215,10 @@ export function ConsoleOverview() {
           requestDone={self.data.request_count > 0}
           apiKey={firstKey.data ?? null}
           base={apiBase(status?.server_address)}
-          model={sampleModel(recent.data ?? [], keyGroup, groupModels)}
+          model={sampleModel(
+            recent.data?.[0]?.model_name,
+            firstKey.data?.group ?? undefined
+          )}
           balance={formatQuota(balance)}
           onHide={() => showGuide(true)}
         />

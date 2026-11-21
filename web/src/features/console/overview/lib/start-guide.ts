@@ -35,30 +35,16 @@ export function firstRequestCurl(args: {
   ].join('\n')
 }
 
-/** Image and video models answer on other endpoints, not chat completions. */
-const NOT_CHAT = /image|video|sora|veo|kling|seedance/i
-
 /**
- * Model for the sample request, so that it runs on the key as shown: the
- * latest chat model the user called in the key's group; else the family
- * default (same as the landing page) when the group has it; else the
- * group's first chat model; else the family default. `recent` is newest
- * first; `groupModels` are the models the group serves.
+ * Model for the sample request: the one the user called last, else the
+ * default of the key's family (same defaults as the landing page).
  */
 export function sampleModel(
-  recent: { model_name: string; group: string }[],
-  group: string | undefined,
-  groupModels: string[]
+  lastModel: string | undefined,
+  group: string | undefined
 ): string {
-  const used = recent.find(
-    (row) => row.group === group && !NOT_CHAT.test(row.model_name)
-  )
-  if (used) return used.model_name
-  const preferred = group?.startsWith('claude')
-    ? 'claude-sonnet-5-5'
-    : 'gpt-6.2-astra'
-  if (groupModels.includes(preferred)) return preferred
-  return groupModels.find((model) => !NOT_CHAT.test(model)) ?? preferred
+  if (lastModel) return lastModel
+  return group?.startsWith('claude') ? 'claude-sonnet-5-5' : 'gpt-6.2-astra'
 }
 
 /** API base for the sample: the configured server address, no trailing slash. */
