@@ -121,8 +121,8 @@ const REST = 1 - 0.004
 type Rgb = [number, number, number]
 const DIM: Rgb = [141, 146, 156]
 const FG: Rgb = [236, 234, 230]
-/** Accent when the page sets none (the pink the site launched with). */
-const DEFAULT_ACCENT: Rgb = [255, 122, 182]
+/** Accent when the page sets none: mint #3DDBA5, as in theme-presets.css. */
+const DEFAULT_ACCENT: Rgb = [61, 219, 165]
 function rgba(a: Rgb, b: Rgb, t: number, alpha: number): string {
   const mix = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t)
   return `rgba(${mix(0)},${mix(1)},${mix(2)},${alpha.toFixed(3)})`

@@ -619,8 +619,8 @@ For commercial licensing, please contact support@quantumnous.com
  * ai-relay/design/v3/l-ascii.html and the live beta landing page:
  *   bg #09090B · bg2 #121215 · bg3 #1A1A1F · line white 6% · faint #36363E
  *   dim #8D929C · fg2 #C4C7CD · fg #ECEAE6
- *   one accent (--t-accent; was pink #FF7AB6, 11-22 being re-picked)
- *   · ok #62D394 · warn #F2B84B · bad #FF6B6B
+ *   mint #3DDBA5 is the single accent (11-22; was pink #FF7AB6)
+ *   · ok #8BD98A · warn #F2B84B · bad #FF6B6B
  * 11-21 texture pass (same as the beta landing page): panes are lifted
  * cards (16px corners, hairline ring, soft deep shadow), controls 10px,
  * buttons pills, one easing curve, faint grid behind the page.
@@ -659,8 +659,9 @@ For commercial licensing, please contact support@quantumnous.com
   /* The one accent, an RGB triplet set on :root (see "Accent" below) so
    * stylesheets and the canvas can mix their own alpha into it. */
   --t-accent: rgb(var(--t-accent-rgb));
-  --t-ok: var(--t-ok-tone, #62d394);
-  --t-warn: var(--t-warn-tone, #f2b84b);
+  /* ok moved off #62D394 so success never reads as the mint accent. */
+  --t-ok: #8bd98a;
+  --t-warn: #f2b84b;
   --t-bad: #ff6b6b;
   --t-hi: rgb(255 255 255 / 0.16); /* ring of the pane being worked on */
   --t-hair: rgb(255 255 255 / 0.09);
@@ -951,25 +952,9 @@ body[data-theme-preset='peroai']::before,
 }
 
 /* ── Accent ───────────────────────────────────────────────────────────────
- * 11-22: pink is being replaced; four candidates are on trial on beta. The
- * page picks one by `data-accent` on <html> (set before first paint from
- * `?accent=` or localStorage, see index.html); pink stays the default until
- * the choice is made. Where a candidate sits close to a status colour, that
- * status colour moves a step away so the two never read as one. */
+ * 11-22: mint #3DDBA5, the green of the logo dot, replaces the launch pink
+ * #FF7AB6. An RGB triplet so stylesheets and the relay canvas can mix their
+ * own alpha into it. */
 :root {
-  --t-accent-rgb: 255 122 182; /* pink #FF7AB6 */
-}
-:root[data-accent='mint'] {
-  --t-accent-rgb: 61 219 165; /* #3DDBA5, the green of the logo dot */
-  --t-ok-tone: #8bd98a;
-}
-:root[data-accent='blue'] {
-  --t-accent-rgb: 91 157 255; /* #5B9DFF */
-}
-:root[data-accent='amber'] {
-  --t-accent-rgb: 245 165 36; /* #F5A524 */
-  --t-warn-tone: #f2d15b;
-}
-:root[data-accent='violet'] {
-  --t-accent-rgb: 167 139 250; /* #A78BFA */
+  --t-accent-rgb: 61 219 165;
 }

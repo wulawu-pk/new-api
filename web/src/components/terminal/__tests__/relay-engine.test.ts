@@ -147,26 +147,26 @@ describe('createRelay request text', () => {
 describe('createRelay accent', () => {
   it('draws request text in the page accent read from --t-accent-rgb', () => {
     const canvas = document.createElement('canvas')
-    canvas.style.setProperty('--t-accent-rgb', '61 219 165')
+    canvas.style.setProperty('--t-accent-rgb', '91 157 255')
     const relay = createRelay(canvas, null)
     relay.refresh()
     relay.burst()
 
     playFrames(performance.now(), 60)
 
-    expect(fills).toContain('rgb(61,219,165)')
-    expect(fills).not.toContain('#FF7AB6')
+    expect(fills).toContain('rgb(91,157,255)')
+    expect(fills).not.toContain('rgb(61,219,165)')
     relay.destroy()
   })
 
-  it('falls back to the launch pink when the page sets no accent', () => {
+  it('falls back to mint when the page sets no accent', () => {
     const relay = createRelay(document.createElement('canvas'), null)
     relay.refresh()
     relay.burst()
 
     playFrames(performance.now(), 60)
 
-    expect(fills).toContain('rgb(255,122,182)')
+    expect(fills).toContain('rgb(61,219,165)')
     relay.destroy()
   })
 })

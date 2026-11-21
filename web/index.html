@@ -23,19 +23,10 @@
     <script>
       document.documentElement.classList.remove('light')
       document.documentElement.classList.add('dark')
-      // Accent trial (11-22): ?accent=mint|blue|amber|violet|pink picks one
-      // and remembers it (shared with the beta landing page, same origin).
-      // Remove once the accent is chosen.
+      // The accent trial (11-22) left a choice in localStorage; it no longer
+      // means anything.
       try {
-        var accents = ['pink', 'mint', 'blue', 'amber', 'violet']
-        var asked = /[?&]accent=([a-z]+)/.exec(location.search)
-        if (asked && accents.indexOf(asked[1]) >= 0) {
-          localStorage.setItem('peroai:accent', asked[1])
-        }
-        var accent = localStorage.getItem('peroai:accent')
-        if (accent && accent !== 'pink' && accents.indexOf(accent) >= 0) {
-          document.documentElement.setAttribute('data-accent', accent)
-        }
+        localStorage.removeItem('peroai:accent')
       } catch (e) {}
     </script>
     <style>
