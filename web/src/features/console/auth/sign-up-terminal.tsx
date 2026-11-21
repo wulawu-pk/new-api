@@ -403,7 +403,7 @@ export function SignUpTerminal(props: { search: AuthSearch }) {
             <Link
               to='/sign-in'
               search={props.search}
-              className='text-t-fg hover:text-t-pink'
+              className='text-t-fg hover:text-t-accent'
             >
               {t('Sign in')}
             </Link>

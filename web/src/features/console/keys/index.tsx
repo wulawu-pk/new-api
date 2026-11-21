@@ -228,6 +228,7 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
       />
 
       <Pane
+        hero
         title={
           <>
             <b>{t('Keys')}</b>

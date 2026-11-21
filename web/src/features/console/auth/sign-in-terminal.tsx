@@ -275,7 +275,7 @@ export function SignInTerminal(props: { search: AuthSearch }) {
             <Link
               to='/forgot-password'
               data-scramble=''
-              className='text-t-fg hover:text-t-pink'
+              className='text-t-fg hover:text-t-accent'
             >
               {t('Forgot password')}
             </Link>
@@ -284,7 +284,7 @@ export function SignInTerminal(props: { search: AuthSearch }) {
               <Link
                 to='/sign-up'
                 search={props.search}
-                className='text-t-fg hover:text-t-pink'
+                className='text-t-fg hover:text-t-accent'
               >
                 {t('Sign up')}
               </Link>

@@ -95,14 +95,14 @@ export function GroupList(props: GroupListProps) {
                 'grid grid-cols-[12px_minmax(0,1fr)_auto] items-baseline gap-x-1.5 border-l-2 border-transparent px-3 py-[7px] text-left text-sm whitespace-nowrap',
                 'max-md:border-t-line max-md:flex max-md:shrink-0 max-md:items-center max-md:border max-md:px-2.5 max-md:py-1.5',
                 active
-                  ? 'border-t-pink bg-t-bg3 text-t-fg max-md:border-t-pink'
+                  ? 'border-t-accent bg-t-bg3 text-t-fg max-md:border-t-accent'
                   : 'text-t-fg2 hover:bg-white/[0.04] hover:text-t-fg',
                 empty && 'text-t-dim'
               )}
             >
               <span
                 aria-hidden='true'
-                className='text-t-pink font-mono max-md:hidden'
+                className='text-t-accent font-mono max-md:hidden'
               >
                 {active ? '▸' : ''}
               </span>

@@ -173,7 +173,7 @@ export function ConsoleLogs() {
             <Link
               to='/usage-logs/$section'
               params={{ section: 'task' }}
-              className='text-t-fg border-t-faint hover:border-t-pink border-b'
+              className='text-t-fg border-t-faint hover:border-t-accent border-b'
             >
               {t('Image and video tasks')}
             </Link>
@@ -286,7 +286,7 @@ export function ConsoleLogs() {
         </span>
       </div>
 
-      <Pane title={<b>{t('Requests')}</b>}>
+      <Pane hero title={<b>{t('Requests')}</b>}>
         <div className='overflow-x-auto px-1 pt-2 pb-1'>
           <ConsoleTable minWidth={900} stateMode={showState}>
             <ConsoleTableHeader>

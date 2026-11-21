@@ -16,13 +16,27 @@
       content="Unified AI API gateway and admin dashboard."
     />
 
-    <meta name="theme-color" content="#09090B" />
+    <meta name="theme-color" content="#121417" />
     <!-- peroai fork: the v3 console is dark-only (see ThemeProvider
          forcedTheme). Apply the class before first paint so the page never
          flashes light and one-shot detectors (e.g. Dark Reader) see it. -->
     <script>
       document.documentElement.classList.remove('light')
       document.documentElement.classList.add('dark')
+      // Accent trial (11-22): ?accent=mint|blue|amber|violet|pink picks one
+      // and remembers it (shared with the beta landing page, same origin).
+      // Remove once the accent is chosen.
+      try {
+        var accents = ['pink', 'mint', 'blue', 'amber', 'violet']
+        var asked = /[?&]accent=([a-z]+)/.exec(location.search)
+        if (asked && accents.indexOf(asked[1]) >= 0) {
+          localStorage.setItem('peroai:accent', asked[1])
+        }
+        var accent = localStorage.getItem('peroai:accent')
+        if (accent && accent !== 'pink' && accents.indexOf(accent) >= 0) {
+          document.documentElement.setAttribute('data-accent', accent)
+        }
+      } catch (e) {}
     </script>
     <style>
       /* Body stays transparent so the console backdrop (body::before in

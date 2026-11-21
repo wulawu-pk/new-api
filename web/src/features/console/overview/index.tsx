@@ -183,7 +183,7 @@ export function ConsoleOverview() {
         description={t('Usage this month so far.')}
       />
 
-      <Pane title={<b>{t('Month to date')}</b>}>
+      <Pane hero title={<b>{t('Month to date')}</b>}>
         <div className='grid grid-cols-[1.4fr_1fr_1fr_1fr] max-md:grid-cols-2'>
           <Kpi
             label={t('Balance')}
@@ -197,7 +197,7 @@ export function ConsoleOverview() {
                   <AsciiBar
                     value={monthUsage.quota}
                     max={monthUsage.quota + balance}
-                    tone='pink'
+                    tone='accent'
                   />
                   {'　'}
                   {t('Used this month {{amount}}', {
@@ -287,7 +287,7 @@ export function ConsoleOverview() {
                 ),
               ].map((tip) => (
                 <div key={tip} className='grid grid-cols-[18px_1fr] gap-2'>
-                  <span className='text-t-pink font-mono' aria-hidden='true'>
+                  <span className='text-t-accent font-mono' aria-hidden='true'>
                     ▸
                   </span>
                   <span>{tip}</span>

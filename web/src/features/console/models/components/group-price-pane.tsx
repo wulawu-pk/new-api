@@ -91,6 +91,7 @@ export function GroupPricePane(props: {
 
   return (
     <Pane
+      hero
       aria-label={name}
       title={
         <>

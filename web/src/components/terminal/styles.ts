@@ -22,10 +22,10 @@ For commercial licensing, please contact support@quantumnous.com
  * Passed through `className`, so the components keep their behaviour.
  */
 export const TERM_INPUT =
-  'bg-t-bg2 dark:bg-t-bg2 border-t-faint text-t-fg placeholder:text-[var(--t-placeholder)] h-auto rounded-(--t-radius) px-3 py-2.5 text-sm focus-visible:border-t-pink focus-visible:ring-0 aria-invalid:border-t-bad'
+  'bg-t-bg2 dark:bg-t-bg2 border-t-faint text-t-fg placeholder:text-[var(--t-placeholder)] h-auto rounded-(--t-radius) px-3 py-2.5 text-sm focus-visible:border-t-accent focus-visible:ring-0 aria-invalid:border-t-bad'
 
 export const TERM_SELECT =
-  'bg-t-bg2 dark:bg-t-bg2 border-t-faint text-t-fg h-auto rounded-(--t-radius) py-2.5 pl-3 text-sm focus-visible:border-t-pink focus-visible:ring-0'
+  'bg-t-bg2 dark:bg-t-bg2 border-t-faint text-t-fg h-auto rounded-(--t-radius) py-2.5 pl-3 text-sm focus-visible:border-t-accent focus-visible:ring-0'
 
 export const TERM_BUTTON = 'rounded-full h-auto px-4 py-2 text-sm'
 
@@ -37,4 +37,4 @@ export const TERM_BUTTON_GHOST =
 
 /** `components/password-input` wraps an `<input>`; style that input. */
 export const TERM_PASSWORD =
-  'rounded-(--t-radius) [&_input]:bg-t-bg2 [&_input]:dark:bg-t-bg2 [&_input]:border-t-faint [&_input]:text-t-fg [&_input]:h-auto [&_input]:rounded-(--t-radius) [&_input]:ps-3 [&_input]:pe-10 [&_input]:py-2.5 [&_input]:text-sm [&_input]:focus-visible:border-t-pink [&_input]:focus-visible:ring-0 [&_input]:aria-invalid:border-t-bad'
+  'rounded-(--t-radius) [&_input]:bg-t-bg2 [&_input]:dark:bg-t-bg2 [&_input]:border-t-faint [&_input]:text-t-fg [&_input]:h-auto [&_input]:rounded-(--t-radius) [&_input]:ps-3 [&_input]:pe-10 [&_input]:py-2.5 [&_input]:text-sm [&_input]:focus-visible:border-t-accent [&_input]:focus-visible:ring-0 [&_input]:aria-invalid:border-t-bad'

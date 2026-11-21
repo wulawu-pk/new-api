@@ -53,6 +53,7 @@ export function RedeemPane(props: RedeemPaneProps) {
 
   return (
     <Pane
+      hero
       title={
         <>
           <b>{t('Redeem a card code')}</b>

@@ -54,7 +54,7 @@ function Art() {
         <i
           key={cell.id}
           data-on={cell.on ? 'true' : undefined}
-          className='bg-t-pink block aspect-[3/4] opacity-0 data-[on]:opacity-100'
+          className='bg-t-accent block aspect-[3/4] opacity-0 data-[on]:opacity-100'
         />
       ))}
     </div>
@@ -158,7 +158,7 @@ export function NotFoundError() {
                 href={place.href}
                 className='text-t-fg2 hover:bg-t-bg3 hover:text-t-fg focus-visible:bg-t-bg3 flex gap-2.5 px-2 py-1.5'
               >
-                <span className='text-t-pink font-mono' aria-hidden='true'>
+                <span className='text-t-accent font-mono' aria-hidden='true'>
                   ▸
                 </span>
                 {place.label}

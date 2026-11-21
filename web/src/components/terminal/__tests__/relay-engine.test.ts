@@ -24,6 +24,7 @@ import { createRelay } from '../relay-engine'
 // (sizes, image data for the logo mask, gradients) and records the text it
 // writes.
 let written: string[] = []
+let fills: string[] = []
 function stubContext(): CanvasRenderingContext2D {
   const noop = () => undefined
   return new Proxy({} as CanvasRenderingContext2D, {
@@ -38,7 +39,10 @@ function stubContext(): CanvasRenderingContext2D {
       if (key === 'createLinearGradient') return () => ({ addColorStop: noop })
       return noop
     },
-    set: () => true,
+    set(_target, key, value) {
+      if (key === 'fillStyle') fills.push(String(value))
+      return true
+    },
   })
 }
 
@@ -47,6 +51,7 @@ let frames: FrameRequestCallback[] = []
 beforeEach(() => {
   frames = []
   written = []
+  fills = []
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
     () => stubContext() as never
   )
@@ -135,6 +140,33 @@ describe('createRelay request text', () => {
     playFrames(performance.now(), 60)
 
     expect(written.some((text) => REQUEST_TEXT.has(text))).toBe(false)
+    relay.destroy()
+  })
+})
+
+describe('createRelay accent', () => {
+  it('draws request text in the page accent read from --t-accent-rgb', () => {
+    const canvas = document.createElement('canvas')
+    canvas.style.setProperty('--t-accent-rgb', '61 219 165')
+    const relay = createRelay(canvas, null)
+    relay.refresh()
+    relay.burst()
+
+    playFrames(performance.now(), 60)
+
+    expect(fills).toContain('rgb(61,219,165)')
+    expect(fills).not.toContain('#FF7AB6')
+    relay.destroy()
+  })
+
+  it('falls back to the launch pink when the page sets no accent', () => {
+    const relay = createRelay(document.createElement('canvas'), null)
+    relay.refresh()
+    relay.burst()
+
+    playFrames(performance.now(), 60)
+
+    expect(fills).toContain('rgb(255,122,182)')
     relay.destroy()
   })
 })

@@ -26,7 +26,7 @@ type AsciiBarProps = {
   max?: number
   /** Bar length in monospace character widths (spec: 10 or 14). */
   width?: number
-  tone?: 'default' | 'pink'
+  tone?: 'default' | 'accent'
   /** Accessible label; defaults to the rounded percentage. */
   label?: string
   className?: string
@@ -54,7 +54,7 @@ export function AsciiBar(props: AsciiBarProps) {
       <i
         className={cn(
           't-grow-x block h-full',
-          props.tone === 'pink' ? 'bg-t-pink' : 'bg-t-fg2'
+          props.tone === 'accent' ? 'bg-t-accent' : 'bg-t-fg2'
         )}
         style={{ width: `${pct.toFixed(1)}%` }}
       />

@@ -165,7 +165,7 @@ export function ResetTerminal() {
         <div className='text-t-dim flex justify-end text-[13px]'>
           <span>
             {t('Remembered it?')}{' '}
-            <Link to='/sign-in' className='text-t-fg hover:text-t-pink'>
+            <Link to='/sign-in' className='text-t-fg hover:text-t-accent'>
               {t('Back to sign in')}
             </Link>
           </span>

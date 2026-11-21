@@ -74,7 +74,7 @@ export function PlanBox(props: { plan: PendingPlan; mode: 'in' | 'up' }) {
       <span className='text-t-dim'>{t('Configuration you picked')}</span>
       {'\n  '}
       {props.plan.client ?? '—'} <span className='text-t-dim'>×</span>{' '}
-      <span className='text-t-pink'>
+      <span className='text-t-accent'>
         {props.plan.model ?? props.plan.group}
       </span>
       {'\n  '}

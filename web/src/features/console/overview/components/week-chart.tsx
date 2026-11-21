@@ -52,7 +52,7 @@ export function WeekChart(props: { days: DaySpend[] }) {
                 data-testid='week-column'
                 className={cn(
                   't-grow-y block w-full max-w-7',
-                  today ? 'bg-t-pink' : 'bg-t-fg2',
+                  today ? 'bg-t-accent' : 'bg-t-fg2',
                   day.quota <= 0 && 'bg-t-faint h-px'
                 )}
                 style={

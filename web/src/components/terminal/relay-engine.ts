@@ -121,29 +121,49 @@ const REST = 1 - 0.004
 type Rgb = [number, number, number]
 const DIM: Rgb = [141, 146, 156]
 const FG: Rgb = [236, 234, 230]
-const PINK: Rgb = [255, 122, 182]
+/** Accent when the page sets none (the pink the site launched with). */
+const DEFAULT_ACCENT: Rgb = [255, 122, 182]
 function rgba(a: Rgb, b: Rgb, t: number, alpha: number): string {
   const mix = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t)
   return `rgba(${mix(0)},${mix(1)},${mix(2)},${alpha.toFixed(3)})`
 }
-// Crests lean pink, troughs lean white; at zero both equal the base dim.
-const CREST = Array.from({ length: STEPS + 1 }, (_, i) =>
-  rgba(DIM, PINK, i / STEPS, 0.14 + (0.86 * i) / STEPS)
-)
+// Troughs lean white; crests lean to the accent (see accentPalette).
 const TROUGH = Array.from({ length: STEPS + 1 }, (_, i) =>
   rgba(DIM, FG, i / STEPS, 0.14 + (0.86 * i) / STEPS)
 )
 const LOGO_COLORS = Array.from({ length: 9 }, (_, i) =>
   rgba(FG, FG, 0, 0.55 + (0.45 * i) / 8)
 )
-const RING_COLORS = Array.from({ length: 9 }, (_, i) =>
-  rgba(FG, PINK, i / 8, 0.5 + (0.5 * i) / 8)
-)
 const FIELD_COLORS = Array.from({ length: 6 }, (_, i) =>
   rgba(DIM, DIM, 0, 0.04 + (0.2 * i) / 5)
 )
 const RAIL = 'rgba(141,146,156,.38)'
-const RAIL_ON = 'rgba(255,122,182,.5)'
+
+/** The page accent as RGB, read from --t-accent-rgb ("61 219 165"). */
+function readAccent(el: Element): Rgb {
+  const raw = getComputedStyle(el).getPropertyValue('--t-accent-rgb').trim()
+  const parts = raw.split(/[\s,]+/).map(Number)
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
+    return DEFAULT_ACCENT
+  }
+  return [parts[0], parts[1], parts[2]]
+}
+
+/** Every colour the animation takes from the accent. */
+function accentPalette(accent: Rgb) {
+  return {
+    // At zero a crest equals the base dim, at full strength the accent.
+    crest: Array.from({ length: STEPS + 1 }, (_, i) =>
+      rgba(DIM, accent, i / STEPS, 0.14 + (0.86 * i) / STEPS)
+    ),
+    ring: Array.from({ length: 9 }, (_, i) =>
+      rgba(FG, accent, i / 8, 0.5 + (0.5 * i) / 8)
+    ),
+    railOn: `rgba(${accent.join(',')},.5)`,
+    hot: accent.join(','),
+    text: `rgb(${accent.join(',')})`,
+  }
+}
 
 function bezier(p: Lane, t: number): Point {
   const u = 1 - t
@@ -260,6 +280,7 @@ export function createRelay(
   options: RelayOptions = {}
 ): RelayHandle {
   const ctx = canvas.getContext('2d')
+  const tint = accentPalette(readAccent(canvas))
   const clients = options.clients ?? ['Claude Code', 'Codex', 'curl', 'Python']
   let models = options.models ?? ['claude', 'gpt', 'grok', 'deepseek']
   const reduce = options.reducedMotion ?? false
@@ -548,11 +569,11 @@ export function createRelay(
           solid = true
         } else if (ring[k] > 0.3) {
           glyph = LOGO[Math.min(9, 4 + Math.floor(ring[k] * 5.9))]
-          color = RING_COLORS[Math.round(glow * 8)]
+          color = tint.ring[Math.round(glow * 8)]
           solid = true
         } else if (rails[k]) {
           glyph = '·'
-          color = rails[k] === 2 ? RAIL_ON : RAIL
+          color = rails[k] === 2 ? tint.railOn : RAIL
         } else {
           // Slowly drifting clouds whose opacity changes continuously.
           const v =
@@ -581,7 +602,9 @@ export function createRelay(
                   Math.max(0, Math.min(9, Math.round(level * 9 + jitter)))
                 ]
             }
-            color = (sample[0] >= 0 ? CREST : TROUGH)[Math.round(level * STEPS)]
+            color = (sample[0] >= 0 ? tint.crest : TROUGH)[
+              Math.round(level * STEPS)
+            ]
           }
         }
         if (!glyph || glyph === ' ') continue
@@ -617,7 +640,7 @@ export function createRelay(
       if (p.t < 0 || p.x === null) continue
       const edge = Math.min(1, p.t / 0.06, (1 - p.t) / 0.06)
       if (edge <= 0) continue
-      const hot = p.side ? '255,122,182' : '236,234,230'
+      const hot = p.side ? tint.hot : '236,234,230'
       ctx.globalAlpha = edge
       ctx.fillStyle = `rgba(${hot},.22)`
       ctx.beginPath()
@@ -656,7 +679,7 @@ export function createRelay(
       ctx.fillStyle = '#000'
       ctx.fillRect(box[0], box[1], box[2], box[3])
       ctx.globalCompositeOperation = 'source-over'
-      ctx.fillStyle = p.side ? '#FF7AB6' : '#ECEAE6'
+      ctx.fillStyle = p.side ? tint.text : '#ECEAE6'
       ctx.fillText(p.txt, tx, p.y)
     }
     ctx.globalAlpha = 1
