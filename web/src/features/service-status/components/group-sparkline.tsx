@@ -21,16 +21,18 @@ import { useTranslation } from 'react-i18next'
 import { getSuccessRateDotClass } from '@/features/performance-metrics/lib/format'
 import { cn } from '@/lib/utils'
 
-import type { GroupSparklinePoint } from '../lib/health'
+import { GROUP_SPARKLINE_POINTS, type GroupSparklinePoint } from '../lib/health'
 
 /**
- * Compact availability strip: one small bar per hourly sample, coloured by the
- * same success-rate scale the model square uses. Bars keep a fixed width so a
- * sparse series never stretches into a misleading "all green" row.
+ * Full-width availability strip: a fixed number of hourly slots, newest on
+ * the right. Slots without a sample stay muted, so a sparse series never
+ * stretches into a misleading "all green" row.
  */
 export function GroupSparkline(props: {
   series: GroupSparklinePoint[]
   label: string
+  activeTs?: number | null
+  onActiveChange?: (point: GroupSparklinePoint | null) => void
   className?: string
 }) {
   const { t } = useTranslation()
@@ -40,27 +42,46 @@ export function GroupSparkline(props: {
       <span
         role='img'
         aria-label={t('No availability data available')}
-        className={cn('text-muted-foreground text-xs', props.className)}
+        className={cn(
+          'border-border text-muted-foreground flex h-8 w-full items-center justify-center rounded-md border border-dashed text-xs',
+          props.className
+        )}
       >
         —
       </span>
     )
   }
 
+  const empty = Math.max(GROUP_SPARKLINE_POINTS - props.series.length, 0)
+
   return (
     <span
       role='img'
       aria-label={props.label}
-      className={cn('flex h-4 items-end gap-px', props.className)}
+      onPointerLeave={() => props.onActiveChange?.(null)}
+      className={cn(
+        'flex h-8 w-full items-stretch gap-px sm:gap-[3px]',
+        props.className
+      )}
     >
+      {Array.from({ length: empty }, (_, index) => (
+        <span
+          key={`empty-${index}`}
+          aria-hidden
+          className='bg-muted min-w-0 flex-1 rounded-[3px]'
+        />
+      ))}
       {props.series.map((point) => (
         <span
           key={point.ts}
           aria-hidden
-          title={`${new Date(point.ts * 1000).toISOString()} · ${point.success_rate.toFixed(2)}%`}
+          onPointerEnter={() => props.onActiveChange?.(point)}
           className={cn(
-            'h-full w-[3px] shrink-0 rounded-xs',
-            getSuccessRateDotClass(point.success_rate)
+            'min-w-0 flex-1 rounded-[3px] transition-opacity duration-150',
+            getSuccessRateDotClass(point.success_rate),
+            props.activeTs != null &&
+              props.activeTs !== point.ts &&
+              'opacity-40'
           )}
         />
       ))}

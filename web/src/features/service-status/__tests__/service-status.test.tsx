@@ -27,9 +27,13 @@ import { ServiceStatus } from '..'
 
 const pricing = vi.hoisted(() => ({ usePricingData: vi.fn() }))
 
-// The header needs a router context; the page body is what this suite covers.
+// The header and footer need a router context; the page body is what this
+// suite covers.
 vi.mock('@/components/layout', () => ({
   PublicLayout: (props: { children?: unknown }) => props.children,
+}))
+vi.mock('@/components/layout/components/footer', () => ({
+  Footer: () => null,
 }))
 vi.mock('@/features/pricing/hooks', () => ({
   usePricingData: pricing.usePricingData,
