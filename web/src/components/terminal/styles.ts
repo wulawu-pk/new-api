@@ -37,4 +37,4 @@ export const TERM_BUTTON_GHOST =
 
 /** `components/password-input` wraps an `<input>`; style that input. */
 export const TERM_PASSWORD =
-  'rounded-(--t-radius) [&_input]:bg-t-bg2 [&_input]:dark:bg-t-bg2 [&_input]:border-t-faint [&_input]:text-t-fg [&_input]:h-auto [&_input]:rounded-(--t-radius) [&_input]:px-3 [&_input]:py-2.5 [&_input]:text-sm [&_input]:focus-visible:border-t-pink [&_input]:focus-visible:ring-0 [&_input]:aria-invalid:border-t-bad'
+  'rounded-(--t-radius) [&_input]:bg-t-bg2 [&_input]:dark:bg-t-bg2 [&_input]:border-t-faint [&_input]:text-t-fg [&_input]:h-auto [&_input]:rounded-(--t-radius) [&_input]:ps-3 [&_input]:pe-10 [&_input]:py-2.5 [&_input]:text-sm [&_input]:focus-visible:border-t-pink [&_input]:focus-visible:ring-0 [&_input]:aria-invalid:border-t-bad'

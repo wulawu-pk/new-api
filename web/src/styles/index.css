@@ -126,6 +126,14 @@ For commercial licensing, please contact support@quantumnous.com
     overflow: unset !important;
   }
 
+  /* Edge draws its own reveal eye (and a clear ×) inside password fields
+   * once something is typed; PasswordInput has its own toggle, so the two
+   * eyes overlapped. Hide the browser's. */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+
   /* Cursor pointer for buttons */
   button:not(:disabled),
   [role='button']:not(:disabled) {

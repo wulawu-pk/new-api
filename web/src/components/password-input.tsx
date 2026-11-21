@@ -46,6 +46,7 @@ export function PasswordInput({
         ref={ref}
         disabled={disabled}
         {...props}
+        className='pe-9'
       />
       <Button
         type='button'
