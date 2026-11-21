@@ -429,8 +429,8 @@ For commercial licensing, please contact support@quantumnous.com
  *   - `simple-large`: keeps intentionally neutral, high-contrast surfaces.
  *   - `peroai`: paper canvas + white cards are brand tokens (peroai fork). */
 [data-theme-preset]:not([data-theme-preset='default']):not(
-  [data-theme-preset='anthropic']
-):not([data-theme-preset='simple-large']):not([data-theme-preset='peroai']) {
+    [data-theme-preset='anthropic']
+  ):not([data-theme-preset='simple-large']):not([data-theme-preset='peroai']) {
   --card: color-mix(in oklch, var(--primary) 3%, var(--background));
   --popover: color-mix(in oklch, var(--primary) 5%, var(--background));
   --muted: color-mix(in oklch, var(--primary) 7%, var(--background));
@@ -688,7 +688,9 @@ For commercial licensing, please contact support@quantumnous.com
 
   --skeleton-base: oklch(0.94 0.008 95);
   --skeleton-highlight: oklch(0.97 0.006 95);
-  --table-header: oklch(0.985 0.004 91.4); /* #FBFAF7, as on the landing table */
+  --table-header: oklch(
+    0.985 0.004 91.4
+  ); /* #FBFAF7, as on the landing table */
   --overview-accent-1: var(--chart-1);
   --overview-accent-2: var(--chart-2);
   --overview-accent-3: var(--chart-3);
