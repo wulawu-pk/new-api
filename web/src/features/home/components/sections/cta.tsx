@@ -83,7 +83,7 @@ export function CTA(props: CTAProps) {
 
           <h2
             id='home-cta-heading'
-            className='mt-8 text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl'
+            className='leading-heading mt-8 text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl'
           >
             {t('One key is all it takes.')}
           </h2>

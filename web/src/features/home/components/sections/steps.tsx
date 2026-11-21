@@ -143,7 +143,7 @@ export function Steps() {
           </p>
           <h2
             id='home-steps-heading'
-            className='mt-4 text-3xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl'
+            className='leading-heading mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl'
           >
             {t('From sign-up to first request in three steps')}
           </h2>

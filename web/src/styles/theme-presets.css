@@ -696,13 +696,16 @@ For commercial licensing, please contact support@quantumnous.com
   /* ≈ 9px base: radius-sm ≈ 5px, md ≈ 7px, lg ≈ 9px, xl ≈ 12px. */
   --radius: 0.5625rem;
 
+  /* `--font-cjk` follows `<html lang>` (index.css); the fallback covers
+   * Han text on non-CJK interface languages. */
   --font-ui-sans:
     'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    var(--font-cjk, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei'),
+    sans-serif;
   --font-body: var(--font-ui-sans);
   --font-mono:
-    'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, 'PingFang SC',
-    'Microsoft YaHei', monospace;
+    'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas,
+    var(--font-cjk, 'PingFang SC', 'Microsoft YaHei'), monospace;
   /* Tailwind preflight reads this for code/pre/kbd; re-declare it here so it
    * resolves against the peroai --font-mono rather than the :root one. */
   --default-mono-font-family: var(--font-mono);

@@ -37,7 +37,7 @@ export function Capabilities() {
           </p>
           <h2
             id='home-capabilities-heading'
-            className='mt-4 text-3xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl'
+            className='leading-heading mt-4 text-3xl font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl'
           >
             {t('Everything between your app and the model')}
           </h2>

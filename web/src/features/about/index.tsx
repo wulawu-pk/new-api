@@ -226,7 +226,7 @@ function EmptyAboutState() {
             align='left'
             fontSize='clamp(2.25rem, 4.6vw, 3.75rem)'
             lineHeight={1.06}
-            letterSpacing='-0.03em'
+            letterSpacing='var(--tracking-display)'
             className='mt-5 text-balance'
           />
           <motion.p

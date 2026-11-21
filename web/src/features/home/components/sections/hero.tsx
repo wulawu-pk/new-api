@@ -101,7 +101,7 @@ export function Hero(props: HeroProps) {
 
         <motion.h1
           variants={headline}
-          className='mt-8 max-w-4xl text-[clamp(2.75rem,7vw,5.5rem)] leading-[1.02] font-semibold tracking-[-0.04em] text-balance'
+          className='leading-display tracking-display mt-8 max-w-4xl text-[clamp(2.75rem,7vw,5.5rem)] font-semibold text-balance'
         >
           <span className='block'>{t('One key.')}</span>
           <span className='text-muted-foreground block'>

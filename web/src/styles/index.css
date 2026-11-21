@@ -497,9 +497,52 @@ For commercial licensing, please contact support@quantumnous.com
 @theme inline {
   --color-landing-accent: var(--landing-accent);
   --color-landing-accent-soft: var(--landing-accent-soft);
+  /* JetBrains Mono has no Han glyphs; without an explicit CJK family the
+   * generic `monospace` fallback picks SimSun on Windows. */
   --font-ascii:
     'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas,
+    var(--font-cjk, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei'),
     monospace;
+}
+
+/* Display rhythm for landing headings. Not inline: the `:lang()` block below
+ * re-declares these for CJK at runtime. */
+@theme {
+  --tracking-display: -0.04em;
+  --leading-display: 1.02;
+  --leading-heading: 1.08;
+}
+
+/* ── CJK typography ──
+ * `<html lang>` follows the interface language (i18n/config.ts).
+ * - `--font-cjk` puts the regional Han face ahead of the generic fallback, so
+ *   Traditional Chinese gets Traditional glyph shapes and Japanese gets
+ *   Japanese ones instead of PingFang SC.
+ * - Han glyphs fill the whole em box, so the negative Latin display tracking
+ *   and ~1.0 leading crush them; relax both. */
+:lang(zh-CN),
+:lang(zh-Hans) {
+  --font-cjk:
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
+    'Source Han Sans SC';
+}
+:lang(zh-TW),
+:lang(zh-Hant) {
+  --font-cjk:
+    'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', 'Source Han Sans TC';
+}
+:lang(ja) {
+  --font-cjk:
+    'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo,
+    'Noto Sans JP';
+}
+:lang(zh),
+:lang(ja) {
+  --tracking-tight: 0em;
+  --tracking-tighter: -0.01em;
+  --tracking-display: -0.01em;
+  --leading-display: 1.16;
+  --leading-heading: 1.25;
 }
 
 /* Dashed hairline drawn with characters' rhythm rather than a solid stroke. */

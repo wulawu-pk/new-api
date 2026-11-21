@@ -74,7 +74,7 @@ export function Faq() {
           </p>
           <h2
             id='home-faq-heading'
-            className='text-3xl leading-[1.08] font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl'
+            className='leading-heading text-3xl font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl'
           >
             {t('Questions, answered')}
           </h2>
