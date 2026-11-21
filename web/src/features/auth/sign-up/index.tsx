@@ -22,7 +22,9 @@ import { useTranslation } from 'react-i18next'
 import { useStatus } from '@/hooks/use-status'
 
 import { AuthLayout } from '../auth-layout'
+import { AuthHeading } from '../components/auth-heading'
 import { TermsFooter } from '../components/terms-footer'
+import { AUTH_LINK_CLASS } from '../constants'
 import { SignUpForm } from './components/sign-up-form'
 
 export function SignUp() {
@@ -33,30 +35,26 @@ export function SignUp() {
   return (
     <AuthLayout>
       <div className='w-full space-y-8'>
-        <div className='space-y-2'>
-          <h2 className='text-center text-2xl font-semibold tracking-tight sm:text-left'>
-            {t('Create an account')}
-          </h2>
-          <p className='text-muted-foreground text-left text-sm sm:text-base'>
-            {t('Already have an account?')}{' '}
-            <Link
-              to='/sign-in'
-              search={{ redirect }}
-              className='hover:text-primary font-medium underline underline-offset-4'
-            >
-              {t('Sign in')}
-            </Link>
-            .
-          </p>
-        </div>
+        <AuthHeading
+          command='auth register'
+          title={t('Create an account')}
+          description={
+            <>
+              {t('Already have an account?')}{' '}
+              <Link
+                to='/sign-in'
+                search={{ redirect }}
+                className={AUTH_LINK_CLASS}
+              >
+                {t('Sign in')}
+              </Link>
+            </>
+          }
+        />
 
         <SignUpForm redirectTo={redirect} />
 
-        <TermsFooter
-          variant='sign-up'
-          status={status}
-          className='text-center'
-        />
+        <TermsFooter variant='sign-up' status={status} />
       </div>
     </AuthLayout>
   )

@@ -42,7 +42,12 @@ import { Label } from '@/components/ui/label'
 import { login, wechatLoginByCode } from '@/features/auth/api'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
-import { loginFormSchema } from '@/features/auth/constants'
+import {
+  AUTH_BUTTON_CLASS,
+  AUTH_FORM_CLASS,
+  AUTH_SUBMIT_CLASS,
+  loginFormSchema,
+} from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
 import { beginPasskeyLogin, finishPasskeyLogin } from '@/features/auth/passkey'
@@ -301,7 +306,7 @@ export function UserAuthForm({
             variant='outline'
             disabled={passkeyButtonDisabled}
             onClick={handlePasskeyLogin}
-            className='h-11 w-full justify-center gap-2 rounded-lg'
+            className={AUTH_BUTTON_CLASS}
           >
             {isPasskeyLoading ? (
               <Loader2 className='h-4 w-4 animate-spin' />
@@ -339,7 +344,7 @@ export function UserAuthForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn(AUTH_FORM_CLASS, className)}
         {...props}
       >
         {hasAlternativeLogin && alternativeLoginMethods}
@@ -380,7 +385,7 @@ export function UserAuthForm({
                   <FormMessage />
                   <Link
                     to='/forgot-password'
-                    className='text-muted-foreground absolute end-0 -top-0.5 z-10 text-sm font-medium hover:opacity-75'
+                    className='text-muted-foreground hover:text-foreground absolute end-0 -top-0.5 z-10 text-xs font-medium underline-offset-4 transition-colors hover:underline'
                   >
                     {t('Forgot password?')}
                   </Link>
@@ -391,7 +396,7 @@ export function UserAuthForm({
             {/* Submit Button */}
             <Button
               type='submit'
-              className='mt-2 w-full justify-center gap-2'
+              className={cn(AUTH_SUBMIT_CLASS, 'mt-1')}
               disabled={isLoading}
             >
               {isLoading ? <Loader2 className='animate-spin' /> : <LogIn />}

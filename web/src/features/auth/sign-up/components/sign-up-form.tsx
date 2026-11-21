@@ -41,7 +41,11 @@ import { Label } from '@/components/ui/label'
 import { register, wechatLoginByCode } from '@/features/auth/api'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
 import { OAuthProviders } from '@/features/auth/components/oauth-providers'
-import { registerFormSchema } from '@/features/auth/constants'
+import {
+  AUTH_FORM_CLASS,
+  AUTH_SUBMIT_CLASS,
+  registerFormSchema,
+} from '@/features/auth/constants'
 import { useAuthRedirect } from '@/features/auth/hooks/use-auth-redirect'
 import { useEmailVerification } from '@/features/auth/hooks/use-email-verification'
 import { useTurnstile } from '@/features/auth/hooks/use-turnstile'
@@ -249,7 +253,7 @@ export function SignUpForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className={cn('grid gap-4', className)}
+        className={cn(AUTH_FORM_CLASS, className)}
         {...props}
       >
         {/* Username Field */}
@@ -329,6 +333,7 @@ export function SignUpForm({
               <div className='flex-1'>
                 <Input
                   placeholder={t('Verification code')}
+                  aria-label={t('Verification code')}
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
                 />
@@ -336,6 +341,7 @@ export function SignUpForm({
               <Button
                 variant='outline'
                 type='button'
+                className='h-11 shrink-0 rounded-full px-4'
                 disabled={
                   isLoading ||
                   isSendingCode ||
@@ -372,7 +378,7 @@ export function SignUpForm({
         {/* Submit Button */}
         <Button
           type='submit'
-          className='mt-2 w-full justify-center gap-2'
+          className={cn(AUTH_SUBMIT_CLASS, 'mt-1')}
           disabled={
             isLoading ||
             (requiresLegalConsent && !agreedToLegal) ||

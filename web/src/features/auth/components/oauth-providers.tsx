@@ -29,6 +29,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+import { AUTH_BUTTON_CLASS } from '../constants'
 import { useOAuthLogin } from '../hooks/use-oauth-login'
 import type { SystemStatus } from '../types'
 
@@ -145,16 +146,17 @@ export function OAuthProviders({
   if (providerButtons.length === 0) return null
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className='relative'>
-        <div className='absolute inset-0 flex items-center'>
-          <span className='w-full border-t' />
-        </div>
-        <div className='relative flex justify-center text-xs uppercase'>
-          <span className='bg-background text-muted-foreground px-2'>
-            {t('Or continue with')}
-          </span>
-        </div>
+    <div className={cn('space-y-4', className)}>
+      <div className='font-ascii text-muted-foreground flex items-center gap-3 text-[11px] tracking-[0.12em] uppercase'>
+        <span
+          aria-hidden
+          className='border-border flex-1 border-t border-dashed'
+        />
+        {t('Or continue with')}
+        <span
+          aria-hidden
+          className='border-border flex-1 border-t border-dashed'
+        />
       </div>
 
       <div className='flex flex-col gap-2'>
@@ -166,7 +168,7 @@ export function OAuthProviders({
               type='button'
               disabled={disabled || isLoading || extraDisabled}
               onClick={onClick}
-              className='h-11 w-full justify-center gap-2 rounded-lg'
+              className={AUTH_BUTTON_CLASS}
             >
               {icon}
               {label}

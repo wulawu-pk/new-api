@@ -22,6 +22,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
+import { AUTH_LINK_CLASS } from '../constants'
 import type { SystemStatus } from '../types'
 
 interface LegalConsentProps {
@@ -52,7 +53,7 @@ export function LegalConsent({
   return (
     <div
       className={cn(
-        'border-border/60 bg-muted/40 flex items-start gap-3 rounded-md border p-3',
+        'border-border bg-muted/30 flex items-start gap-3 rounded-xl border border-dashed p-3',
         className
       )}
     >
@@ -73,7 +74,7 @@ export function LegalConsent({
               href='/user-agreement'
               target='_blank'
               rel='noopener noreferrer'
-              className='text-primary hover:underline'
+              className={AUTH_LINK_CLASS}
             >
               {t('User Agreement')}
             </a>
@@ -84,7 +85,7 @@ export function LegalConsent({
               href='/privacy-policy'
               target='_blank'
               rel='noopener noreferrer'
-              className='text-primary hover:underline'
+              className={AUTH_LINK_CLASS}
             >
               {t('Privacy Policy')}
             </a>
