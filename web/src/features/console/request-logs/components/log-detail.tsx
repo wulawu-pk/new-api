@@ -30,8 +30,14 @@ function usd(value: number): string {
   return `$${Number(value.toPrecision(6))}`
 }
 
-/** Billing breakdown shown when a log row is expanded. */
-export function LogDetail(props: { row: ConsoleLogRow }) {
+/**
+ * Billing breakdown shown when a log row is expanded. `showChannel` (the
+ * admin all-users view) adds the channel that served the request.
+ */
+export function LogDetail(props: {
+  row: ConsoleLogRow
+  showChannel?: boolean
+}) {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const row = props.row
@@ -78,10 +84,16 @@ export function LogDetail(props: { row: ConsoleLogRow }) {
       { label: t('Output'), value: num(row.output) },
     ]
     if (perMillion?.p != null) {
-      cells.push({ label: t('Input price'), value: `${usd(perMillion.p)} / 1M` })
+      cells.push({
+        label: t('Input price'),
+        value: `${usd(perMillion.p)} / 1M`,
+      })
     }
     if (perMillion?.c != null) {
-      cells.push({ label: t('Output price'), value: `${usd(perMillion.c)} / 1M` })
+      cells.push({
+        label: t('Output price'),
+        value: `${usd(perMillion.c)} / 1M`,
+      })
     }
     if (!perMillion && row.groupRatio != null) {
       cells.push({
@@ -94,6 +106,15 @@ export function LogDetail(props: { row: ConsoleLogRow }) {
       { label: t('Time to first token'), value: seconds(row.firstToken) },
       { label: t('Total time'), value: seconds(row.useTime) }
     )
+  }
+
+  if (props.showChannel && row.channel > 0) {
+    cells.push({
+      label: t('Channel'),
+      value: row.channelName
+        ? `#${row.channel} ${row.channelName}`
+        : `#${row.channel}`,
+    })
   }
 
   return (

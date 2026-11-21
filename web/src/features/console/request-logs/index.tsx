@@ -45,12 +45,15 @@ import {
 } from '@/components/terminal/styles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select'
-import { getUserLogStats, getUserLogs } from '@/features/usage-logs/api'
+  getAllLogs,
+  getLogStats,
+  getUserLogStats,
+  getUserLogs,
+} from '@/features/usage-logs/api'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
+import { useIsAdmin } from '@/hooks/use-admin'
 import { useDebounce } from '@/hooks/use-debounce'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatLogQuota, formatNumber, formatQuota } from '@/lib/format'
@@ -65,39 +68,56 @@ import { LogDetail } from './components/log-detail'
 import {
   LOG_PAGE_SIZE,
   buildLogQuery,
+  isAllUsers,
   pageCount,
   type LogFilters,
   type LogKind,
   type LogRange,
+  type LogScope,
 } from './lib/filters'
 import { compactTokens, toConsoleLogRow } from './lib/log-row'
-
-const COLS = 9
 
 export function ConsoleLogs() {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const groups = useUserGroups()
-  const [filters, setFilters] = useState<LogFilters>({
+  const isAdmin = useIsAdmin()
+  // Admins start on every user's logs, as the old log page did.
+  const [filters, setFilters] = useState<LogFilters>(() => ({
     range: 'today',
     kind: 'ok',
     group: '',
     model: '',
     page: 1,
-  })
+    scope: isAdmin ? 'all' : 'self',
+    username: '',
+  }))
   const [openId, setOpenId] = useState<number | null>(null)
   const model = useDebounce(filters.model, 300)
-  const effective = { ...filters, model }
+  const username = useDebounce(filters.username, 300)
+  const effective = { ...filters, model, username }
+  const allUsers = isAllUsers(effective, isAdmin)
+  const logApi = allUsers ? '/api/log/' : '/api/log/self'
+  const cols = allUsers ? 10 : 9
+  const narrowed = Boolean(
+    filters.group || filters.model || (allUsers && filters.username)
+  )
 
   const logs = useQuery({
-    queryKey: ['console', 'logs', effective],
+    queryKey: ['console', 'logs', allUsers, effective],
     queryFn: async () => {
+      const query = {
+        ...buildLogQuery(effective),
+        p: effective.page,
+        page_size: LOG_PAGE_SIZE,
+      }
       const response = requireServerSuccess(
-        await getUserLogs({
-          ...buildLogQuery(effective),
-          p: effective.page,
-          page_size: LOG_PAGE_SIZE,
-        })
+        allUsers
+          ? await getAllLogs({
+              ...query,
+              username: effective.username.trim() || undefined,
+            })
+          : await getUserLogs(query)
       )
       return {
         items: (response.data?.items ?? []) as UsageLog[],
@@ -109,10 +129,16 @@ export function ConsoleLogs() {
   })
 
   const stats = useQuery({
-    queryKey: ['console', 'logs-stat', { ...effective, page: 0 }],
+    queryKey: ['console', 'logs-stat', allUsers, { ...effective, page: 0 }],
     queryFn: async () => {
+      const query = buildLogQuery(effective)
       const response = requireServerSuccess(
-        await getUserLogStats(buildLogQuery(effective))
+        allUsers
+          ? await getLogStats({
+              ...query,
+              username: effective.username.trim() || undefined,
+            })
+          : await getUserLogStats(query)
       )
       return response.data ?? null
     },
@@ -137,6 +163,11 @@ export function ConsoleLogs() {
     month: t('Month to date'),
   }
 
+  const turnPage = (step: number) => {
+    setOpenId(null)
+    setFilters((current) => ({ ...current, page: current.page + step }))
+  }
+
   const toggleRow = (id: number) =>
     setOpenId((current) => (current === id ? null : id))
 
@@ -152,7 +183,7 @@ export function ConsoleLogs() {
             <Link
               to='/usage-logs/$section'
               params={{ section: 'task' }}
-              className='text-t-fg border-t-faint border-b hover:border-t-pink'
+              className='text-t-fg border-t-faint hover:border-t-pink border-b'
             >
               {t('Image and video tasks')}
             </Link>
@@ -161,15 +192,48 @@ export function ConsoleLogs() {
       />
 
       <div className='flex flex-wrap items-center gap-2.5'>
+        {isAdmin && (
+          <NativeSelect
+            aria-label={t('Whose requests')}
+            value={filters.scope}
+            onChange={(event) =>
+              update({ scope: event.target.value as LogScope, username: '' })
+            }
+            className={cn(TERM_SELECT, 'min-w-[130px] py-2 text-[13.5px]')}
+          >
+            <NativeSelectOption value='all'>
+              {t('All users')}
+            </NativeSelectOption>
+            <NativeSelectOption value='self'>
+              {t('My requests')}
+            </NativeSelectOption>
+          </NativeSelect>
+        )}
+        {isAdmin && filters.scope === 'all' && (
+          <Input
+            aria-label={t('Username')}
+            placeholder={t('Username')}
+            value={filters.username}
+            onChange={(event) => update({ username: event.target.value })}
+            className={cn(
+              TERM_INPUT,
+              'w-auto min-w-[130px] py-2 font-mono text-[13.5px] max-[480px]:flex-1'
+            )}
+          />
+        )}
         <NativeSelect
           aria-label={t('Time range')}
           value={filters.range}
-          onChange={(event) => update({ range: event.target.value as LogRange })}
+          onChange={(event) =>
+            update({ range: event.target.value as LogRange })
+          }
           className={cn(TERM_SELECT, 'min-w-[130px] py-2 text-[13.5px]')}
         >
           <NativeSelectOption value='today'>{t('Today')}</NativeSelectOption>
           <NativeSelectOption value='7d'>{t('Last 7 days')}</NativeSelectOption>
-          <NativeSelectOption value='month'>{t('Month to date')}</NativeSelectOption>
+          <NativeSelectOption value='month'>
+            {t('Month to date')}
+          </NativeSelectOption>
         </NativeSelect>
         <NativeSelect
           aria-label={t('Result')}
@@ -177,8 +241,12 @@ export function ConsoleLogs() {
           onChange={(event) => update({ kind: event.target.value as LogKind })}
           className={cn(TERM_SELECT, 'min-w-[130px] py-2 text-[13.5px]')}
         >
-          <NativeSelectOption value='ok'>{t('Successful requests')}</NativeSelectOption>
-          <NativeSelectOption value='failed'>{t('Failed requests')}</NativeSelectOption>
+          <NativeSelectOption value='ok'>
+            {t('Successful requests')}
+          </NativeSelectOption>
+          <NativeSelectOption value='failed'>
+            {t('Failed requests')}
+          </NativeSelectOption>
         </NativeSelect>
         <NativeSelect
           aria-label={t('Group')}
@@ -198,7 +266,10 @@ export function ConsoleLogs() {
           placeholder={t('Search model')}
           value={filters.model}
           onChange={(event) => update({ model: event.target.value })}
-          className={cn(TERM_INPUT, 'w-auto min-w-[150px] py-2 font-mono text-[13.5px] max-[480px]:flex-1')}
+          className={cn(
+            TERM_INPUT,
+            'w-auto min-w-[150px] py-2 font-mono text-[13.5px] max-[480px]:flex-1'
+          )}
         />
         <span className='text-t-dim ml-auto text-[13px] max-[480px]:ml-0 max-[480px]:w-full'>
           {rangeLabel[filters.range]}{' '}
@@ -231,6 +302,7 @@ export function ConsoleLogs() {
             <ConsoleTableHeader>
               <ConsoleTableRow className='hover:bg-transparent'>
                 <ConsoleTh>{t('Time')}</ConsoleTh>
+                {allUsers && <ConsoleTh>{t('User')}</ConsoleTh>}
                 <ConsoleTh>Key</ConsoleTh>
                 <ConsoleTh>{t('Model')}</ConsoleTh>
                 <ConsoleTh>{t('Group')}</ConsoleTh>
@@ -242,22 +314,24 @@ export function ConsoleLogs() {
               </ConsoleTableRow>
             </ConsoleTableHeader>
             <ConsoleTableBody>
-              {logs.isPending && <TableSkeletonRows cols={COLS} />}
+              {logs.isPending && <TableSkeletonRows cols={cols} />}
               {logs.isError && (
-                <TableMessageRow cols={COLS}>
+                <TableMessageRow cols={cols}>
                   <LoadErrorText
-                    api='/api/log/self'
+                    api={logApi}
                     reason={errorReason(logs.error)}
                     onRetry={() => void logs.refetch()}
                   />
                 </TableMessageRow>
               )}
               {logs.data && rows.length === 0 && (
-                <TableMessageRow cols={COLS}>
-                  {filters.group || filters.model
-                    ? t('No requests match. Try another group or clear the search.')
+                <TableMessageRow cols={cols}>
+                  {narrowed
+                    ? t(
+                        'No requests match. Try another group or clear the search.'
+                      )
                     : t('No requests in this period yet.')}
-                  {!filters.group && !filters.model && (
+                  {!narrowed && !allUsers && (
                     <div className='mt-3'>
                       <Button
                         size='sm'
@@ -289,29 +363,54 @@ export function ConsoleLogs() {
                       }}
                     >
                       <ConsoleTd kind='mono'>
-                        {dayjs.unix(row.createdAt).format(
-                          filters.range === 'today' ? 'HH:mm:ss' : 'MM-DD HH:mm'
-                        )}
+                        {dayjs
+                          .unix(row.createdAt)
+                          .format(
+                            filters.range === 'today'
+                              ? 'HH:mm:ss'
+                              : 'MM-DD HH:mm'
+                          )}
                       </ConsoleTd>
-                      <ConsoleTd className='max-w-[160px] truncate'>{row.tokenName || '—'}</ConsoleTd>
+                      {allUsers && (
+                        <ConsoleTd
+                          kind='mono'
+                          className='max-w-[140px] truncate'
+                        >
+                          {row.username || '—'}
+                        </ConsoleTd>
+                      )}
+                      <ConsoleTd className='max-w-[160px] truncate'>
+                        {row.tokenName || '—'}
+                      </ConsoleTd>
                       <ConsoleTd kind='mono'>{row.model || '—'}</ConsoleTd>
                       <ConsoleTd>{groupName(row.group, t) || '—'}</ConsoleTd>
-                      <ConsoleTd kind='num'>{compactTokens(row.input)}</ConsoleTd>
-                      <ConsoleTd kind='num'>{compactTokens(row.output)}</ConsoleTd>
+                      <ConsoleTd kind='num'>
+                        {compactTokens(row.input)}
+                      </ConsoleTd>
+                      <ConsoleTd kind='num'>
+                        {compactTokens(row.output)}
+                      </ConsoleTd>
                       <ConsoleTd>
                         {row.isError ? (
-                          <span className='text-t-warn text-[12.5px]'>! {t('Failed')}</span>
+                          <span className='text-t-warn text-[12.5px]'>
+                            ! {t('Failed')}
+                          </span>
                         ) : (
                           <CacheHitCell rate={row.cacheHit} />
                         )}
                       </ConsoleTd>
                       <ConsoleTd kind='num'>{row.useTime}s</ConsoleTd>
-                      <ConsoleTd kind='num'>{formatLogQuota(row.quota)}</ConsoleTd>
+                      <ConsoleTd kind='num'>
+                        {formatLogQuota(row.quota)}
+                      </ConsoleTd>
                     </ConsoleTableRow>
                     {open && (
                       <tr className='bg-t-bg2'>
-                        <td colSpan={COLS} className='px-3.5 pt-1 pb-[18px] whitespace-normal'>
-                          <LogDetail row={row} />
+                        <td
+                          colSpan={cols}
+                          className='px-3.5 pt-1 pb-[18px] whitespace-normal'
+                        >
+                          <LogDetail row={row} showChannel={allUsers} />
                         </td>
                       </tr>
                     )}
@@ -321,11 +420,17 @@ export function ConsoleLogs() {
             </ConsoleTableBody>
           </ConsoleTable>
         </div>
-        {logs.data && pages > 1 && (
+        {logs.data && total > 0 && (
           <nav
             aria-label={t('Pagination')}
-            className='border-t-line text-t-dim flex items-center justify-end gap-3 border-t px-3.5 py-2.5 text-[13px]'
+            className='border-t-line text-t-dim flex flex-wrap items-center justify-end gap-3 border-t px-3.5 py-2.5 text-[13px]'
           >
+            <span className='mr-auto'>
+              {t('{{count}} in total, {{size}} per page', {
+                count: formatNumber(total, locale),
+                size: LOG_PAGE_SIZE,
+              })}
+            </span>
             <span className='font-mono'>
               {filters.page} / {pages}
             </span>
@@ -334,7 +439,7 @@ export function ConsoleLogs() {
               variant='outline'
               className={TERM_BUTTON}
               disabled={filters.page <= 1}
-              onClick={() => setFilters((c) => ({ ...c, page: c.page - 1 }))}
+              onClick={() => turnPage(-1)}
             >
               {t('Previous page')}
             </Button>
@@ -343,7 +448,7 @@ export function ConsoleLogs() {
               variant='outline'
               className={TERM_BUTTON}
               disabled={filters.page >= pages}
-              onClick={() => setFilters((c) => ({ ...c, page: c.page + 1 }))}
+              onClick={() => turnPage(1)}
             >
               {t('Next page')}
             </Button>

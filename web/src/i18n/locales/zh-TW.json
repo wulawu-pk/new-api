@@ -7630,6 +7630,9 @@
     "Model groups": "模型分組",
     "Search all groups": "在所有分組裡搜尋模型",
     "{{count}} matches": "符合 {{count}} 個",
-    "“{{query}}” in {{count}} groups": "「{{query}}」出現在 {{count}} 個分組"
+    "“{{query}}” in {{count}} groups": "「{{query}}」出現在 {{count}} 個分組",
+    "My requests": "我的請求",
+    "Whose requests": "查看誰的請求",
+    "{{count}} in total, {{size}} per page": "共 {{count}} 筆，每頁 {{size}} 筆"
   }
 }

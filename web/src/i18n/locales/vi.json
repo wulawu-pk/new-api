@@ -7630,6 +7630,9 @@
     "Model groups": "Model groups",
     "Search all groups": "Search all groups",
     "{{count}} matches": "{{count}} matches",
-    "“{{query}}” in {{count}} groups": "“{{query}}” in {{count}} groups"
+    "“{{query}}” in {{count}} groups": "“{{query}}” in {{count}} groups",
+    "My requests": "My requests",
+    "Whose requests": "Whose requests",
+    "{{count}} in total, {{size}} per page": "{{count}} in total, {{size}} per page"
   }
 }

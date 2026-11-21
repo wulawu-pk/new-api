@@ -31,6 +31,11 @@ import type { LogOtherData, LogTierPrices } from '@/features/usage-logs/types'
 export type ConsoleLogRow = {
   id: number
   createdAt: number
+  /** Owner of the request; shown in the admin all-users view. */
+  username: string
+  /** Channel that served it (admin view only; 0 when unknown). */
+  channel: number
+  channelName: string
   tokenName: string
   model: string
   group: string
@@ -63,10 +68,15 @@ export function toConsoleLogRow(log: UsageLog): ConsoleLogRow {
   const frtMs = finite(other?.frt)
   const userRatio = finite(other?.user_group_ratio)
   const groupRatio =
-    userRatio != null && userRatio !== -1 ? userRatio : finite(other?.group_ratio)
+    userRatio != null && userRatio !== -1
+      ? userRatio
+      : finite(other?.group_ratio)
   return {
     id: log.id,
     createdAt: log.created_at,
+    username: log.username ?? '',
+    channel: log.channel ?? 0,
+    channelName: log.channel_name ?? '',
     tokenName: log.token_name,
     model: log.model_name,
     group: log.group,

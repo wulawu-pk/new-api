@@ -26,10 +26,17 @@ export type LogRange = (typeof LOG_RANGES)[number]
 export const LOG_KINDS = ['ok', 'failed'] as const
 export type LogKind = (typeof LOG_KINDS)[number]
 
+/** Whose logs an admin is looking at; other users only see their own. */
+export const LOG_SCOPES = ['all', 'self'] as const
+export type LogScope = (typeof LOG_SCOPES)[number]
+
 export const LOG_PAGE_SIZE = 50
 
 /** Start of a log time range, unix seconds. */
-export function rangeStart(range: LogRange, now: dayjs.Dayjs = dayjs()): number {
+export function rangeStart(
+  range: LogRange,
+  now: dayjs.Dayjs = dayjs()
+): number {
   if (range === 'today') return now.startOf('day').unix()
   if (range === '7d') return now.startOf('day').subtract(6, 'day').unix()
   return now.startOf('month').unix()
@@ -45,9 +52,21 @@ export type LogFilters = {
   group: string
   model: string
   page: number
+  /** Admins only: every user's logs (`/api/log/`) or their own. */
+  scope: LogScope
+  /** Admins only, with scope `all`: one user's logs. */
+  username: string
 }
 
-/** Query parameters for /api/log/self and /api/log/self/stat. */
+/** Whether these filters ask for every user's logs (admin endpoints). */
+export function isAllUsers(filters: LogFilters, isAdmin: boolean): boolean {
+  return isAdmin && filters.scope === 'all'
+}
+
+/**
+ * Query parameters for /api/log/self and /api/log/self/stat. The admin
+ * endpoints take the same ones plus `username`, added by the caller.
+ */
 export function buildLogQuery(filters: LogFilters, now: dayjs.Dayjs = dayjs()) {
   return {
     type: kindToLogType(filters.kind),

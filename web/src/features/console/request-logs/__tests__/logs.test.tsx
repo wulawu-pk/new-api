@@ -24,15 +24,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as logsApi from '@/features/usage-logs/api'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
 import * as libApi from '@/lib/api'
+import { useAuthStore } from '@/stores/auth-store'
 
-import { renderConsole } from '../../__tests__/render-console'
 import { ConsoleLogs } from '..'
+import { renderConsole } from '../../__tests__/render-console'
 import { buildLogQuery, pageCount, rangeStart } from '../lib/filters'
 import { compactTokens, toConsoleLogRow } from '../lib/log-row'
 
 vi.mock('@/features/usage-logs/api', () => ({
   getUserLogs: vi.fn(),
   getUserLogStats: vi.fn(),
+  getAllLogs: vi.fn(),
+  getLogStats: vi.fn(),
 }))
 
 function log(partial: Partial<UsageLog>): UsageLog {
@@ -63,7 +66,10 @@ function log(partial: Partial<UsageLog>): UsageLog {
 }
 
 beforeEach(() => {
-  vi.spyOn(libApi, 'getUserGroups').mockResolvedValue({ success: true, data: {} })
+  vi.spyOn(libApi, 'getUserGroups').mockResolvedValue({
+    success: true,
+    data: {},
+  })
   vi.mocked(logsApi.getUserLogStats).mockResolvedValue({
     success: true,
     data: { quota: 25000, rpm: 0, tpm: 0 },
@@ -73,6 +79,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  useAuthStore.getState().auth.reset()
   vi.restoreAllMocks()
 })
 
@@ -89,7 +96,9 @@ describe('log rows', () => {
   })
 
   it('marks failed requests', () => {
-    expect(toConsoleLogRow(log({ type: 5, content: 'upstream 502' })).isError).toBe(true)
+    expect(
+      toConsoleLogRow(log({ type: 5, content: 'upstream 502' })).isError
+    ).toBe(true)
   })
 
   it('compacts token counts', () => {
@@ -110,7 +119,18 @@ describe('log filters', () => {
   })
 
   it('asks for error logs when filtering failed requests and omits empty filters', () => {
-    const query = buildLogQuery({ range: 'today', kind: 'failed', group: '', model: '  ', page: 1 }, now)
+    const query = buildLogQuery(
+      {
+        range: 'today',
+        kind: 'failed',
+        group: '',
+        model: '  ',
+        page: 1,
+        scope: 'self',
+        username: '',
+      },
+      now
+    )
     expect(query.type).toBe(5)
     expect(query.group).toBeUndefined()
     expect(query.model_name).toBeUndefined()
@@ -127,7 +147,9 @@ describe('console logs page', () => {
     vi.mocked(logsApi.getUserLogs).mockReturnValue(new Promise(() => {}))
     renderConsole(<ConsoleLogs />)
 
-    await waitFor(() => expect(screen.getAllByTestId('skeleton-row')).toHaveLength(4))
+    await waitFor(() =>
+      expect(screen.getAllByTestId('skeleton-row')).toHaveLength(4)
+    )
   })
 
   it('says there are no requests yet when the period is empty', async () => {
@@ -137,11 +159,16 @@ describe('console logs page', () => {
     })
     renderConsole(<ConsoleLogs />)
 
-    expect(await screen.findByText('No requests in this period yet.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('No requests in this period yet.')
+    ).toBeInTheDocument()
   })
 
   it('names the failed endpoint when the list cannot load', async () => {
-    vi.mocked(logsApi.getUserLogs).mockResolvedValue({ success: false, message: 'timeout' })
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue({
+      success: false,
+      message: 'timeout',
+    })
     renderConsole(<ConsoleLogs />)
 
     expect(await screen.findByText('/api/log/self')).toBeInTheDocument()
@@ -156,7 +183,9 @@ describe('console logs page', () => {
     const user = userEvent.setup()
     renderConsole(<ConsoleLogs />)
 
-    const row = (await screen.findByText('gpt-6-astra')).closest('tr') as HTMLElement
+    const row = (await screen.findByText('gpt-6-astra')).closest(
+      'tr'
+    ) as HTMLElement
     expect(row).toHaveAttribute('aria-expanded', 'false')
     row.focus()
     await user.keyboard('{Enter}')
@@ -165,5 +194,88 @@ describe('console logs page', () => {
     const detail = row.nextElementSibling as HTMLElement
     expect(within(detail).getByText('By token')).toBeInTheDocument()
     expect(within(detail).getByText('7,471')).toBeInTheDocument()
+  })
+})
+
+describe('console logs page for admins', () => {
+  const PAGE = (items: UsageLog[], total: number) => ({
+    success: true,
+    data: { items, total, page: 1, page_size: 50 },
+  })
+
+  beforeEach(() => {
+    useAuthStore
+      .getState()
+      .auth.setUser({ id: 1, username: 'root', role: 100 } as never)
+    vi.mocked(logsApi.getLogStats).mockResolvedValue({
+      success: true,
+      data: { quota: 25000, rpm: 0, tpm: 0 },
+    })
+  })
+
+  it('an admin starts on every user’s logs with a user column', async () => {
+    vi.mocked(logsApi.getAllLogs).mockResolvedValue(
+      PAGE([log({ username: 'alice' })], 1)
+    )
+    renderConsole(<ConsoleLogs />)
+
+    expect(await screen.findByText('alice')).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'User' })
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('navigation', { name: 'Pagination' })).getByText(
+        '1 / 1'
+      )
+    ).toBeInTheDocument()
+    expect(logsApi.getUserLogs).not.toHaveBeenCalled()
+  })
+
+  it('an admin narrows to one user by username, or switches to their own requests', async () => {
+    vi.mocked(logsApi.getAllLogs).mockResolvedValue(PAGE([log({})], 1))
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue(PAGE([log({})], 1))
+    const user = userEvent.setup()
+    renderConsole(<ConsoleLogs />)
+
+    await user.type(await screen.findByLabelText('Username'), 'alice')
+    await waitFor(() =>
+      expect(logsApi.getAllLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ username: 'alice', p: 1 })
+      )
+    )
+
+    await user.selectOptions(screen.getByLabelText('Whose requests'), 'self')
+    await waitFor(() => expect(logsApi.getUserLogs).toHaveBeenCalled())
+    expect(screen.queryByLabelText('Username')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('columnheader', { name: 'User' })
+    ).not.toBeInTheDocument()
+  })
+
+  it('a non-admin has no user switch and reads only their own logs', async () => {
+    useAuthStore
+      .getState()
+      .auth.setUser({ id: 2, username: 'demo', role: 1 } as never)
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue(PAGE([log({})], 1))
+    renderConsole(<ConsoleLogs />)
+
+    await screen.findByText('gpt-6-astra')
+    expect(screen.queryByLabelText('Whose requests')).not.toBeInTheDocument()
+    expect(logsApi.getAllLogs).not.toHaveBeenCalled()
+  })
+
+  it('shows the total even on a single page and turns to the next page when there are more', async () => {
+    vi.mocked(logsApi.getAllLogs).mockResolvedValue(PAGE([log({})], 120))
+    const user = userEvent.setup()
+    renderConsole(<ConsoleLogs />)
+
+    const pager = await screen.findByRole('navigation', { name: 'Pagination' })
+    expect(within(pager).getByText('1 / 3')).toBeInTheDocument()
+    await user.click(within(pager).getByRole('button', { name: 'Next page' }))
+    await waitFor(() =>
+      expect(logsApi.getAllLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ p: 2 })
+      )
+    )
   })
 })
