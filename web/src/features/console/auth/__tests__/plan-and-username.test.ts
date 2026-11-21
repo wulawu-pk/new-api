@@ -59,6 +59,53 @@ describe('pending plan', () => {
     expect(consumePendingPlan()).toBeNull()
   })
 
+  it('ignores the same landing-page link once its key was created (browser back)', () => {
+    const link = { plan: 'gpt-pro', model: 'gpt-6.2-astra', client: 'Codex' }
+    savePendingPlan({
+      group: 'gpt-pro',
+      model: 'gpt-6.2-astra',
+      client: 'Codex',
+    })
+    consumePendingPlan()
+
+    expect(planFromSearch(link)).toBeNull()
+  })
+
+  it('still takes a different configuration after a key was created', () => {
+    savePendingPlan({
+      group: 'gpt-pro',
+      model: 'gpt-6.2-astra',
+      client: 'Codex',
+    })
+    consumePendingPlan()
+
+    expect(
+      planFromSearch({
+        plan: 'claude-kiro',
+        model: 'claude-opus-5-5',
+        client: 'Claude Code',
+      })
+    ).toEqual({
+      group: 'claude-kiro',
+      model: 'claude-opus-5-5',
+      client: 'Claude Code',
+    })
+  })
+
+  it('takes the same link again 30 minutes after its key was created', () => {
+    const link = { plan: 'gpt-pro', model: 'gpt-6.2-astra', client: 'Codex' }
+    savePendingPlan({
+      group: 'gpt-pro',
+      model: 'gpt-6.2-astra',
+      client: 'Codex',
+    })
+    consumePendingPlan()
+
+    expect(planFromSearch(link, Date.now() + 31 * 60 * 1000)?.group).toBe(
+      'gpt-pro'
+    )
+  })
+
   it('expires after 30 minutes', () => {
     savePendingPlan({ group: 'deepseek' })
 

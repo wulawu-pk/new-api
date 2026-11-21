@@ -50,9 +50,11 @@ export const Route = createFileRoute('/(auth)/sign-in')({
     // 如果已经有用户信息，说明已登录
     if (auth.user) {
       // Already signed in: keep the landing-page plan for the console.
-      const plan = planFromSearch(search ?? {})
-      if (plan) {
-        savePendingPlan(plan)
+      // A link whose key was already made (Back button) yields no plan but
+      // still lands on the key list.
+      if (search?.plan) {
+        const plan = planFromSearch(search)
+        if (plan) savePendingPlan(plan)
         throw redirect({ to: '/keys', replace: true })
       }
       const target =
