@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { VChart } from '@visactor/react-vchart'
-import { PieChart } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -112,9 +111,16 @@ export function MarketShareSection(props: MarketShareSectionProps) {
       ? 'rgba(255, 255, 255, 0.12)'
       : 'rgba(15, 23, 42, 0.12)'
 
+  // Vendors in the list but absent from the history still get a stable colour.
   const colourMap = useMemo(
-    () => buildVendorColourMap(props.history.vendors.map((v) => v.name)),
-    [props.history]
+    () =>
+      buildVendorColourMap([
+        ...new Set([
+          ...props.history.vendors.map((v) => v.name),
+          ...props.rows.map((v) => v.vendor),
+        ]),
+      ]),
+    [props.history, props.rows]
   )
 
   const orderedPoints = useMemo(() => {
@@ -207,25 +213,59 @@ export function MarketShareSection(props: MarketShareSectionProps) {
   }, [chartGridColor, chartTextColor, colourMap, orderedPoints])
 
   const visible = props.rows.slice(0, MAX_VENDORS_IN_LIST)
-  const half = Math.ceil(visible.length / 2)
-  const left = visible.slice(0, half)
-  const right = visible.slice(half)
+  const otherShare = Math.max(
+    1 - visible.reduce((sum, vendor) => sum + vendor.share, 0),
+    0
+  )
 
   return (
-    <section className='bg-card overflow-hidden rounded-lg border'>
-      {/* Chart block ----------------------------------------------------- */}
-      <header className='px-5 py-4'>
-        <h2 className='text-foreground inline-flex items-center gap-2 text-base font-semibold'>
-          <PieChart className='text-primary size-4' />
+    <section
+      aria-labelledby='rankings-share-heading'
+      className='border-border bg-background overflow-hidden rounded-3xl border'
+    >
+      <header className='flex flex-col gap-1 px-5 pt-6 pb-4 sm:px-6'>
+        <p className='font-ascii text-muted-foreground text-xs'>[ 02 ]</p>
+        <h2
+          id='rankings-share-heading'
+          className='text-xl font-semibold tracking-tight sm:text-2xl'
+        >
           {t('Market Share')}
         </h2>
-        <p className='text-muted-foreground mt-1 text-sm'>
+        <p className='text-muted-foreground text-sm'>
           {t(PERIOD_DESCRIPTIONS[props.period])}
         </p>
       </header>
 
-      <div className='px-5 pb-5'>
-        <div className='h-60 sm:h-72'>
+      {visible.length > 0 && (
+        <div className='px-5 pb-2 sm:px-6'>
+          <div
+            role='img'
+            aria-label={t('Vendors ranked by aggregated token volume')}
+            className='flex h-3 w-full gap-[2px] overflow-hidden rounded-full'
+          >
+            {visible.map((vendor) => (
+              <span
+                key={vendor.vendor}
+                title={`${vendor.vendor} · ${formatShare(vendor.share)}`}
+                className='h-full min-w-[3px]'
+                style={{
+                  flexGrow: vendor.share,
+                  backgroundColor: colourMap[vendor.vendor] ?? '#94a3b8',
+                }}
+              />
+            ))}
+            {otherShare > 0.001 && (
+              <span
+                className='bg-muted h-full min-w-[3px]'
+                style={{ flexGrow: otherShare }}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className='grid grid-cols-1 lg:grid-cols-12'>
+        <div className='h-64 px-3 py-4 sm:h-80 sm:px-4 lg:col-span-7'>
           {themeReady && spec ? (
             <VChart
               key={`vendor-share-${resolvedTheme}-${props.period}`}
@@ -237,74 +277,66 @@ export function MarketShareSection(props: MarketShareSectionProps) {
               option={VCHART_OPTION}
             />
           ) : (
-            <div className='text-muted-foreground/80 flex h-full items-center justify-center text-xs'>
+            <div className='text-muted-foreground font-ascii flex h-full items-center justify-center text-xs'>
               {t('No history data available')}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Vendor list block ----------------------------------------------- */}
-      <div className='border-t'>
-        <header className='px-5 pt-4 pb-2'>
-          <h3 className='text-foreground text-sm font-semibold'>
-            {t('By model author')}
-          </h3>
-          <p className='text-muted-foreground/80 mt-0.5 text-xs'>
-            {t('Vendors ranked by aggregated token volume')}
-          </p>
-        </header>
-        {visible.length === 0 ? (
-          <div className='text-muted-foreground/80 px-5 py-8 text-center text-sm'>
-            {t('No vendor data available')}
-          </div>
-        ) : (
-          <div className='grid grid-cols-1 gap-x-8 px-5 pt-1 pb-4 md:grid-cols-2'>
-            <VendorList rows={left} colourMap={colourMap} />
-            {right.length > 0 && (
-              <VendorList rows={right} colourMap={colourMap} />
-            )}
-          </div>
-        )}
+        <div className='border-border border-t lg:col-span-5 lg:border-t-0 lg:border-l'>
+          <header className='px-5 pt-5 pb-3 sm:px-6'>
+            <h3 className='text-base font-semibold tracking-tight'>
+              {t('By model author')}
+            </h3>
+            <p className='text-muted-foreground mt-0.5 text-xs'>
+              {t('Vendors ranked by aggregated token volume')}
+            </p>
+          </header>
+          {visible.length === 0 ? (
+            <div className='text-muted-foreground px-6 py-10 text-center text-sm'>
+              {t('No vendor data available')}
+            </div>
+          ) : (
+            <ol className='divide-border border-border divide-y border-t'>
+              {visible.map((vendor) => (
+                <li
+                  key={vendor.vendor}
+                  className='hover:bg-muted/40 flex items-center gap-3 px-5 py-2.5 transition-colors sm:px-6'
+                >
+                  <span className='font-ascii text-muted-foreground w-6 shrink-0 text-right text-xs tabular-nums'>
+                    {String(vendor.rank).padStart(2, '0')}
+                  </span>
+                  <span
+                    aria-hidden
+                    className='size-2.5 shrink-0 rounded-[3px]'
+                    style={{
+                      backgroundColor: colourMap[vendor.vendor] ?? '#94a3b8',
+                    }}
+                  />
+                  <div className='min-w-0 flex-1'>
+                    <VendorLink
+                      vendor={vendor.vendor}
+                      className='text-foreground block truncate text-sm font-medium'
+                    />
+                    <p className='font-ascii text-muted-foreground truncate text-[11px]'>
+                      {t('{{count}} models', { count: vendor.models_count })}
+                      {vendor.top_model && ` · ${vendor.top_model}`}
+                    </p>
+                  </div>
+                  <div className='shrink-0 text-right'>
+                    <div className='font-ascii text-sm font-semibold tabular-nums'>
+                      {formatTokens(vendor.total_tokens)}
+                    </div>
+                    <div className='font-ascii text-muted-foreground text-[11px] tabular-nums'>
+                      {formatShare(vendor.share)}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
       </div>
     </section>
-  )
-}
-
-function VendorList(props: {
-  rows: VendorRanking[]
-  colourMap: Record<string, string>
-}) {
-  return (
-    <ul>
-      {props.rows.map((vendor) => (
-        <li key={vendor.vendor} className='flex items-center gap-3 py-2.5'>
-          <span className='text-muted-foreground/80 w-6 shrink-0 text-right font-mono text-xs tabular-nums'>
-            {vendor.rank}.
-          </span>
-          <span
-            aria-hidden
-            className='size-2.5 shrink-0 rounded-full'
-            style={{
-              backgroundColor: props.colourMap[vendor.vendor] ?? '#94a3b8',
-            }}
-          />
-          <VendorLink
-            vendor={vendor.vendor}
-            className='text-foreground min-w-0 flex-1 truncate text-sm font-medium'
-          >
-            {vendor.vendor}
-          </VendorLink>
-          <div className='shrink-0 text-right'>
-            <div className='text-foreground font-mono text-sm font-semibold tabular-nums'>
-              {formatTokens(vendor.total_tokens)}
-            </div>
-            <div className='text-muted-foreground/80 font-mono text-[11px] tabular-nums'>
-              {formatShare(vendor.share)}
-            </div>
-          </div>
-        </li>
-      ))}
-    </ul>
   )
 }

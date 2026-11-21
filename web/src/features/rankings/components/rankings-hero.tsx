@@ -18,9 +18,12 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useTranslation } from 'react-i18next'
 
+import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-import type { RankingPeriod } from '../types'
+import { formatTokens } from '../lib/format'
+import type { RankingPeriod, RankingsSnapshot } from '../types'
+import { ModelLink } from './entity-links'
 
 const PERIODS: { id: RankingPeriod; labelKey: string }[] = [
   { id: 'today', labelKey: 'Today' },
@@ -32,62 +35,101 @@ const PERIODS: { id: RankingPeriod; labelKey: string }[] = [
 type RankingsHeroProps = {
   period: RankingPeriod
   onPeriodChange: (period: RankingPeriod) => void
+  snapshot?: RankingsSnapshot
 }
 
 /**
- * Hero strip for the rankings page. Intentionally minimal — title +
- * subtitle + period tabs only.
+ * Statement header for the rankings page: title, period switch, and a strip
+ * of headline figures computed from the loaded snapshot.
  */
 export function RankingsHero(props: RankingsHeroProps) {
   const { t } = useTranslation()
+  const snapshot = props.snapshot
+  const totalTokens =
+    snapshot?.models.reduce((sum, row) => sum + row.total_tokens, 0) ?? 0
+  const leader = snapshot?.models[0]
 
   return (
-    <section className='space-y-5'>
-      <div className='space-y-2'>
-        <h1 className='text-[clamp(1.75rem,4vw,2.5rem)] leading-[1.15] font-bold tracking-tight'>
-          {t('Rankings')}
-        </h1>
-        <p className='text-muted-foreground/80 max-w-2xl text-sm'>
-          {t(
-            'Discover the most-used models and rising vendors on the platform, updated from live usage data.'
-          )}
-        </p>
+    <section className='flex flex-col gap-10'>
+      <div className='flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between'>
+        <div className='max-w-2xl'>
+          <p className='font-ascii text-muted-foreground text-xs tracking-wide uppercase'>
+            [ {t('Rankings')} ]
+          </p>
+          <h1 className='mt-4 text-[clamp(2.25rem,5vw,3.5rem)] leading-[1.05] font-semibold tracking-tight text-balance'>
+            {t('Rankings')}
+          </h1>
+          <p className='text-muted-foreground mt-4 text-base leading-relaxed text-pretty'>
+            {t(
+              'Discover the most-used models and rising vendors on the platform, updated from live usage data.'
+            )}
+          </p>
+        </div>
+
+        <div
+          role='tablist'
+          aria-label={t('Period')}
+          className='bg-muted inline-flex shrink-0 items-center gap-1 self-start rounded-full p-1 lg:self-auto'
+        >
+          {PERIODS.map((p) => {
+            const isActive = props.period === p.id
+            return (
+              <button
+                key={p.id}
+                role='tab'
+                type='button'
+                aria-selected={isActive}
+                onClick={() => props.onPeriodChange(p.id)}
+                className={cn(
+                  'focus-visible:ring-ring h-9 rounded-full px-4 text-sm font-medium transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none',
+                  isActive
+                    ? 'bg-background text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {t(p.labelKey)}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      {/* Underline tabs for period — clean and unobtrusive. */}
-      <div
-        role='tablist'
-        aria-label={t('Period')}
-        className='border-border/60 flex items-center border-b'
-      >
-        {PERIODS.map((p) => {
-          const isActive = props.period === p.id
-          return (
-            <button
-              key={p.id}
-              role='tab'
-              type='button'
-              aria-selected={isActive}
-              onClick={() => props.onPeriodChange(p.id)}
-              className={cn(
-                'focus-visible:ring-ring/40 relative -mb-px rounded-sm px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none',
-                isActive
-                  ? 'text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {t(p.labelKey)}
-              <span
-                aria-hidden
-                className={cn(
-                  'bg-foreground absolute inset-x-3 -bottom-px h-[2px] rounded-full transition-opacity',
-                  isActive ? 'opacity-100' : 'opacity-0'
-                )}
-              />
-            </button>
-          )
-        })}
-      </div>
+      {snapshot && (
+        <dl className='border-border lg:divide-border grid grid-cols-2 gap-y-8 border-y py-8 lg:grid-cols-4 lg:divide-x'>
+          <div className='flex flex-col gap-2 px-1 lg:px-6 lg:first:pl-0'>
+            <dt className='text-muted-foreground order-2 text-xs tracking-[0.12em] uppercase'>
+              {t('Tokens served')}
+            </dt>
+            <dd className='font-ascii order-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl'>
+              {formatTokens(totalTokens)}
+            </dd>
+          </div>
+          <div className='flex flex-col gap-2 px-1 lg:px-6'>
+            <dt className='text-muted-foreground order-2 text-xs tracking-[0.12em] uppercase'>
+              {t('Models ranked')}
+            </dt>
+            <dd className='font-ascii order-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl'>
+              {formatNumber(snapshot.models.length)}
+            </dd>
+          </div>
+          <div className='flex flex-col gap-2 px-1 lg:px-6'>
+            <dt className='text-muted-foreground order-2 text-xs tracking-[0.12em] uppercase'>
+              {t('Vendors')}
+            </dt>
+            <dd className='font-ascii order-1 text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl'>
+              {formatNumber(snapshot.vendors.length)}
+            </dd>
+          </div>
+          <div className='flex min-w-0 flex-col gap-2 px-1 lg:px-6'>
+            <dt className='text-muted-foreground order-2 text-xs tracking-[0.12em] uppercase'>
+              {t('Top model')}
+            </dt>
+            <dd className='font-ascii order-1 truncate text-xl font-semibold tracking-tight sm:text-2xl lg:leading-10'>
+              {leader ? <ModelLink modelName={leader.model_name} /> : '—'}
+            </dd>
+          </div>
+        </dl>
+      )}
     </section>
   )
 }

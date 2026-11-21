@@ -16,12 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  ArrowDownRight,
-  ArrowUpRight,
-  TrendingDown,
-  TrendingUp,
-} from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { getLobeIcon } from '@/lib/lobe-icon'
@@ -29,6 +24,7 @@ import { cn } from '@/lib/utils'
 
 import type { RankingMover } from '../types'
 import { ModelLink, VendorLink } from './entity-links'
+import { GrowthText } from './growth-text'
 
 type PulseSectionProps = {
   movers: RankingMover[]
@@ -36,111 +32,117 @@ type PulseSectionProps = {
 }
 
 /**
- * Rank movement panel: gainers and losers calculated from the previous period.
+ * Rank movement panel: gainers and losers against the previous period,
+ * side by side inside one frame.
  */
 export function PulseSection(props: PulseSectionProps) {
   const { t } = useTranslation()
 
   return (
-    <section className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
-      <PulseCard
-        title={t('Trending up')}
-        description={t('Models climbing the leaderboard')}
-        icon={<TrendingUp className='size-4 text-emerald-500' />}
-      >
-        {props.movers.length === 0 ? (
-          <PulseEmpty label={t('No notable climbers right now')} />
-        ) : (
-          <ul>
-            {props.movers.map((row) => (
-              <MoverRow key={row.model_name} row={row} intent='up' />
-            ))}
-          </ul>
-        )}
-      </PulseCard>
-
-      <PulseCard
-        title={t('Trending down')}
-        description={t('Models losing positions')}
-        icon={<TrendingDown className='size-4 text-rose-500' />}
-      >
-        {props.droppers.length === 0 ? (
-          <PulseEmpty label={t('No notable drops right now')} />
-        ) : (
-          <ul>
-            {props.droppers.map((row) => (
-              <MoverRow key={row.model_name} row={row} intent='down' />
-            ))}
-          </ul>
-        )}
-      </PulseCard>
+    <section
+      aria-labelledby='rankings-pulse-heading'
+      className='border-border bg-background overflow-hidden rounded-3xl border'
+    >
+      <header className='flex flex-col gap-1 px-5 pt-6 pb-4 sm:px-6'>
+        <p className='font-ascii text-muted-foreground text-xs'>[ 03 ]</p>
+        <h2
+          id='rankings-pulse-heading'
+          className='text-xl font-semibold tracking-tight sm:text-2xl'
+        >
+          {t('Rank movement')}
+        </h2>
+      </header>
+      <div className='border-border divide-border grid grid-cols-1 divide-y border-t lg:grid-cols-2 lg:divide-x lg:divide-y-0'>
+        <MoverColumn
+          title={t('Trending up')}
+          description={t('Models climbing the leaderboard')}
+          empty={t('No notable climbers right now')}
+          rows={props.movers}
+          intent='up'
+        />
+        <MoverColumn
+          title={t('Trending down')}
+          description={t('Models losing positions')}
+          empty={t('No notable drops right now')}
+          rows={props.droppers}
+          intent='down'
+        />
+      </div>
     </section>
   )
 }
 
-function PulseCard(props: {
+function MoverColumn(props: {
   title: string
   description: string
-  icon: React.ReactNode
-  children: React.ReactNode
+  empty: string
+  rows: RankingMover[]
+  intent: 'up' | 'down'
 }) {
+  const up = props.intent === 'up'
   return (
-    <div className='bg-card overflow-hidden rounded-lg border'>
-      <header className='border-b px-4 py-3'>
-        <h3 className='text-foreground inline-flex items-center gap-2 text-sm font-semibold'>
-          {props.icon}
-          {props.title}
+    <div>
+      <div className='px-5 pt-5 pb-2 sm:px-6'>
+        <h3
+          className={cn(
+            'font-ascii inline-flex items-center gap-1.5 text-sm font-semibold',
+            up
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-rose-600 dark:text-rose-400'
+          )}
+        >
+          {up ? '▲' : '▼'} {props.title}
         </h3>
-        <p className='text-muted-foreground/80 mt-0.5 text-xs'>
+        <p className='text-muted-foreground mt-0.5 text-xs'>
           {props.description}
         </p>
-      </header>
-      <div className='py-1'>{props.children}</div>
-    </div>
-  )
-}
-
-function PulseEmpty(props: { label: string }) {
-  return (
-    <div className='text-muted-foreground/80 px-4 py-6 text-center text-xs'>
-      {props.label}
-    </div>
-  )
-}
-
-function MoverRow(props: { row: RankingMover; intent: 'up' | 'down' }) {
-  return (
-    <li className='flex items-center gap-3 px-4 py-2'>
-      <span className='shrink-0'>{getLobeIcon(props.row.vendor_icon, 20)}</span>
-      <div className='min-w-0 flex-1'>
-        <ModelLink
-          modelName={props.row.model_name}
-          className='text-foreground block truncate font-mono text-xs font-medium'
-        >
-          {props.row.model_name}
-        </ModelLink>
-        <p className='text-muted-foreground/80 truncate text-[11px]'>
-          #{props.row.current_rank} ·{' '}
-          <VendorLink vendor={props.row.vendor}>
-            {props.row.vendor.toLowerCase()}
-          </VendorLink>
-        </p>
       </div>
-      <span
-        className={cn(
-          'inline-flex shrink-0 items-center gap-0.5 font-mono text-xs font-semibold tabular-nums',
-          props.intent === 'up'
-            ? 'text-emerald-600 dark:text-emerald-400'
-            : 'text-rose-600 dark:text-rose-400'
-        )}
-      >
-        {props.intent === 'up' ? (
-          <ArrowUpRight className='size-3' />
-        ) : (
-          <ArrowDownRight className='size-3' />
-        )}
-        {Math.abs(props.row.rank_delta)}
-      </span>
-    </li>
+      {props.rows.length === 0 ? (
+        <p className='text-muted-foreground px-6 pt-4 pb-8 text-center text-xs'>
+          {props.empty}
+        </p>
+      ) : (
+        <ul className='pb-3'>
+          {props.rows.map((row) => (
+            <li
+              key={row.model_name}
+              className='hover:bg-muted/40 flex items-center gap-3 px-5 py-2.5 transition-colors sm:px-6'
+            >
+              <span className='shrink-0'>
+                {getLobeIcon(row.vendor_icon, 20)}
+              </span>
+              <div className='min-w-0 flex-1'>
+                <ModelLink
+                  modelName={row.model_name}
+                  className='font-ascii text-foreground block truncate text-sm font-medium'
+                />
+                <p className='text-muted-foreground truncate text-xs'>
+                  <span className='font-ascii'>#{row.current_rank}</span> ·{' '}
+                  <VendorLink vendor={row.vendor} />
+                </p>
+              </div>
+              <div className='flex shrink-0 flex-col items-end'>
+                <span
+                  className={cn(
+                    'font-ascii inline-flex items-center gap-0.5 text-sm font-semibold tabular-nums',
+                    up
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-rose-600 dark:text-rose-400'
+                  )}
+                >
+                  {up ? (
+                    <ArrowUpRight className='size-3.5' aria-hidden />
+                  ) : (
+                    <ArrowDownRight className='size-3.5' aria-hidden />
+                  )}
+                  {Math.abs(row.rank_delta)}
+                </span>
+                <GrowthText value={row.growth_pct} className='text-[11px]' />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

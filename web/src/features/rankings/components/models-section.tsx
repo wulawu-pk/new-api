@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { VChart } from '@visactor/react-vchart'
-import { BarChart3, Trophy } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -71,11 +70,6 @@ export function ModelsSection(props: ModelsSectionProps) {
       return (order.get(a.model) ?? 999) - (order.get(b.model) ?? 999)
     })
   }, [props.history])
-
-  const totalTokens = useMemo(
-    () => props.rows.reduce((s, r) => s + r.total_tokens, 0),
-    [props.rows]
-  )
 
   const spec = useMemo(() => {
     if (orderedPoints.length === 0) return null
@@ -164,65 +158,64 @@ export function ModelsSection(props: ModelsSectionProps) {
   }, [chartGridColor, chartTextColor, orderedPoints, t])
 
   return (
-    <section className='bg-card overflow-hidden rounded-lg border'>
-      {/* Chart block ----------------------------------------------------- */}
-      <header className='flex items-start justify-between gap-4 px-5 py-4'>
-        <div className='min-w-0 flex-1'>
-          <h2 className='text-foreground inline-flex items-center gap-2 text-base font-semibold'>
-            <BarChart3 className='text-primary size-4' />
-            {t('Top Models')}
-          </h2>
-          <p className='text-muted-foreground mt-1 text-sm'>
-            {t(PERIOD_DESCRIPTIONS[props.period])}
-          </p>
-        </div>
-        <div className='shrink-0 text-right'>
-          <div className='text-foreground font-mono text-2xl font-semibold tabular-nums'>
-            {formatTokens(totalTokens)}
-          </div>
-          <div className='text-muted-foreground/80 text-[10px] font-medium tracking-widest uppercase'>
-            {t('tokens')}
-          </div>
-        </div>
+    <section
+      aria-labelledby='rankings-models-heading'
+      className='border-border bg-background overflow-hidden rounded-3xl border'
+    >
+      <header className='flex flex-col gap-1 px-5 pt-6 pb-4 sm:px-6'>
+        <p className='font-ascii text-muted-foreground text-xs'>[ 01 ]</p>
+        <h2
+          id='rankings-models-heading'
+          className='text-xl font-semibold tracking-tight sm:text-2xl'
+        >
+          {t('Top Models')}
+        </h2>
+        <p className='text-muted-foreground text-sm'>
+          {t(PERIOD_DESCRIPTIONS[props.period])}
+        </p>
       </header>
 
-      <div className='px-5 pb-5'>
-        <div className='h-60 sm:h-72'>
-          {themeReady && spec ? (
-            <VChart
-              key={`models-history-${resolvedTheme}-${props.period}`}
-              spec={{
-                ...spec,
-                theme: resolvedTheme === 'dark' ? 'dark' : 'light',
-                background: 'transparent',
-              }}
-              option={VCHART_OPTION}
-            />
-          ) : (
-            <div className='text-muted-foreground/80 flex h-full items-center justify-center text-xs'>
-              {t('No history data available')}
-            </div>
-          )}
-        </div>
+      <div className='h-60 px-3 pb-4 sm:h-72 sm:px-4'>
+        {themeReady && spec ? (
+          <VChart
+            key={`models-history-${resolvedTheme}-${props.period}`}
+            spec={{
+              ...spec,
+              theme: resolvedTheme === 'dark' ? 'dark' : 'light',
+              background: 'transparent',
+            }}
+            option={VCHART_OPTION}
+          />
+        ) : (
+          <div className='text-muted-foreground font-ascii flex h-full items-center justify-center text-xs'>
+            {t('No history data available')}
+          </div>
+        )}
       </div>
 
-      {/* Leaderboard block ----------------------------------------------- */}
-      <div className='border-t'>
-        <header className='px-5 pt-4 pb-2'>
-          <h3 className='text-foreground inline-flex items-center gap-2 text-sm font-semibold'>
-            <Trophy className='size-3.5 text-amber-500' />
-            {t('LLM Leaderboard')}
-          </h3>
-          <p className='text-muted-foreground/80 mt-0.5 text-xs'>
-            {t('Compare the most popular models on the platform')}
-          </p>
+      <div className='border-border border-t'>
+        <header className='flex items-end justify-between gap-4 px-5 pt-5 pb-3 sm:px-6'>
+          <div>
+            <h3 className='text-base font-semibold tracking-tight'>
+              {t('LLM Leaderboard')}
+            </h3>
+            <p className='text-muted-foreground mt-0.5 text-xs'>
+              {t('Compare the most popular models on the platform')}
+            </p>
+          </div>
+          <span
+            aria-hidden
+            className='font-ascii text-muted-foreground hidden text-[11px] sm:block'
+          >
+            rank · Δ · model · share · tokens
+          </span>
         </header>
         {props.rows.length === 0 ? (
-          <div className='text-muted-foreground/80 px-5 py-8 text-center text-sm'>
+          <div className='text-muted-foreground px-6 py-10 text-center text-sm'>
             {t('No models match the selected filters')}
           </div>
         ) : (
-          <div className='px-5 pt-1 pb-4'>
+          <div className='border-border border-t'>
             <ModelLeaderboard rows={props.rows} />
           </div>
         )}
