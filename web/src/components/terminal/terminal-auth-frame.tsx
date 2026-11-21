@@ -40,7 +40,7 @@ type TerminalAuthFrameProps = {
 
 function FrameKbd(props: { children: ReactNode }) {
   return (
-    <Kbd className='border-t-faint text-t-fg2 h-auto min-w-0 rounded-[2px] border border-b-2 bg-transparent px-[5px] py-0 font-mono text-[11.5px] font-normal'>
+    <Kbd className='text-t-fg2 h-auto min-w-0 rounded-md border-0 bg-white/5 px-[5px] py-0 font-mono text-[11.5px] font-normal shadow-[inset_0_0_0_1px_var(--t-hair),0_1px_0_rgb(0_0_0/0.6)]'>
       {props.children}
     </Kbd>
   )

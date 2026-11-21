@@ -62,8 +62,8 @@ export function SpinButton(props: SpinButtonProps) {
       aria-disabled={state !== 'idle' ? true : undefined}
       aria-busy={state === 'pending' ? true : undefined}
       className={cn(
-        'h-auto w-full rounded-[2px] py-3 text-sm whitespace-pre',
-        state === 'idle' && 'hover:bg-t-pink hover:border-t-pink',
+        'h-auto w-full rounded-full py-3 text-sm whitespace-pre',
+        state === 'idle' && 'hover:border-white hover:bg-white',
         state === 'pending' &&
           'border-t-pink text-t-pink cursor-default bg-transparent font-mono hover:bg-transparent',
         state === 'done' &&

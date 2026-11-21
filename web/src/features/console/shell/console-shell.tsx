@@ -17,7 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SignOutDialog } from '@/components/sign-out-dialog'
@@ -56,9 +63,82 @@ function apiHost(serverAddress: unknown): string {
   return typeof window === 'undefined' ? '' : window.location.host
 }
 
+type TabMark = { x: number; w: number; shown: boolean }
+type TabSlide = { from: TabMark; to: TabMark; startedAt: number }
+
+// Same curve as --t-ease in theme-presets.css.
+const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
+const SLIDE_MS = 420
+
+/**
+ * The selected-tab block, its slide in progress, and the last page.
+ * `/pricing` and `/status` mount their own shell, so moving to or from them
+ * replaces this component mid-slide; the new shell picks the slide up from
+ * here instead of drawing the block straight at the new tab.
+ */
+const shellMemory: {
+  tabMark: TabMark | null
+  slide: TabSlide | null
+  pathname: string | null
+} = { tabMark: null, slide: null, pathname: null }
+
+function sameSpot(a: TabMark | null, b: TabMark): boolean {
+  return a !== null && a.x === b.x && a.w === b.w && a.shown === b.shown
+}
+
+/**
+ * Runs `start` once `el` is laid out. While a route is still loading its
+ * new tree is mounted hidden, and an animation started then plays unseen.
+ */
+function whenDrawn(el: HTMLElement, start: () => void): () => void {
+  let frame = 0
+  let tries = 0
+  const check = () => {
+    if (el.getClientRects().length > 0) {
+      start()
+      return
+    }
+    tries += 1
+    if (tries < 90) frame = window.requestAnimationFrame(check)
+  }
+  check()
+  return () => window.cancelAnimationFrame(frame)
+}
+
+/** Slides the block along `slide`, already `elapsed` into it. */
+function playTabSlide(el: HTMLElement | null, slide: TabSlide): () => void {
+  if (!el || typeof el.animate !== 'function' || prefersReducedMotion()) {
+    return () => undefined
+  }
+  return whenDrawn(el, () => {
+    const elapsed = performance.now() - slide.startedAt
+    if (elapsed >= SLIDE_MS) return
+    for (const animation of el.getAnimations?.() ?? []) animation.cancel()
+    el.animate(
+      [
+        {
+          transform: `translateX(${slide.from.x}px)`,
+          width: `${slide.from.w}px`,
+        },
+        { transform: `translateX(${slide.to.x}px)`, width: `${slide.to.w}px` },
+      ],
+      { duration: SLIDE_MS, delay: -elapsed, easing: EASE }
+    )
+  })
+}
+
+/** Where the block is drawn now, mid-slide included. */
+function drawnTabMark(el: HTMLElement | null, fallback: TabMark): TabMark {
+  if (!el || el.getClientRects().length === 0) return fallback
+  const style = getComputedStyle(el)
+  const matrix = /matrix\(([^)]+)\)/.exec(style.transform)
+  const x = matrix ? Number(matrix[1].split(',')[4]) : fallback.x
+  return { x, w: Number.parseFloat(style.width) || fallback.w, shown: true }
+}
+
 export function ConsoleKbd(props: { children: ReactNode }) {
   return (
-    <Kbd className='border-t-faint text-t-fg2 h-auto min-w-0 rounded-[2px] border border-b-2 bg-transparent px-[5px] py-0 font-mono text-[11.5px] font-normal'>
+    <Kbd className='text-t-fg2 h-auto min-w-0 rounded-md border-0 bg-white/5 px-[5px] py-0 font-mono text-[11.5px] font-normal shadow-[inset_0_0_0_1px_var(--t-hair),0_1px_0_rgb(0_0_0/0.6)]'>
       {props.children}
     </Kbd>
   )
@@ -82,7 +162,39 @@ export function ConsoleShell(props: { children: ReactNode }) {
   const { status } = useStatus()
   const [signOutOpen, setSignOutOpen] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
+  const mainRef = useRef<HTMLElement>(null)
+  const navRef = useRef<HTMLElement>(null)
+  const markRef = useRef<HTMLSpanElement>(null)
+  const crtOn = useRef(false)
+  const routeLoading = useRouterState({ select: (s) => s.status === 'pending' })
+  const [tabMark, setTabMark] = useState<TabMark>(
+    () => shellMemory.tabMark ?? { x: 0, w: 0, shown: false }
+  )
+  const stopSlide = useRef<() => void>(() => undefined)
   const current = findConsoleWindow(pathname)
+
+  // Moves the selected-tab block, sliding when it was already showing.
+  const moveTabMark = useCallback((next: TabMark) => {
+    const before = shellMemory.tabMark
+    if (sameSpot(before, next)) return
+    shellMemory.tabMark = next
+    setTabMark(next)
+    stopSlide.current()
+    if (!before?.shown || !next.shown) {
+      shellMemory.slide = null
+      return
+    }
+    const el = markRef.current
+    const from = drawnTabMark(el, before)
+    shellMemory.slide = { from, to: next, startedAt: performance.now() }
+    stopSlide.current = playTabSlide(el, shellMemory.slide)
+  }, [])
+
+  const placeTabMarkOn = useCallback(
+    (tab: HTMLElement) =>
+      moveTabMark({ x: tab.offsetLeft, w: tab.offsetWidth, shown: true }),
+    [moveTabMark]
+  )
   const onAccountPage = isAccountPath(pathname)
 
   useScrambleText()
@@ -92,17 +204,74 @@ export function ConsoleShell(props: { children: ReactNode }) {
     if (!consumeConsoleCrtOn() || prefersReducedMotion()) return
     const el = bodyRef.current
     if (!el) return
+    crtOn.current = true
     el.classList.add('t-crt-on')
     const timer = window.setTimeout(() => el.classList.remove('t-crt-on'), 600)
     return () => window.clearTimeout(timer)
   }, [])
 
+  // A shell that mounts mid-slide (to or from /pricing, /status) carries on
+  // with that slide rather than drawing the block at the end of it.
+  useLayoutEffect(() => {
+    const slide = shellMemory.slide
+    if (slide && sameSpot(shellMemory.tabMark, slide.to)) {
+      stopSlide.current = playTabSlide(markRef.current, slide)
+    }
+    return () => stopSlide.current()
+  }, [])
+
+  // Keep the block on the current tab: after each page change, once the
+  // route finishes loading (a click may have moved it to a page that then
+  // redirected), and when tab widths change with the font or language.
+  useLayoutEffect(() => {
+    const nav = navRef.current
+    const tab = nav?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!nav || !tab) {
+      if (!routeLoading) {
+        const last = shellMemory.tabMark ?? { x: 0, w: 0, shown: false }
+        moveTabMark({ ...last, shown: false })
+      }
+      return
+    }
+    placeTabMarkOn(tab)
+    const observer = new ResizeObserver(() => placeTabMarkOn(tab))
+    observer.observe(nav)
+    observer.observe(tab)
+    return () => observer.disconnect()
+  }, [current?.key, routeLoading, moveTabMark, placeTabMarkOn])
+
+  // A new page fades up into place. The first page after sign-in has the
+  // CRT-on instead.
+  useEffect(() => {
+    const previous = shellMemory.pathname
+    shellMemory.pathname = pathname
+    if (previous === null || previous === pathname || crtOn.current) return
+    const main = mainRef.current
+    if (!main || typeof main.animate !== 'function' || prefersReducedMotion()) {
+      return
+    }
+    return whenDrawn(main, () => {
+      main.animate(
+        [
+          { opacity: 0, transform: 'translateY(8px)' },
+          { opacity: 1, transform: 'none' },
+        ],
+        { duration: 420, easing: EASE }
+      )
+    })
+  }, [pathname])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!isShortcutTarget(event)) return
       if (/^[1-6]$/.test(event.key)) {
-        const win = CONSOLE_WINDOWS[Number(event.key) - 1]
-        if (win) void navigate({ to: win.path })
+        const index = Number(event.key) - 1
+        const win = CONSOLE_WINDOWS[index]
+        if (!win) return
+        // Move the block now; the page may take a moment to load.
+        const tab = navRef.current?.querySelectorAll('a')[index]
+        if (tab) placeTabMarkOn(tab)
+        void navigate({ to: win.path })
         return
       }
       if (event.key === 'n' && signedIn) {
@@ -116,19 +285,30 @@ export function ConsoleShell(props: { children: ReactNode }) {
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [navigate, pathname, signedIn])
+  }, [navigate, pathname, signedIn, placeTabMarkOn])
 
   const balance = self.data ? formatQuota(self.data.quota) : null
   const statusLoaded = Boolean(status)
 
   return (
-    <div className='bg-t-bg text-t-fg flex min-h-svh flex-col'>
-      <header className='border-t-line bg-t-bg sticky top-0 z-10 flex h-[54px] items-center gap-5 border-b px-4 pt-[env(safe-area-inset-top,0px)] max-md:h-auto max-md:flex-wrap max-md:gap-x-4 max-md:gap-y-1 max-md:pt-2.5'>
+    <div className='text-t-fg flex min-h-svh flex-col'>
+      <header className='border-t-line bg-t-bg/75 sticky top-0 z-10 flex h-[58px] items-center gap-5 border-b px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl max-md:h-auto max-md:flex-wrap max-md:gap-x-4 max-md:gap-y-1 max-md:pt-2.5'>
         <TermLogo />
         <nav
+          ref={navRef}
           aria-label={t('Console pages')}
-          className='flex min-w-0 [scrollbar-width:none] gap-0.5 overflow-x-auto max-md:order-3 max-md:-mx-2.5 max-md:w-[calc(100%+20px)] max-md:pb-1.5'
+          className='relative flex min-w-0 [scrollbar-width:none] gap-0.5 overflow-x-auto max-md:order-3 max-md:-mx-2.5 max-md:w-[calc(100%+20px)] max-md:pb-1.5'
         >
+          <span
+            ref={markRef}
+            aria-hidden='true'
+            className='t-tab-mark max-md:h-[calc(100%-6px)]'
+            style={{
+              width: tabMark.w,
+              transform: `translateX(${tabMark.x}px)`,
+              opacity: tabMark.shown ? 1 : 0,
+            }}
+          />
           {CONSOLE_WINDOWS.map((win, index) => {
             const active = current?.key === win.key
             return (
@@ -137,9 +317,18 @@ export function ConsoleShell(props: { children: ReactNode }) {
                 to={win.path}
                 data-scramble=''
                 aria-current={active ? 'page' : undefined}
+                onClick={(event) => {
+                  const plain =
+                    event.button === 0 &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.shiftKey &&
+                    !event.altKey
+                  if (plain) placeTabMarkOn(event.currentTarget)
+                }}
                 className={cn(
-                  'px-2.5 py-[5px] font-mono text-[13px] whitespace-nowrap',
-                  active ? 'bg-t-fg text-t-bg' : 'text-t-dim hover:text-t-fg'
+                  'relative z-[1] rounded-full px-3 py-[5px] font-mono text-[13px] whitespace-nowrap',
+                  active ? 'text-t-fg' : 'text-t-dim hover:text-t-fg'
                 )}
               >
                 {index + 1} <span className='font-sans'>{t(win.labelKey)}</span>
@@ -158,7 +347,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
                 size='sm'
                 variant='outline'
                 render={<Link to='/wallet' />}
-                className='rounded-[2px]'
+                className='rounded-full'
               >
                 {t('Top up')}
               </Button>
@@ -171,7 +360,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
               <Button
                 size='sm'
                 render={<Link to='/sign-up' />}
-                className='hover:bg-t-pink rounded-[2px]'
+                className='rounded-full hover:bg-white'
               >
                 {t('Sign up')}
               </Button>
@@ -182,6 +371,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
 
       <div ref={bodyRef} className='flex flex-1 flex-col'>
         <main
+          ref={mainRef}
           id='content'
           className='mx-auto flex w-full max-w-[1320px] flex-1 flex-col gap-[34px] px-4 pt-[30px] pb-14'
         >
@@ -189,7 +379,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
         </main>
       </div>
 
-      <footer className='border-t-line bg-t-bg text-t-dim sticky bottom-0 z-10 flex h-9 items-center gap-[18px] overflow-hidden border-t px-4 pb-[env(safe-area-inset-bottom,0px)] font-mono text-xs whitespace-nowrap'>
+      <footer className='border-t-line bg-t-bg/75 text-t-dim sticky bottom-0 z-10 flex h-9 items-center gap-[18px] overflow-hidden border-t px-4 pb-[env(safe-area-inset-bottom,0px)] font-mono text-xs whitespace-nowrap backdrop-blur-xl'>
         <span className='flex items-center gap-3.5 max-md:hidden'>
           <span>
             <ConsoleKbd>1</ConsoleKbd>–<ConsoleKbd>6</ConsoleKbd>{' '}

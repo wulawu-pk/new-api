@@ -176,7 +176,7 @@ export function SignInTerminal(props: { search: AuthSearch }) {
       {plan && <PlanBox plan={plan} mode='in' />}
 
       {showOthers ? (
-        <div className='[&_button]:rounded-[2px]'>
+        <div className='[&_button]:rounded-full'>
           <UserAuthForm redirectTo={redirectTo} />
           <button
             type='button'

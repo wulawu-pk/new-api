@@ -42,14 +42,14 @@ export function AuthTabs(props: { mode: 'in' | 'up'; search: AuthSearch }) {
   return (
     <nav
       aria-label={t('Sign in or sign up')}
-      className='flex gap-3.5 font-mono text-[13.5px]'
+      className='flex gap-1 font-mono text-[13.5px]'
     >
       <Link
         to='/sign-in'
         search={props.search}
         data-scramble=''
         aria-current={props.mode === 'in' ? 'page' : undefined}
-        className='t-bracket text-t-dim aria-[current=page]:text-t-pink'
+        className='t-bracket text-t-dim hover:text-t-fg aria-[current=page]:text-t-fg'
       >
         {t('Sign in')}
       </Link>
@@ -58,7 +58,7 @@ export function AuthTabs(props: { mode: 'in' | 'up'; search: AuthSearch }) {
         search={props.search}
         data-scramble=''
         aria-current={props.mode === 'up' ? 'page' : undefined}
-        className='t-bracket text-t-dim aria-[current=page]:text-t-pink'
+        className='t-bracket text-t-dim hover:text-t-fg aria-[current=page]:text-t-fg'
       >
         {t('Sign up')}
       </Link>

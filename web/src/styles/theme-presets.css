@@ -617,10 +617,12 @@ For commercial licensing, please contact support@quantumnous.com
 /*
  * peroai brand theme (fork default), v3. Mirrors the design spec in
  * ai-relay/design/v3/l-ascii.html and the live beta landing page:
- *   bg #0B0C0F · bg2 #111318 · bg3 #181B22 · line #20242C · faint #3A3F49
+ *   bg #09090B · bg2 #121215 · bg3 #1A1A1F · line white 6% · faint #36363E
  *   dim #8D929C · fg2 #C4C7CD · fg #ECEAE6
  *   pink #FF7AB6 is the single accent · ok #62D394 · warn #F2B84B · bad #FF6B6B
- * Flat panes with 1px borders, 2px corners, no shadows, no gradients.
+ * 11-21 texture pass (same as the beta landing page): panes are lifted
+ * cards (16px corners, hairline ring, soft deep shadow), controls 10px,
+ * buttons pills, one easing curve, faint grid behind the page.
  *
  * The theme is dark-only: ThemeProvider forces the `dark` class for this
  * fork, and the same tokens are declared for both modes so a stale saved
@@ -639,11 +641,14 @@ For commercial licensing, please contact support@quantumnous.com
 :where(body:not([data-theme-preset])),
 .dark [data-theme-preset='peroai'],
 .dark :where(body:not([data-theme-preset])) {
-  --t-bg: #0b0c0f;
-  --t-bg2: #111318;
-  --t-bg3: #181b22;
-  --t-line: #20242c;
-  --t-faint: #3a3f49;
+  /* Same palette as the beta landing page (deploy/site/beta, the 11-21
+   * "texture layer"): near-black base, hairline borders as white at low
+   * alpha, panes lifted as cards rather than outlined. */
+  --t-bg: #09090b;
+  --t-bg2: #121215;
+  --t-bg3: #1a1a1f;
+  --t-line: rgb(255 255 255 / 0.06);
+  --t-faint: #36363e;
   --t-dim: #8d929c;
   --t-fg2: #c4c7cd;
   --t-fg: #eceae6;
@@ -651,8 +656,18 @@ For commercial licensing, please contact support@quantumnous.com
   --t-ok: #62d394;
   --t-warn: #f2b84b;
   --t-bad: #ff6b6b;
-  --t-hi: #6a707b; /* border of the pane being worked on */
+  --t-hi: rgb(255 255 255 / 0.16); /* ring of the pane being worked on */
+  --t-hair: rgb(255 255 255 / 0.085);
   --t-placeholder: #5d636d;
+  --t-card:
+    linear-gradient(180deg, rgb(255 255 255 / 0.028), transparent 140px),
+    #0f0f12;
+  --t-lift:
+    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px var(--t-hair),
+    0 24px 48px -24px rgb(0 0 0 / 0.8), 0 2px 6px -2px rgb(0 0 0 / 0.5);
+  --t-lift-on:
+    inset 0 1px 0 rgb(255 255 255 / 0.07), 0 0 0 1px var(--t-hi),
+    0 30px 60px -28px rgb(0 0 0 / 0.9), 0 2px 6px -2px rgb(0 0 0 / 0.5);
 
   --background: var(--t-bg);
   --foreground: var(--t-fg);
@@ -713,8 +728,13 @@ For commercial licensing, please contact support@quantumnous.com
   --overview-accent-2: var(--chart-2);
   --overview-accent-3: var(--chart-3);
 
-  /* 2px corners everywhere (radius-sm ≈ 1px, xl ≈ 3px). */
-  --radius: 0.125rem;
+  /* Two corners: controls (inputs, buttons, rows) and surfaces (panes,
+   * cards, dialogs). Pills (switch, badge, avatar) stay fully round. One
+   * curve for every transition, the same as the beta landing page. */
+  --t-radius: 10px;
+  --t-radius-lg: 16px;
+  --t-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius: var(--t-radius);
 
   --font-cjk:
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
@@ -732,12 +752,39 @@ For commercial licensing, please contact support@quantumnous.com
 
   color-scheme: dark;
 }
-/* Panes, not floating cards: 1px faint border, no shadow. */
+/* Cards look like panes: lifted surface, hairline ring, soft deep shadow. */
 [data-theme-preset='peroai'] [data-slot='card'],
 :where(body:not([data-theme-preset])) [data-slot='card'] {
-  box-shadow: none;
-  border: 1px solid var(--t-faint);
+  border: 0;
+  border-radius: var(--t-radius-lg);
+  background: var(--t-card);
+  box-shadow: var(--t-lift);
   --tw-ring-shadow: 0 0 #0000;
+}
+/* Faint grid fading out from the top and a hint of pink light above it,
+ * behind every console page (the beta landing page has the same). */
+body[data-theme-preset='peroai']::before,
+:where(body:not([data-theme-preset]))::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 45% 30% at 50% -6%,
+      rgb(255 122 182 / 0.08),
+      transparent 70%
+    ),
+    linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0
+      0 / 40px 40px,
+    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0
+      0 / 40px 40px;
+  mask-image: radial-gradient(
+    ellipse 75% 60% at 50% 0%,
+    #000 25%,
+    transparent 80%
+  );
 }
 [data-theme-preset='peroai'] ::selection,
 :where(body:not([data-theme-preset])) ::selection {

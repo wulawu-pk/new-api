@@ -84,7 +84,7 @@ export const RelayCanvas = forwardRef<RelayCanvasRef, RelayCanvasProps>(
         />
         <div
           ref={labelRef}
-          className='[&>span]:bg-t-bg [&>span]:text-t-dim [&>span[data-on=true]]:text-t-fg [&>span[data-on=true][data-side=right]]:text-t-pink pointer-events-none absolute inset-0 [&>span]:absolute [&>span]:-translate-y-1/2 [&>span]:px-[5px] [&>span]:py-px [&>span]:font-mono [&>span]:text-xs [&>span]:font-medium [&>span]:whitespace-nowrap'
+          className='[&>span]:bg-t-bg/90 [&>span]:text-t-dim [&>span[data-on=true]]:text-t-fg [&>span[data-on=true][data-side=right]]:text-t-pink pointer-events-none absolute inset-0 [&>span]:absolute [&>span]:-translate-y-1/2 [&>span]:rounded-[5px] [&>span]:px-[5px] [&>span]:py-px [&>span]:font-mono [&>span]:text-xs [&>span]:font-medium [&>span]:whitespace-nowrap'
         />
       </div>
     )

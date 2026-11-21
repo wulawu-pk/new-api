@@ -16,7 +16,7 @@
       content="Unified AI API gateway and admin dashboard."
     />
 
-    <meta name="theme-color" content="#0B0C0F" />
+    <meta name="theme-color" content="#09090B" />
     <!-- peroai fork: the v3 console is dark-only (see ThemeProvider
          forcedTheme). Apply the class before first paint so the page never
          flashes light and one-shot detectors (e.g. Dark Reader) see it. -->
@@ -25,9 +25,13 @@
       document.documentElement.classList.add('dark')
     </script>
     <style>
-      html,
+      /* Body stays transparent so the console backdrop (body::before in
+         theme-presets.css, a faint grid and a hint of pink light) shows. */
+      html {
+        background: #09090b;
+      }
       body {
-        background: #0b0c0f;
+        background: transparent;
       }
     </style>
     <!--umami-->

@@ -42,56 +42,131 @@ For commercial licensing, please contact support@quantumnous.com
   --font-t-cn: var(--font-cjk);
 }
 
+/* Every hover, focus and selection change eases instead of snapping. In the
+ * base layer, so any `transition-*` utility on a component still wins. */
+@layer base {
+  :where([data-theme-preset='peroai'], body:not([data-theme-preset]))
+    :where(
+      a,
+      button,
+      summary,
+      input,
+      select,
+      textarea,
+      tr,
+      [role='tab'],
+      [role='option'],
+      [role='menuitem'],
+      [data-slot='badge'],
+      .t-pane
+    ) {
+    transition-property:
+      color, background-color, border-color, outline-color, box-shadow, opacity,
+      transform;
+    transition-duration: 240ms;
+    transition-timing-function: var(--t-ease);
+  }
+  /* Buttons give a little under the finger. */
+  :where([data-theme-preset='peroai'], body:not([data-theme-preset]))
+    :where(button, [data-slot='button']):not(:disabled):active {
+    transform: scale(0.97);
+    transition-duration: 80ms;
+  }
+}
+
 @layer components {
-  /* ── Pane: 1px border with the title sitting on the top edge ── */
+  /* ── Window bar: the selected-tab block slides to the new tab ──
+   * A soft pill under the labels (same as the client switcher on the beta
+   * landing page). The active label is bright and the others dim, so the
+   * pill only has to mark the place. The slide itself is a Web Animation
+   * started by the console shell. */
+  .t-tab-mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    height: 100%;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.09);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      0 2px 8px -2px rgb(0 0 0 / 0.6);
+    pointer-events: none;
+    transition: opacity 240ms var(--t-ease);
+  }
+
+  /* ── Pane: a lifted card; the title is its header row ──
+   * A dot before the title lights up pink on the pane being worked on. */
   .t-pane {
     position: relative;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--t-faint);
+    border-radius: var(--t-radius-lg);
+    background: var(--t-card);
+    box-shadow: var(--t-lift);
   }
   .t-pane[data-active='true'] {
-    border-color: var(--t-hi);
+    box-shadow: var(--t-lift-on);
   }
   .t-pane > .t-pane-title {
-    position: absolute;
-    top: -0.8em;
-    left: 10px;
-    z-index: 2;
-    max-width: calc(100% - 20px);
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
     overflow: hidden;
-    padding: 0 6px;
-    background: var(--t-bg);
+    padding: 11px 16px 10px;
+    border-bottom: 1px solid var(--t-line);
     color: var(--t-dim);
-    font: 12px/1.5 var(--font-mono);
+    font: 11.5px/1.5 var(--font-mono);
+    letter-spacing: 0.04em;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  .t-pane > .t-pane-title::before {
+    content: '';
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--t-faint);
+    transition:
+      background-color 240ms var(--t-ease),
+      box-shadow 240ms var(--t-ease);
   }
   .t-pane > .t-pane-title b {
     color: var(--t-fg);
     font-weight: 500;
   }
   .t-pane[data-active='true'] > .t-pane-title {
-    color: var(--t-fg);
+    color: var(--t-fg2);
+  }
+  .t-pane[data-active='true'] > .t-pane-title::before {
+    background: var(--t-pink);
+    box-shadow:
+      0 0 0 3px rgb(255 122 182 / 0.14),
+      0 0 10px rgb(255 122 182 / 0.6);
   }
 
-  /* ── Selected tabs: brackets slide in from both sides ── */
-  .t-bracket[aria-pressed='true']::before,
-  .t-bracket[aria-selected='true']::before,
-  .t-bracket[aria-current='page']::before {
-    content: '[ ';
-    display: inline-block;
-    white-space: pre;
-    animation: t-br-l 0.22s ease-out;
+  /* ── Selected tabs: a soft pill fills in under the label ──
+   * (The class name is from the bracket version; the look follows the
+   * segmented controls of the beta landing page.) */
+  .t-bracket {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 4px 12px;
   }
-  .t-bracket[aria-pressed='true']::after,
-  .t-bracket[aria-selected='true']::after,
-  .t-bracket[aria-current='page']::after {
-    content: ' ]';
-    display: inline-block;
-    white-space: pre;
-    animation: t-br-r 0.22s ease-out;
+  .t-bracket:hover {
+    background: rgb(255 255 255 / 0.04);
+  }
+  .t-bracket[aria-pressed='true'],
+  .t-bracket[aria-selected='true'],
+  .t-bracket[aria-current='page'] {
+    background: rgb(255 255 255 / 0.09);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+    animation: t-pill-in 320ms var(--t-ease);
   }
 
   /* ── Brand caret and skeleton ── */
@@ -103,10 +178,14 @@ For commercial licensing, please contact support@quantumnous.com
     background: var(--t-pink);
     animation: t-blink 1.1s steps(1) infinite;
   }
+  /* Held back 140ms, so a response that arrives quickly replaces nothing
+   * instead of flashing a placeholder for a frame or two. */
   .t-skeleton {
     color: var(--t-faint);
     letter-spacing: -1px;
-    animation: t-pulse 1.2s ease-in-out infinite;
+    animation:
+      t-fade-in 180ms 140ms var(--t-ease) both,
+      t-pulse 1.2s 320ms ease-in-out infinite;
   }
 
   /* ── Response-to-input effects ── */
@@ -120,6 +199,21 @@ For commercial licensing, please contact support@quantumnous.com
   .t-crt-on {
     transform-origin: 50% 40%;
     animation: t-crt-on 0.52s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  /* Panes rise in one after another when they mount (page load, page
+   * switch). `both` holds the last frame, whose filter/transform are none,
+   * so nothing inside gets a new containing block afterwards. */
+  .t-pane {
+    animation: t-rise 600ms var(--t-ease) both;
+  }
+  .t-pane:nth-child(2) {
+    animation-delay: 60ms;
+  }
+  .t-pane:nth-child(3) {
+    animation-delay: 120ms;
+  }
+  .t-pane:nth-child(n + 4) {
+    animation-delay: 180ms;
   }
 
   /* Native selects styled as terminal inputs: CSS chevron, no OS arrow. */
@@ -142,21 +236,33 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 0;
   }
 }
+@keyframes t-fade-in {
+  from {
+    opacity: 0;
+  }
+}
 @keyframes t-pulse {
   50% {
     opacity: 0.35;
   }
 }
-@keyframes t-br-l {
+@keyframes t-pill-in {
   from {
-    transform: translateX(12px);
-    opacity: 0;
+    background: rgb(255 255 255 / 0);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0);
   }
 }
-@keyframes t-br-r {
+/* A page or pane coming in: up a few pixels, out of a slight blur. */
+@keyframes t-rise {
   from {
-    transform: translateX(-12px);
     opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
   }
 }
 @keyframes t-shake {
@@ -215,29 +321,46 @@ For commercial licensing, please contact support@quantumnous.com
   .t-shake,
   .t-crt-off,
   .t-crt-on,
-  .t-bracket::before,
-  .t-bracket::after {
+  .t-pane,
+  .t-bracket {
     animation: none !important;
+  }
+  .t-tab-mark {
+    transition: none;
   }
 }
 
 /* ── Global overlays in the peroai preset: dialogs are panes ──
  * Dialogs, alert dialogs and toasts across the app (console and admin)
- * share the pane look: flat background, 1px bright border, no glow. */
+ * share the pane look: lifted card, hairline ring, deep soft shadow. */
 :where(body:not([data-theme-preset])),
 [data-theme-preset='peroai'] {
   & [data-slot='dialog-overlay'],
   & [data-slot='alert-dialog-overlay'] {
-    background: rgb(5 6 8 / 0.75);
-    backdrop-filter: none;
+    background: rgb(5 6 8 / 0.6);
+    backdrop-filter: blur(6px);
+  }
+  /* Overlays open over 180ms on the console curve instead of a 100ms pop. */
+  & [data-slot='dialog-overlay'],
+  & [data-slot='alert-dialog-overlay'],
+  & [data-slot='dialog-content'],
+  & [data-slot='alert-dialog-content'],
+  & [data-slot='popover-content'],
+  & [data-slot='dropdown-menu-content'],
+  & [data-slot='select-content'] {
+    --tw-duration: 240ms;
+    --tw-ease: var(--t-ease);
   }
   & [data-slot='dialog-content'],
   & [data-slot='alert-dialog-content'] {
-    background: var(--t-bg);
-    border: 1px solid var(--t-hi);
-    border-radius: 2px;
+    background: var(--t-card);
+    border: 0;
+    border-radius: var(--t-radius-lg);
     --tw-ring-shadow: 0 0 #0000;
-    box-shadow: none;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.06),
+      0 0 0 1px var(--t-hi),
+      0 40px 80px -30px rgb(0 0 0 / 0.9);
   }
   & [data-slot='dialog-footer'],
   & [data-slot='alert-dialog-footer'] {
@@ -255,7 +378,8 @@ For commercial licensing, please contact support@quantumnous.com
     --normal-bg: var(--t-fg);
     --normal-text: var(--t-bg);
     --normal-border: var(--t-fg);
-    border-radius: 2px !important;
+    border-radius: 14px !important;
+    box-shadow: 0 20px 40px -16px rgb(0 0 0 / 0.8);
     font-family: var(--font-ui-sans);
   }
 }

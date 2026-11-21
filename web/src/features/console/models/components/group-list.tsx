@@ -70,7 +70,7 @@ export function GroupList(props: GroupListProps) {
   return (
     <Pane
       title={<b>{t('Groups')}</b>}
-      className='max-md:border-0 max-md:p-0 max-md:[&>.t-pane-title]:hidden'
+      className='max-md:border-0 max-md:bg-transparent max-md:bg-none max-md:p-0 max-md:shadow-none max-md:[&>.t-pane-title]:hidden'
     >
       <div
         role='group'
