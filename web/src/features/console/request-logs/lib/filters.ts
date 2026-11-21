@@ -64,8 +64,22 @@ export function isAllUsers(filters: LogFilters, isAdmin: boolean): boolean {
 }
 
 /**
+ * A search box's text as a log API filter that matches anywhere in the
+ * field: `sonnet` → `%sonnet%`. The server matches exactly unless the value
+ * has `%`, and a `%` pattern must keep at least 2 other characters (at most
+ * two `%`), so a single character is not sent yet. Text the user already
+ * wrote with `%` is passed through as their own pattern.
+ */
+export function containsFilter(value: string): string | undefined {
+  const text = value.trim()
+  if (text.includes('%')) return text
+  if (text.length < 2) return undefined
+  return `%${text}%`
+}
+
+/**
  * Query parameters for /api/log/self and /api/log/self/stat. The admin
- * endpoints take the same ones plus `username`, added by the caller.
+ * endpoints take the same ones plus `username` (see `adminLogQuery`).
  */
 export function buildLogQuery(filters: LogFilters, now: dayjs.Dayjs = dayjs()) {
   return {
@@ -73,7 +87,15 @@ export function buildLogQuery(filters: LogFilters, now: dayjs.Dayjs = dayjs()) {
     start_timestamp: rangeStart(filters.range, now),
     end_timestamp: now.unix(),
     group: filters.group || undefined,
-    model_name: filters.model.trim() || undefined,
+    model_name: containsFilter(filters.model),
+  }
+}
+
+/** Query parameters for the admin /api/log/ and /api/log/stat. */
+export function adminLogQuery(filters: LogFilters, now: dayjs.Dayjs = dayjs()) {
+  return {
+    ...buildLogQuery(filters, now),
+    username: containsFilter(filters.username),
   }
 }
 

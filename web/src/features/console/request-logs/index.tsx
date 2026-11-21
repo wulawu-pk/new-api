@@ -67,6 +67,7 @@ import { CacheHitCell } from './components/cells'
 import { LogDetail } from './components/log-detail'
 import {
   LOG_PAGE_SIZE,
+  adminLogQuery,
   buildLogQuery,
   isAllUsers,
   pageCount,
@@ -106,18 +107,11 @@ export function ConsoleLogs() {
   const logs = useQuery({
     queryKey: ['console', 'logs', allUsers, effective],
     queryFn: async () => {
-      const query = {
-        ...buildLogQuery(effective),
-        p: effective.page,
-        page_size: LOG_PAGE_SIZE,
-      }
+      const page = { p: effective.page, page_size: LOG_PAGE_SIZE }
       const response = requireServerSuccess(
         allUsers
-          ? await getAllLogs({
-              ...query,
-              username: effective.username.trim() || undefined,
-            })
-          : await getUserLogs(query)
+          ? await getAllLogs({ ...adminLogQuery(effective), ...page })
+          : await getUserLogs({ ...buildLogQuery(effective), ...page })
       )
       return {
         items: (response.data?.items ?? []) as UsageLog[],
@@ -131,14 +125,10 @@ export function ConsoleLogs() {
   const stats = useQuery({
     queryKey: ['console', 'logs-stat', allUsers, { ...effective, page: 0 }],
     queryFn: async () => {
-      const query = buildLogQuery(effective)
       const response = requireServerSuccess(
         allUsers
-          ? await getLogStats({
-              ...query,
-              username: effective.username.trim() || undefined,
-            })
-          : await getUserLogStats(query)
+          ? await getLogStats(adminLogQuery(effective))
+          : await getUserLogStats(buildLogQuery(effective))
       )
       return response.data ?? null
     },
@@ -421,9 +411,10 @@ export function ConsoleLogs() {
           </ConsoleTable>
         </div>
         {logs.data && total > 0 && (
+          // Sticks to the window bottom, just above the 36px status bar.
           <nav
             aria-label={t('Pagination')}
-            className='border-t-line text-t-dim flex flex-wrap items-center justify-end gap-3 border-t px-3.5 py-2.5 text-[13px]'
+            className='border-t-line bg-t-bg text-t-dim sticky bottom-9 z-[5] flex flex-wrap items-center justify-end gap-3 border-t px-3.5 py-2.5 text-[13px]'
           >
             <span className='mr-auto'>
               {t('{{count}} in total, {{size}} per page', {

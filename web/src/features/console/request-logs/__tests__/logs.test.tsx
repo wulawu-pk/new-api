@@ -28,7 +28,12 @@ import { useAuthStore } from '@/stores/auth-store'
 
 import { ConsoleLogs } from '..'
 import { renderConsole } from '../../__tests__/render-console'
-import { buildLogQuery, pageCount, rangeStart } from '../lib/filters'
+import {
+  buildLogQuery,
+  containsFilter,
+  pageCount,
+  rangeStart,
+} from '../lib/filters'
 import { compactTokens, toConsoleLogRow } from '../lib/log-row'
 
 vi.mock('@/features/usage-logs/api', () => ({
@@ -136,6 +141,13 @@ describe('log filters', () => {
     expect(query.model_name).toBeUndefined()
   })
 
+  it('turns search text into a contains-match pattern and waits for two characters', () => {
+    expect(containsFilter(' sonnet ')).toBe('%sonnet%')
+    expect(containsFilter('a')).toBeUndefined()
+    expect(containsFilter('')).toBeUndefined()
+    expect(containsFilter('claude-%-5')).toBe('claude-%-5')
+  })
+
   it('always has at least one page', () => {
     expect(pageCount(0)).toBe(1)
     expect(pageCount(101, 50)).toBe(3)
@@ -240,7 +252,7 @@ describe('console logs page for admins', () => {
     await user.type(await screen.findByLabelText('Username'), 'alice')
     await waitFor(() =>
       expect(logsApi.getAllLogs).toHaveBeenLastCalledWith(
-        expect.objectContaining({ username: 'alice', p: 1 })
+        expect.objectContaining({ username: '%alice%', p: 1 })
       )
     )
 
@@ -275,6 +287,24 @@ describe('console logs page for admins', () => {
     await waitFor(() =>
       expect(logsApi.getAllLogs).toHaveBeenLastCalledWith(
         expect.objectContaining({ p: 2 })
+      )
+    )
+  })
+})
+
+describe('console logs search', () => {
+  it('a model search matches anywhere in the name', async () => {
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue({
+      success: true,
+      data: { items: [log({})], total: 1, page: 1, page_size: 50 },
+    })
+    const user = userEvent.setup()
+    renderConsole(<ConsoleLogs />)
+
+    await user.type(await screen.findByLabelText('Search model'), 'astra')
+    await waitFor(() =>
+      expect(logsApi.getUserLogs).toHaveBeenLastCalledWith(
+        expect.objectContaining({ model_name: '%astra%' })
       )
     )
   })
