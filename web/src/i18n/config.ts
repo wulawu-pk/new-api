@@ -20,7 +20,7 @@ import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 
-import { convertDetectedLanguage } from './languages'
+import { convertDetectedLanguage, toIntlLocale } from './languages'
 import en from './locales/en.json'
 import fr from './locales/fr.json'
 import ja from './locales/ja.json'
@@ -38,6 +38,12 @@ export const resources = {
   vi,
   zhTW,
 } as const
+
+// `<html lang>` drives CJK font selection and line breaking (see the CJK block
+// in styles/index.css). Registered before init so the detected language fires.
+i18n.on('languageChanged', (language) => {
+  document.documentElement.lang = toIntlLocale(language) ?? 'en'
+})
 
 i18n
   .use(LanguageDetector)
