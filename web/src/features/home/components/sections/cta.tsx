@@ -17,68 +17,115 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Terminal } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { AnimateInView } from '@/components/animate-in-view'
-import { Button } from '@/components/ui/button'
+import { landingAction } from '../../constants'
 
 interface CTAProps {
-  className?: string
-  isAuthenticated?: boolean
+  isAuthenticated: boolean
 }
 
 export function CTA(props: CTAProps) {
   const { t } = useTranslation()
+  const reduce = useReducedMotion()
+  const command = useMemo(
+    () => `export OPENAI_BASE_URL=${window.location.origin}/v1`,
+    []
+  )
+  const [started, setStarted] = useState(false)
+  const [typed, setTyped] = useState(0)
 
-  if (props.isAuthenticated) {
-    return null
-  }
+  useEffect(() => {
+    if (!started || reduce) return
+    let index = 0
+    let timer = 0
+    const tick = () => {
+      index += 1
+      setTyped(index)
+      if (index < command.length) timer = window.setTimeout(tick, 45)
+    }
+    timer = window.setTimeout(tick, 450)
+    return () => window.clearTimeout(timer)
+  }, [command, reduce, started])
+
+  const shown = reduce ? command.length : typed
 
   return (
-    <section className='relative z-10 overflow-hidden px-6 py-24 md:py-32'>
-      {/* Gradient mesh background */}
+    <section
+      aria-labelledby='home-cta-heading'
+      className='relative z-10 px-4 py-24 sm:px-6 lg:py-28'
+    >
       <div
         aria-hidden
-        className='absolute inset-0 -z-10 opacity-20 dark:opacity-[0.08]'
-        style={{
-          background: [
-            'radial-gradient(ellipse 50% 50% at 30% 50%, oklch(0.7 0.15 250 / 70%) 0%, transparent 70%)',
-            'radial-gradient(ellipse 40% 40% at 70% 40%, oklch(0.65 0.12 200 / 50%) 0%, transparent 70%)',
-          ].join(', '),
-        }}
+        className='ascii-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_65%_60%_at_50%_50%,transparent_25%,black_80%)] opacity-50'
       />
-
-      <AnimateInView
-        className='mx-auto max-w-2xl text-center'
-        animation='scale-in'
+      <motion.div
+        onViewportEnter={() => setStarted(true)}
+        viewport={{ once: true, margin: '-80px' }}
+        className='border-border bg-muted/40 relative mx-auto w-full max-w-7xl overflow-hidden rounded-[32px] border'
       >
-        <h2 className='text-2xl leading-tight font-bold tracking-tight md:text-4xl'>
-          {t('Ready to simplify')}
-          <br />
-          <span className='bg-gradient-to-r from-blue-400 via-violet-400 to-purple-500 bg-clip-text text-transparent'>
-            {t('your AI integration?')}
-          </span>
-        </h2>
-        <p className='text-muted-foreground/80 mx-auto mt-5 max-w-md text-sm leading-relaxed md:text-base'>
-          {t(
-            'Deploy your own gateway and start routing requests through your configured upstream services.'
-          )}
-        </p>
-        <div className='mt-8 flex items-center justify-center gap-3'>
-          <Button className='group rounded-lg' render={<Link to='/sign-up' />}>
-            {t('Get Started')}
-            <ArrowRight className='ml-1 size-3.5 transition-transform duration-200 group-hover:translate-x-0.5' />
-          </Button>
-          <Button
-            variant='outline'
-            className='border-border/50 hover:border-border hover:bg-muted/50 rounded-lg'
-            render={<Link to='/pricing' />}
+        <div className='mx-auto flex max-w-2xl flex-col items-center px-6 py-20 text-center sm:px-10 sm:py-28'>
+          <p className='text-muted-foreground flex items-center gap-4 text-xs font-medium tracking-[0.2em] uppercase'>
+            <span aria-hidden className='font-ascii hidden sm:block'>
+              //
+            </span>
+            <span className='inline-flex items-center gap-2'>
+              <Terminal className='text-foreground size-4' aria-hidden />
+              {t('Start building')}
+            </span>
+            <span aria-hidden className='font-ascii hidden sm:block'>
+              {'\\\\'}
+            </span>
+          </p>
+
+          <h2
+            id='home-cta-heading'
+            className='mt-8 text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl'
           >
-            {t('View Pricing')}
-          </Button>
+            {t('One key is all it takes.')}
+          </h2>
+          <p className='text-muted-foreground mt-6 max-w-xl text-base leading-relaxed text-pretty sm:text-lg'>
+            {t(
+              'Create an account, top up and send your first request with the client you already use.'
+            )}
+          </p>
+
+          <div className='mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row'>
+            <Link
+              to={props.isAuthenticated ? '/dashboard' : '/sign-up'}
+              className={landingAction.primary}
+            >
+              {props.isAuthenticated ? t('Go to Dashboard') : t('Get Started')}
+              <ArrowRight
+                className='size-4 transition-transform duration-200 group-hover:translate-x-0.5'
+                strokeWidth={1.75}
+                aria-hidden
+              />
+            </Link>
+            <Link to='/pricing' className={landingAction.secondary}>
+              {t('Browse models')}
+            </Link>
+          </div>
+
+          <p className='border-border bg-background font-ascii mt-10 inline-flex max-w-full items-center gap-3 overflow-hidden rounded-full border px-5 py-2.5 text-xs'>
+            <span className='text-landing-accent'>$</span>
+            <span className='truncate whitespace-pre'>
+              {command.slice(0, shown)}
+            </span>
+            <span
+              aria-hidden
+              className={
+                shown < command.length
+                  ? 'bg-foreground -ml-2 h-3.5 w-[7px] shrink-0'
+                  : 'bg-foreground ascii-caret -ml-2 h-3.5 w-[7px] shrink-0'
+              }
+            />
+          </p>
         </div>
-      </AnimateInView>
+      </motion.div>
     </section>
   )
 }
