@@ -96,7 +96,7 @@ export function GroupList(props: GroupListProps) {
                 'max-md:border-t-line max-md:flex max-md:shrink-0 max-md:items-center max-md:border max-md:px-2.5 max-md:py-1.5',
                 active
                   ? 'border-t-pink bg-t-bg3 text-t-fg max-md:border-t-pink'
-                  : 'text-t-fg2 hover:bg-t-bg2 hover:text-t-fg',
+                  : 'text-t-fg2 hover:bg-white/[0.04] hover:text-t-fg',
                 empty && 'text-t-dim'
               )}
             >

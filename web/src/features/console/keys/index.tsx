@@ -376,7 +376,7 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
         )}
       >
         <div className='flex items-center gap-2'>
-          <code className='bg-t-bg2 border-t-faint min-w-0 flex-1 border px-3 py-2.5 font-mono text-[13px] break-all'>
+          <code className='bg-t-bg border-t-faint min-w-0 flex-1 border px-3 py-2.5 font-mono text-[13px] break-all'>
             {revealed?.key}
           </code>
           <CopyButton value={revealed?.key ?? ''} variant='outline' />

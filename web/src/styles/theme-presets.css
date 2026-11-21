@@ -641,45 +641,37 @@ For commercial licensing, please contact support@quantumnous.com
 :where(body:not([data-theme-preset])),
 .dark [data-theme-preset='peroai'],
 .dark :where(body:not([data-theme-preset])) {
-  /* Same palette as the beta landing page (deploy/site/beta, the 11-21
-   * "texture layer"): near-black base, hairline borders as white at low
-   * alpha, panes lifted as cards rather than outlined. */
-  --t-bg: #09090b;
-  --t-bg2: #121215;
-  --t-bg3: #1a1a1f;
-  --t-line: rgb(255 255 255 / 0.05);
-  --t-faint: #36363e;
-  --t-dim: #8d929c;
-  --t-fg2: #c4c7cd;
-  --t-fg: #eceae6;
+  /* Same palette as the beta landing page (deploy/site/beta). 11-22, after
+   * the dark pages of refactor/ui-v4: a cool slate charcoal instead of near
+   * black, and panes as solid surfaces one step lighter than the page with
+   * a white hairline. No pink corner light, no see-through gradient, no
+   * shadow: the earlier translucent cards let the backdrop grid through
+   * and read muddy and dated. Pink stays for focus and selection only. */
+  --t-bg: #121417;
+  --t-bg2: #1a1c20;
+  --t-bg3: #23262b;
+  --t-line: rgb(255 255 255 / 0.06);
+  --t-faint: #3b3f47;
+  --t-dim: #9aa0a9;
+  --t-fg2: #c9ccd2;
+  --t-fg: #eeede9;
   --t-pink: #ff7ab6;
   --t-ok: #62d394;
   --t-warn: #f2b84b;
   --t-bad: #ff6b6b;
   --t-hi: rgb(255 255 255 / 0.16); /* ring of the pane being worked on */
-  --t-hair: rgb(255 255 255 / 0.075);
-  --t-placeholder: #5d636d;
-  /* Cards are nearly the page colour, drawn by a hairline ring and a top
-   * highlight, with a faint pink light in the top-left corner (11-21: the
-   * solid grey #0f0f12 slab read as a dated admin theme). Image layers
-   * only, so a card is see-through; surfaces that must be opaque
-   * (dialogs) add a solid layer under it. */
-  --t-card:
-    radial-gradient(
-      120% 90% at 0% 0%,
-      rgb(255 122 182 / 0.05),
-      transparent 55%
-    ),
-    linear-gradient(180deg, rgb(255 255 255 / 0.02), rgb(255 255 255 / 0.005)),
-    linear-gradient(rgb(9 9 11 / 0.55), rgb(9 9 11 / 0.55));
-  --t-lift: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px var(--t-hair);
-  --t-lift-on:
-    inset 0 1px 0 rgb(255 255 255 / 0.08), 0 0 0 1px rgb(255 122 182 / 0.35);
+  --t-hair: rgb(255 255 255 / 0.09);
+  --t-placeholder: #676d77;
+  /* An image layer (not a colour) so callers can stack it over another
+   * background, e.g. `background: var(--t-card), var(--t-bg2)`. */
+  --t-card: linear-gradient(var(--t-bg2), var(--t-bg2));
+  --t-lift: 0 0 0 1px var(--t-hair);
+  --t-lift-on: 0 0 0 1px var(--t-hi);
 
   --background: var(--t-bg);
   --foreground: var(--t-fg);
 
-  --card: var(--t-bg);
+  --card: var(--t-bg2);
   --card-foreground: var(--t-fg);
   --popover: var(--t-bg2);
   --popover-foreground: var(--t-fg);
@@ -729,8 +721,9 @@ For commercial licensing, please contact support@quantumnous.com
 
   --skeleton-base: var(--t-bg3);
   --skeleton-highlight: var(--t-line);
-  --table-row: var(--t-bg);
-  --table-header: var(--t-bg);
+  /* Tables sit on cards, so rows take the card surface. */
+  --table-row: var(--t-bg2);
+  --table-header: var(--t-bg2);
   --overview-accent-1: var(--chart-1);
   --overview-accent-2: var(--chart-2);
   --overview-accent-3: var(--chart-3);
@@ -801,8 +794,9 @@ For commercial licensing, please contact support@quantumnous.com
   box-shadow: var(--t-lift);
   --tw-ring-shadow: 0 0 #0000;
 }
-/* Faint grid fading out from the top and a hint of pink light above it,
- * behind every console page (the beta landing page has the same). */
+/* Backdrop behind every console page: the flat charcoal, with only a
+ * neutral sheen falling from the top edge (11-22: the grid and the pink
+ * glow are gone, as on the dark pages of refactor/ui-v4). */
 body[data-theme-preset='peroai']::before,
 :where(body:not([data-theme-preset]))::before {
   content: '';
@@ -810,20 +804,10 @@ body[data-theme-preset='peroai']::before,
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 45% 30% at 50% -6%,
-      rgb(255 122 182 / 0.08),
-      transparent 70%
-    ),
-    linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0
-      0 / 40px 40px,
-    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0
-      0 / 40px 40px;
-  mask-image: radial-gradient(
-    ellipse 75% 60% at 50% 0%,
-    #000 25%,
-    transparent 80%
+  background: radial-gradient(
+    ellipse 70% 45% at 50% -10%,
+    rgb(255 255 255 / 0.035),
+    transparent 70%
   );
 }
 [data-theme-preset='peroai'] ::selection,

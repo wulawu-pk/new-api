@@ -343,7 +343,7 @@ export function ConsoleLogs() {
                       tabIndex={0}
                       aria-expanded={open}
                       data-state={open ? 'selected' : undefined}
-                      className='data-[state=selected]:bg-t-bg2 cursor-pointer'
+                      className='data-[state=selected]:bg-t-bg3 cursor-pointer'
                       onClick={() => toggleRow(row.id)}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
@@ -395,7 +395,7 @@ export function ConsoleLogs() {
                       </ConsoleTd>
                     </ConsoleTableRow>
                     {open && (
-                      <tr className='bg-t-bg2'>
+                      <tr className='bg-t-bg3'>
                         <td
                           colSpan={cols}
                           className='px-3.5 pt-1 pb-[18px] whitespace-normal'
@@ -414,7 +414,7 @@ export function ConsoleLogs() {
           // Sticks to the window bottom, just above the 36px status bar.
           <nav
             aria-label={t('Pagination')}
-            className='border-t-line bg-t-bg text-t-dim sticky bottom-9 z-[5] flex flex-wrap items-center justify-end gap-3 border-t px-3.5 py-2.5 text-[13px]'
+            className='border-t-line bg-t-bg2 text-t-dim sticky bottom-9 z-[5] flex flex-wrap items-center justify-end gap-3 border-t px-3.5 py-2.5 text-[13px]'
           >
             <span className='mr-auto'>
               {t('{{count}} in total, {{size}} per page', {

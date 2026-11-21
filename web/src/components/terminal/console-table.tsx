@@ -67,7 +67,7 @@ export function ConsoleTableRow(props: React.ComponentProps<'tr'>) {
   const { className, ...rest } = props
   return (
     <TableRow
-      className={cn('border-t-line hover:bg-t-bg2', className)}
+      className={cn('border-t-line hover:bg-t-bg3', className)}
       {...rest}
     />
   )

@@ -139,7 +139,7 @@ export function TurnstileRow(props: {
 }) {
   if (!props.enabled) return null
   return (
-    <div className='border-t-faint bg-t-bg2 overflow-hidden border p-1.5'>
+    <div className='border-t-faint bg-t-bg overflow-hidden border p-1.5'>
       <Turnstile
         key={props.widgetKey}
         siteKey={props.siteKey}
