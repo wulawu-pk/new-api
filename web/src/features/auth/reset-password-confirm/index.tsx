@@ -17,11 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useNavigate } from '@tanstack/react-router'
-import { CheckIcon, CopyIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { CopyButton } from '@/components/copy-button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,6 +34,8 @@ import { AuthOperationError } from '@/lib/secure-verification'
 import { createServerError } from '@/lib/server-error-message'
 
 import { AuthLayout } from '../auth-layout'
+import { AuthHeading } from '../components/auth-heading'
+import { AUTH_FORM_CLASS, AUTH_SUBMIT_CLASS } from '../constants'
 
 export type ResetPasswordSearchParams = {
   email?: string
@@ -50,7 +52,6 @@ export function ResetPasswordConfirm({
   const navigate = useNavigate()
   const [newPassword, setNewPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
   const {
     secondsLeft,
     isActive,
@@ -95,36 +96,20 @@ export function ResetPasswordConfirm({
     }
   }
 
-  async function handleCopy() {
-    if (!newPassword) return
-
-    const copySuccess = await copyToClipboard(newPassword)
-    if (copySuccess) {
-      setCopied(true)
-      toast.success(
-        t('Password copied to clipboard: {{password}}', {
-          password: newPassword,
-        })
-      )
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }
-
   return (
     <AuthLayout>
       <div className='w-full space-y-8'>
-        <div className='space-y-2'>
-          <h2 className='text-center text-2xl font-semibold tracking-tight sm:text-left'>
-            {t('Reset password')}
-          </h2>
-          <p className='text-muted-foreground text-left text-sm sm:text-base'>
-            {newPassword
+        <AuthHeading
+          command='auth reset --token'
+          title={t('Reset password')}
+          description={
+            newPassword
               ? t('auth.resetPasswordConfirm.success')
-              : t('auth.resetPasswordConfirm.description')}
-          </p>
-        </div>
+              : t('auth.resetPasswordConfirm.description')
+          }
+        />
 
-        <div className='space-y-4'>
+        <div className={AUTH_FORM_CLASS}>
           {!isValidResetLink && (
             <Alert variant='destructive'>
               <AlertDescription>
@@ -152,20 +137,13 @@ export function ResetPasswordConfirm({
                   id='password'
                   value={newPassword}
                   disabled
-                  className='font-mono'
+                  className='font-ascii'
                 />
-                <Button
-                  type='button'
-                  size='icon'
+                <CopyButton
+                  value={newPassword}
                   variant='outline'
-                  onClick={handleCopy}
-                >
-                  {copied ? (
-                    <CheckIcon className='h-4 w-4' />
-                  ) : (
-                    <CopyIcon className='h-4 w-4' />
-                  )}
-                </Button>
+                  className='size-11 rounded-full'
+                />
               </div>
               <p className='text-muted-foreground text-xs'>
                 {t('Password has been copied to clipboard')}
@@ -174,7 +152,7 @@ export function ResetPasswordConfirm({
           )}
 
           <Button
-            className='w-full'
+            className={AUTH_SUBMIT_CLASS}
             onClick={
               newPassword
                 ? () => navigate({ to: '/sign-in', replace: true })
@@ -198,7 +176,7 @@ export function ResetPasswordConfirm({
           {!newPassword && (
             <Button
               variant='link'
-              className='w-full'
+              className='text-muted-foreground hover:text-foreground w-full'
               onClick={() => navigate({ to: '/sign-in', replace: true })}
             >
               {t('Back to login')}
