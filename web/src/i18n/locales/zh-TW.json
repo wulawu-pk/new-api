@@ -7633,18 +7633,6 @@
     "“{{query}}” in {{count}} groups": "「{{query}}」出現在 {{count}} 個分組",
     "My requests": "我的請求",
     "Whose requests": "查看誰的請求",
-    "{{count}} in total, {{size}} per page": "共 {{count}} 筆，每頁 {{size}} 筆",
-    "Three steps to connect peroai": "三步接上 peroai",
-    "Create a key, top up and send the first request; each step ticks itself off.": "建 Key、儲值、發第一個請求，做完的步驟會自動打勾。",
-    "Hide guide": "收起引導",
-    "{{done}} of {{total}} done": "已完成 {{done}}/{{total}}",
-    "Claude and GPT need separate keys; the group sets the route and price.": "Claude 和 GPT 要分開建，分組決定線路和價格。",
-    "Requests fail once the balance runs out.": "餘額用完請求會失敗。",
-    "Run the command on the right; it shows up in the logs within seconds.": "跑一次右邊的命令，幾秒後會出現在日誌裡。",
-    "First request": "第一個請求",
-    "Create a key to fill in the real command": "建好 Key 後這裡會填上真實命令",
-    "Copy command": "複製命令",
-    "Key group": "Key 分組",
-    "API address": "介面位址"
+    "{{count}} in total, {{size}} per page": "共 {{count}} 筆，每頁 {{size}} 筆"
   }
 }
