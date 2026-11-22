@@ -1,0 +1,89 @@
+# peroai: every push to refactor/ui-v4 rebuilds web/ and publishes it as
+# assets of the "preview-ui-v4" pre-release. The server polls that release
+# once a minute and swaps the files behind https://v4.peroai.cc in place.
+# Nothing here can reach the server: there are no server secrets in the repo.
+name: v4 preview
+
+on:
+  push:
+    branches: [refactor/ui-v4]
+    paths:
+      - 'web/**'
+      - '.github/workflows/v4-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v4-preview
+  cancel-in-progress: true
+
+env:
+  RELEASE_TAG: preview-ui-v4
+
+jobs:
+  build:
+    name: Build and publish web/dist
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: '1.4.4'
+
+      - name: Install dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        working-directory: web
+        run: bun run build
+
+      - name: Package
+        id: pkg
+        shell: bash
+        run: |
+          set -euo pipefail
+          SHORT=$(git rev-parse --short=8 HEAD)
+          printf '{"commit":"%s","built_at":"%s","run":"%s"}\n' \
+            "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            > web/dist/peroai-build.json
+          FILE="v4-app-${SHORT}.tgz"
+          tar -czf "$FILE" -C web/dist .
+          SUM=$(sha256sum "$FILE" | cut -d' ' -f1)
+          printf '{"commit":"%s","file":"%s","sha256":"%s"}\n' \
+            "$GITHUB_SHA" "$FILE" "$SUM" > latest.json
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          ls -l "$FILE"; cat latest.json
+
+      - name: Publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.pkg.outputs.file }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --prerelease --latest=false \
+              --target "$GITHUB_SHA" --title "ui-v4 preview build" \
+              --notes "Built automatically from refactor/ui-v4 and served at https://v4.peroai.cc . Not a release."
+          fi
+          # Upload the archive first and latest.json last, so the server never
+          # sees a manifest pointing at a file that is not there yet.
+          gh release upload "$RELEASE_TAG" "$FILE" --clobber
+          gh release upload "$RELEASE_TAG" latest.json --clobber
+          # Keep the three newest archives.
+          gh release view "$RELEASE_TAG" --json assets \
+            --jq '.assets | map(select(.name | startswith("v4-app-"))) | sort_by(.createdAt) | reverse | .[3:] | .[].name' \
+          | while read -r old; do
+              gh release delete-asset "$RELEASE_TAG" "$old" --yes || true
+            done
+          echo "Published $FILE; v4.peroai.cc picks it up within about a minute."
