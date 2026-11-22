@@ -39,6 +39,19 @@ export function prefersReducedMotion(): boolean {
   )
 }
 
+// Same curves as --t-ease and --t-spring in theme-presets.css, for Web
+// Animations. Selection pills slide on the spring where the browser
+// understands linear() easing, else on the ease.
+export const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'
+const SPRING =
+  'linear(0, 0.0663, 0.2153, 0.3916, 0.5618, 0.708, 0.8234, 0.9081, 0.9656, 1.0013, 1.0208, 1.0289, 1.0299, 1.0269, 1.022, 1.0166, 1.0117, 1.0076, 1.0044, 1.0021, 1.0006, 0.9997, 0.9993, 0.9991, 0.9991, 0.9992, 0.9994, 0.9996, 1)'
+const canSpring =
+  typeof CSS !== 'undefined' &&
+  typeof CSS.supports === 'function' &&
+  CSS.supports('transition-timing-function', 'linear(0, 1)')
+export const SLIDE_EASE = canSpring ? SPRING : EASE
+export const SLIDE_MS = canSpring ? 620 : 420
+
 /** Frames of the submit-button spinner. */
 export const SPIN_FRAMES = ['|', '/', '-', '\\'] as const
 

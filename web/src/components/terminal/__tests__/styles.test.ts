@@ -45,4 +45,29 @@ describe('terminal class names', () => {
     )
     expect(offenders.map((file) => file.slice(SRC.length + 1))).toEqual([])
   })
+
+  // A pane's title bar is its first child, so padding on the pane itself
+  // squeezes the title bar inside it (shorter rule, title pressed against
+  // the content). Titled panes pad an inner body instead.
+  it('never pads a titled pane itself', () => {
+    // Zero padding (e.g. a pane flattened on phones) is fine.
+    const padding = /(?:^|\s)(?:max-\w+:)?p[xytblr]?-(?!0(?:\s|$))/
+    const offenders = sourceFiles(SRC).flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .split(/<Pane\b/)
+        .slice(1)
+        .map((rest) => {
+          // The opening tag: one line, or up to the line that closes it
+          // (titles hold JSX, so `>` alone does not end the tag).
+          const firstLine = rest.slice(0, rest.indexOf('\n')).trimEnd()
+          if (firstLine.endsWith('>')) return firstLine
+          return rest.slice(0, rest.search(/\n\s*\/?>/))
+        })
+        .filter((tag) => tag.includes('title='))
+        .map((tag) => /className='([^']*)'/.exec(tag)?.[1] ?? '')
+        .filter((classes) => padding.test(classes))
+        .map((classes) => `${file.slice(SRC.length + 1)}: ${classes}`)
+    )
+    expect(offenders).toEqual([])
+  })
 })

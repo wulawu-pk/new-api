@@ -16,10 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { TermSegmented } from '@/components/terminal/term-segmented'
 import { Turnstile } from '@/components/turnstile'
 import { Label } from '@/components/ui/label'
 import { LegalConsent } from '@/features/auth/components/legal-consent'
@@ -36,33 +36,33 @@ export type AuthSearch = {
   client?: string
 }
 
-/** `[ 登录 ]  注册` — tabs as links so the address matches the mode. */
+/**
+ * 登录 | 注册 — a segmented pill; the choices are links so the address
+ * matches the mode, and the pill slides across the route change.
+ */
 export function AuthTabs(props: { mode: 'in' | 'up'; search: AuthSearch }) {
   const { t } = useTranslation()
   return (
-    <nav
-      aria-label={t('Sign in or sign up')}
-      className='flex gap-1 font-mono text-[13.5px]'
-    >
-      <Link
-        to='/sign-in'
-        search={props.search}
-        data-scramble=''
-        aria-current={props.mode === 'in' ? 'page' : undefined}
-        className='t-bracket text-t-dim hover:text-t-fg aria-[current=page]:text-t-fg'
-      >
-        {t('Sign in')}
-      </Link>
-      <Link
-        to='/sign-up'
-        search={props.search}
-        data-scramble=''
-        aria-current={props.mode === 'up' ? 'page' : undefined}
-        className='t-bracket text-t-dim hover:text-t-fg aria-[current=page]:text-t-fg'
-      >
-        {t('Sign up')}
-      </Link>
-    </nav>
+    <TermSegmented
+      label={t('Sign in or sign up')}
+      memoryKey='auth'
+      value={props.mode}
+      className='self-start'
+      items={[
+        {
+          value: 'in',
+          label: t('Sign in'),
+          to: '/sign-in',
+          search: props.search,
+        },
+        {
+          value: 'up',
+          label: t('Sign up'),
+          to: '/sign-up',
+          search: props.search,
+        },
+      ]}
+    />
   )
 }
 

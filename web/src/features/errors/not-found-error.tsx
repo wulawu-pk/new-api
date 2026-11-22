@@ -134,40 +134,42 @@ export function NotFoundError() {
               <b>404</b>　{t('No such page')}
             </>
           }
-          className='w-full max-w-[620px] gap-[22px] px-6 pt-[30px] pb-[22px]'
+          className='w-full max-w-[620px]'
         >
-          <Art />
-          <pre className='text-t-fg2 m-0 font-mono text-[13.5px] leading-[1.9] break-all whitespace-pre-wrap'>
-            <span className='text-t-dim'>$</span> open {path}
-            {'\n'}
-            <span className='text-t-warn'>
-              peroai: {path}: {t('no such page')}
-            </span>
-            {'\n'}
-            {t(
-              'The link may be mistyped, or the page has moved. You can go to:'
-            )}
-          </pre>
-          <nav
-            aria-label={t('Where to go')}
-            className='flex flex-col gap-0.5 text-sm'
-          >
-            {places.map((place) => (
-              <a
-                key={place.href}
-                href={place.href}
-                className='text-t-fg2 hover:bg-t-bg3 hover:text-t-fg focus-visible:bg-t-bg3 flex gap-2.5 px-2 py-1.5'
-              >
-                <span className='text-t-accent font-mono' aria-hidden='true'>
-                  ▸
-                </span>
-                {place.label}
-                <small className='text-t-dim ml-auto font-mono text-xs'>
-                  {place.note}
-                </small>
-              </a>
-            ))}
-          </nav>
+          <div className='flex flex-col gap-[22px] px-6 pt-6 pb-[22px]'>
+            <Art />
+            <pre className='text-t-fg2 m-0 font-mono text-[13.5px] leading-[1.9] break-all whitespace-pre-wrap'>
+              <span className='text-t-dim'>$</span> open {path}
+              {'\n'}
+              <span className='text-t-warn'>
+                peroai: {path}: {t('no such page')}
+              </span>
+              {'\n'}
+              {t(
+                'The link may be mistyped, or the page has moved. You can go to:'
+              )}
+            </pre>
+            <nav
+              aria-label={t('Where to go')}
+              className='flex flex-col gap-0.5 text-sm'
+            >
+              {places.map((place) => (
+                <a
+                  key={place.href}
+                  href={place.href}
+                  className='text-t-fg2 hover:bg-t-bg3 hover:text-t-fg focus-visible:bg-t-bg3 flex gap-2.5 px-2 py-1.5'
+                >
+                  <span className='text-t-accent font-mono' aria-hidden='true'>
+                    ▸
+                  </span>
+                  {place.label}
+                  <small className='text-t-dim ml-auto font-mono text-xs'>
+                    {place.note}
+                  </small>
+                </a>
+              ))}
+            </nav>
+          </div>
         </Pane>
       </main>
       <footer className='border-t-line text-t-dim flex h-9 items-center gap-[18px] border-t font-mono text-xs'>

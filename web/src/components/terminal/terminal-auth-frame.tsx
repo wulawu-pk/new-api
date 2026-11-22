@@ -96,9 +96,13 @@ export const TerminalAuthFrame = forwardRef<
           <Pane
             title={props.title}
             active
-            className='bg-t-bg [&>.t-pane-title]:text-t-fg gap-4 px-6 pt-7 pb-[22px]'
+            className='bg-t-bg [&>.t-pane-title]:text-t-fg'
           >
-            {props.children}
+            {/* Padding goes on the body, not the pane, so the title bar
+             * spans the card like every other pane. */}
+            <div className='flex flex-col gap-4 px-6 pt-6 pb-6'>
+              {props.children}
+            </div>
           </Pane>
         </div>
       </div>

@@ -17,7 +17,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -25,6 +24,7 @@ import { RichContent } from '@/components/rich-content'
 import { LoadErrorText } from '@/components/terminal/data-states'
 import { errorReason, prefersReducedMotion } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
+import { TermSegmented } from '@/components/terminal/term-segmented'
 import { Button } from '@/components/ui/button'
 import { getPrivacyPolicy, getUserAgreement } from '@/features/legal/api'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
@@ -141,30 +141,16 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
           'Applies to peroai.cc, api.peroai.cc and the console. Signing up or signing in means you accept both documents.'
         )}
         actions={
-          <div
-            role='group'
-            aria-label={t('Legal documents')}
-            className='inline-flex gap-0.5 rounded-full bg-white/4 p-1 shadow-[inset_0_0_0_1px_var(--t-hair)]'
-          >
-            {LEGAL_PAGES.map((item) => {
-              const active = item.key === props.doc
-              return (
-                <Link
-                  key={item.key}
-                  to={item.path}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'rounded-full px-3.5 py-1.5 text-[13px] transition-colors duration-200',
-                    active
-                      ? 'text-t-fg bg-white/9 shadow-[inset_0_1px_0_rgb(255_255_255/0.07)]'
-                      : 'text-t-dim hover:text-t-fg'
-                  )}
-                >
-                  {t(item.labelKey)}
-                </Link>
-              )
-            })}
-          </div>
+          <TermSegmented
+            label={t('Legal documents')}
+            memoryKey='legal'
+            value={props.doc}
+            items={LEGAL_PAGES.map((item) => ({
+              value: item.key,
+              label: t(item.labelKey),
+              to: item.path,
+            }))}
+          />
         }
       />
 

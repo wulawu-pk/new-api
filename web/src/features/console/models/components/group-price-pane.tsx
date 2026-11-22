@@ -102,7 +102,6 @@ export function GroupPricePane(props: {
           {t('{{count}} models', { count: group.rows.length })}
         </>
       }
-      className='pt-1.5'
     >
       <p className='text-t-dim mx-[18px] mt-3.5 mb-0 text-[13.5px] leading-[1.7]'>
         {groupNote(group.key, t, group.description)}

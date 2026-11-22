@@ -25,6 +25,7 @@ import { AsciiSpark } from '@/components/terminal/ascii-spark'
 import { LoadErrorText } from '@/components/terminal/data-states'
 import { errorReason } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
+import { TermSegmented } from '@/components/terminal/term-segmented'
 import { getGroupSummary } from '@/features/service-status/api'
 import type { GroupHealthSummary } from '@/features/service-status/types'
 import { toIntlLocale } from '@/i18n/languages'
@@ -54,63 +55,67 @@ function GroupCard(props: {
     <Pane
       title={<b>{groupName(g.group, t)}</b>}
       aria-label={groupName(g.group, t)}
-      className='px-5 pt-[22px] pb-[18px]'
     >
-      <div className='mb-2 flex items-baseline justify-between gap-3'>
-        <span className='text-t-dim font-mono text-xs'>{g.group}</span>
-        <span
-          className={cn(
-            'font-mono text-[22px] font-medium',
-            !enough && 'text-t-dim text-sm',
-            enough && (warn ? 'text-t-warn' : 'text-t-ok')
-          )}
-        >
-          {enough
-            ? `${g.success_rate.toFixed(1)}%`
-            : t('Too few requests to rate')}
-        </span>
+      {/* Padding on the body, not the pane: the title bar spans the card. */}
+      <div className='px-6 pt-5 pb-6'>
+        <div className='mb-4 flex min-h-8 items-center justify-between gap-3'>
+          <span className='text-t-dim font-mono text-xs'>{g.group}</span>
+          <span
+            className={cn(
+              'font-mono text-[22px] leading-none font-medium',
+              !enough && 'text-t-dim text-[13px]',
+              enough && (warn ? 'text-t-warn' : 'text-t-ok')
+            )}
+          >
+            {enough
+              ? `${g.success_rate.toFixed(1)}%`
+              : t('Too few requests to rate')}
+          </span>
+        </div>
+        <AsciiSpark
+          className='mb-5'
+          label={t('Availability trend')}
+          warnBelow={99}
+          cells={slots.map((slot) => ({
+            id: slot.start,
+            value: slot.rate,
+            title:
+              slot.rate == null
+                ? `${dayjs.unix(slot.start).format(format)} · ${t('no requests')}`
+                : `${dayjs.unix(slot.start).format(format)} · ${slot.rate.toFixed(1)}%`,
+          }))}
+        />
+        <dl className='border-t-line text-t-dim m-0 grid grid-cols-4 gap-x-4 gap-y-4 border-t pt-4 text-[12.5px] max-[480px]:grid-cols-2'>
+          <div>
+            <dt>{t('Requests')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {formatNumber(g.request_count, locale)}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('Avg latency')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {g.avg_latency_ms > 0
+                ? `${(g.avg_latency_ms / 1000).toFixed(2)} s`
+                : '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('Time to first token')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {g.avg_ttft_ms > 0
+                ? `${(g.avg_ttft_ms / 1000).toFixed(1)} s`
+                : '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('Throughput')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {g.avg_tps > 0 ? `${Math.round(g.avg_tps)} tok/s` : '—'}
+            </dd>
+          </div>
+        </dl>
       </div>
-      <AsciiSpark
-        className='mb-3.5'
-        label={t('Availability trend')}
-        warnBelow={99}
-        cells={slots.map((slot) => ({
-          id: slot.start,
-          value: slot.rate,
-          title:
-            slot.rate == null
-              ? `${dayjs.unix(slot.start).format(format)} · ${t('no requests')}`
-              : `${dayjs.unix(slot.start).format(format)} · ${slot.rate.toFixed(1)}%`,
-        }))}
-      />
-      <dl className='text-t-dim m-0 grid grid-cols-4 gap-2 text-[12.5px] max-[480px]:grid-cols-2'>
-        <div>
-          <dt>{t('Requests')}</dt>
-          <dd className='text-t-fg mt-0.5 ml-0 font-mono text-sm font-medium'>
-            {formatNumber(g.request_count, locale)}
-          </dd>
-        </div>
-        <div>
-          <dt>{t('Avg latency')}</dt>
-          <dd className='text-t-fg mt-0.5 ml-0 font-mono text-sm font-medium'>
-            {g.avg_latency_ms > 0
-              ? `${(g.avg_latency_ms / 1000).toFixed(2)} s`
-              : '—'}
-          </dd>
-        </div>
-        <div>
-          <dt>{t('Time to first token')}</dt>
-          <dd className='text-t-fg mt-0.5 ml-0 font-mono text-sm font-medium'>
-            {g.avg_ttft_ms > 0 ? `${(g.avg_ttft_ms / 1000).toFixed(1)} s` : '—'}
-          </dd>
-        </div>
-        <div>
-          <dt>{t('Throughput')}</dt>
-          <dd className='text-t-fg mt-0.5 ml-0 font-mono text-sm font-medium'>
-            {g.avg_tps > 0 ? `${Math.round(g.avg_tps)} tok/s` : '—'}
-          </dd>
-        </div>
-      </dl>
     </Pane>
   )
 }
@@ -147,36 +152,26 @@ export function ConsoleStatus() {
           'Results of real requests, per group. Requests refused for low balance or bad parameters do not count as failures.'
         )}
         actions={
-          <div
-            role='group'
-            aria-label={t('Time range')}
-            className='border-t-faint inline-flex border'
-          >
-            {([24, 168] as const).map((h, index) => (
-              <button
-                key={h}
-                type='button'
-                aria-pressed={hours === h}
-                onClick={() => setHours(h)}
-                className={cn(
-                  'px-3 py-1.5 text-[13px]',
-                  index > 0 && 'border-t-faint border-l',
-                  hours === h
-                    ? 'bg-t-fg text-t-bg'
-                    : 'text-t-dim hover:text-t-fg'
-                )}
-              >
-                {h === 24 ? t('24 hours') : t('7 days')}
-              </button>
-            ))}
-          </div>
+          <TermSegmented
+            label={t('Time range')}
+            value={String(hours)}
+            onValueChange={(value) => setHours(Number(value) as Hours)}
+            items={[
+              { value: '24', label: t('24 hours') },
+              { value: '168', label: t('7 days') },
+            ]}
+          />
         }
       />
       {summary.isPending && (
-        <div className='grid grid-cols-2 gap-x-5 gap-y-6 max-md:grid-cols-1'>
+        <div className='grid grid-cols-2 gap-6 max-md:grid-cols-1'>
           {[0, 1].map((i) => (
-            <Pane key={i} title={<b>░░░░</b>} className='px-5 py-8'>
-              <span className='t-skeleton font-mono'>░░░░░░░░░░░░░░░░░░░░</span>
+            <Pane key={i} title={<b>░░░░</b>}>
+              <div className='px-6 py-10'>
+                <span className='t-skeleton font-mono'>
+                  ░░░░░░░░░░░░░░░░░░░░
+                </span>
+              </div>
             </Pane>
           ))}
         </div>
@@ -197,7 +192,7 @@ export function ConsoleStatus() {
         </p>
       )}
       {groups.length > 0 && (
-        <div className='grid grid-cols-2 gap-x-5 gap-y-6 max-md:grid-cols-1'>
+        <div className='grid grid-cols-2 gap-6 max-md:grid-cols-1'>
           {groups.map((group) => (
             <GroupCard
               key={group.group}

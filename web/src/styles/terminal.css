@@ -94,6 +94,22 @@ For commercial licensing, please contact support@quantumnous.com
     pointer-events: none;
     transition: opacity 240ms var(--t-ease);
   }
+  /* The same pill inside a segmented control (TermSegmented): the track
+   * has 4px padding, the pill fills its height between. */
+  .t-seg-mark {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    z-index: 0;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.09);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      0 2px 8px -2px rgb(0 0 0 / 0.6);
+    pointer-events: none;
+    transition: opacity 240ms var(--t-ease);
+  }
 
   /* ── Pane: a lifted card; the title is its header row ──
    * A dot before the title lights up pink on the pane being worked on. */
@@ -633,7 +649,8 @@ For commercial licensing, please contact support@quantumnous.com
   .t-hero-sweep {
     display: none;
   }
-  .t-tab-mark {
+  .t-tab-mark,
+  .t-seg-mark {
     transition: none;
   }
 }
