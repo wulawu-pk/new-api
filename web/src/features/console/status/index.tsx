@@ -33,6 +33,7 @@ import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 import { HIDDEN_GROUPS, groupName, sortGroups } from '../lib/groups'
+import { successRateClass } from '../lib/success-rate'
 import { ConsolePageHeader } from '../shell/console-shell'
 import { MIN_REQUESTS_FOR_RATE, toSlots } from './lib/slots'
 
@@ -48,7 +49,6 @@ function GroupCard(props: {
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const g = props.group
   const enough = g.request_count >= MIN_REQUESTS_FOR_RATE
-  const warn = enough && g.success_rate < 99.5
   const slots = toSlots(g.series, props.windowStart, props.windowEnd)
   const format = props.hours === 24 ? 'MM-DD HH:00' : 'MM-DD HH:mm'
   return (
@@ -64,7 +64,7 @@ function GroupCard(props: {
             className={cn(
               'font-mono text-[22px] leading-none font-medium',
               !enough && 'text-t-dim text-[13px]',
-              enough && (warn ? 'text-t-warn' : 'text-t-ok')
+              enough && successRateClass(g.success_rate)
             )}
           >
             {enough

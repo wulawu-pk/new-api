@@ -45,6 +45,7 @@ import { formatLogQuota, formatNumber, formatQuota } from '@/lib/format'
 
 import { useSelfUser } from '../hooks/use-self-user'
 import { groupName } from '../lib/groups'
+import { successRateClass } from '../lib/success-rate'
 import { CacheHitCell, UsageText } from '../request-logs/components/cells'
 import { toConsoleLogRow } from '../request-logs/lib/log-row'
 import { ConsolePageHeader } from '../shell/console-shell'
@@ -70,7 +71,8 @@ function Kpi(props: {
   label: string
   value: React.ReactNode
   big?: boolean
-  tone?: 'ok' | 'warn'
+  /** Extra classes on the figure, e.g. its colour. */
+  valueClassName?: string
   children?: React.ReactNode
   className?: string
 }) {
@@ -86,9 +88,7 @@ function Kpi(props: {
       <b
         className={`font-mono font-medium [font-variant-numeric:tabular-nums] ${
           props.big ? 'text-[36px] tracking-[-0.02em]' : 'text-[22px]'
-        }${
-          props.tone === 'ok' ? ' text-t-ok' : ''
-        }${props.tone === 'warn' ? ' text-t-warn' : ''}`}
+        }${props.valueClassName ? ` ${props.valueClassName}` : ''}`}
       >
         {props.value}
       </b>
@@ -173,8 +173,7 @@ export function ConsoleOverview() {
   let kpiErrorApi = '/api/log/self'
   if (self.isError) kpiErrorApi = '/api/user/self'
   else if (usage.isError) kpiErrorApi = '/api/data/self'
-  let availTone: 'ok' | 'warn' | undefined
-  if (avail != null) availTone = avail < 0.99 ? 'warn' : 'ok'
+  const availClass = avail == null ? undefined : successRateClass(avail * 100)
 
   return (
     <>
@@ -222,7 +221,7 @@ export function ConsoleOverview() {
           <Kpi
             label={t('Success rate')}
             value={availValue}
-            tone={availTone}
+            valueClassName={availClass}
             className='max-md:border-t-line max-md:border-t'
           />
           <Kpi
