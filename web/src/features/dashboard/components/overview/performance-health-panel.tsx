@@ -34,6 +34,8 @@ import {
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
+import { DASHBOARD_FRAME } from '../../constants'
+
 const PERFORMANCE_WINDOW_HOURS = 24
 const TOP_MODEL_LIMIT = 6
 
@@ -61,19 +63,23 @@ export function PerformanceHealthPanel() {
   const hasData = models.length > 0
 
   return (
-    <section className='bg-card h-full overflow-hidden rounded-2xl border shadow-xs'>
-      <div className='flex items-center gap-2 border-b px-4 py-3 sm:px-5'>
-        <IconBadge tone='success' size='sm'>
-          <HeartPulse />
-        </IconBadge>
-        <h3 className='text-sm font-semibold'>{t('Performance health')}</h3>
+    <section className={cn(DASHBOARD_FRAME, 'h-full')}>
+      <div className='relative flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-4 pb-3.5 sm:px-5'>
+        <HeartPulse
+          className='text-landing-accent size-4 shrink-0'
+          aria-hidden='true'
+        />
+        <h3 className='text-sm font-semibold tracking-tight'>
+          {t('Performance health')}
+        </h3>
         <span className='text-muted-foreground ml-auto text-xs'>
           {t('Performance metrics for the last 24 hours')}
         </span>
+        <div aria-hidden className='ascii-rule absolute inset-x-0 bottom-0' />
       </div>
 
-      <div className='space-y-3 p-4 sm:p-5'>
-        <div className='grid grid-cols-3 gap-2'>
+      <div className='space-y-4 p-4 sm:p-5'>
+        <div className='divide-border border-border grid grid-cols-3 divide-x overflow-hidden rounded-2xl border'>
           <MetricCell
             icon={HeartPulse}
             label={t('Success rate')}
@@ -159,7 +165,7 @@ function MetricCell(props: {
 }) {
   const Icon = props.icon
   return (
-    <div className='bg-muted/40 rounded-xl px-3 py-2.5'>
+    <div className='min-w-0 px-3 py-3 sm:px-4'>
       <div className='text-muted-foreground flex items-center gap-1.5 text-[11px] font-medium'>
         <IconBadge tone={props.tone} size='xs'>
           <Icon />
@@ -167,11 +173,11 @@ function MetricCell(props: {
         <span className='truncate'>{props.label}</span>
       </div>
       {props.loading ? (
-        <Skeleton className='mt-1.5 h-5 w-16' />
+        <Skeleton className='mt-2 h-6 w-16' />
       ) : (
         <div
           className={cn(
-            'mt-1.5 font-mono text-sm font-semibold tabular-nums',
+            'font-ascii mt-2 truncate text-base font-semibold tabular-nums sm:text-lg',
             props.valueClassName
           )}
         >
