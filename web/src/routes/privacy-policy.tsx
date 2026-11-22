@@ -18,8 +18,18 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute } from '@tanstack/react-router'
 
-import { PrivacyPolicy } from '@/features/legal'
+import { ConsoleLegal } from '@/features/console/legal'
+import { ConsoleShell } from '@/features/console/shell/console-shell'
 
+// peroai v3: public legal page in the console shell, like /status.
 export const Route = createFileRoute('/privacy-policy')({
-  component: PrivacyPolicy,
+  component: PrivacyPolicyPage,
 })
+
+function PrivacyPolicyPage() {
+  return (
+    <ConsoleShell>
+      <ConsoleLegal doc='privacy' />
+    </ConsoleShell>
+  )
+}

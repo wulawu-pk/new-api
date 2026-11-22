@@ -17,6 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { ArrowUpRight, Menu, X } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import {
   useCallback,
   useEffect,
@@ -44,10 +46,12 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useSelfUser } from '../hooks/use-self-user'
 import { consumeConsoleCrtOn, prefersReducedMotion } from '../lib/crt'
 import {
+  CONSOLE_DOCS_HREF,
   CONSOLE_WINDOWS,
   findConsoleWindow,
   isAccountPath,
   isShortcutTarget,
+  LEGAL_PAGES,
 } from '../lib/windows'
 import { usePlanKey } from './use-plan-key'
 
@@ -79,6 +83,17 @@ const canSpring =
   CSS.supports('transition-timing-function', 'linear(0, 1)')
 const SLIDE_EASE = canSpring ? SPRING : EASE
 const SLIDE_MS = canSpring ? 620 : 420
+/** The bar folds into a floating pill once the page scrolls past this. */
+const CONDENSE_AT = 24
+const MOTION_EASE: [number, number, number, number] = [0.22, 1, 0.36, 1]
+
+const focusRing =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--t-accent)/60'
+
+/** Two-digit window number shown before each page name, as on v4. */
+function windowNumber(index: number): string {
+  return String(index + 1).padStart(2, '0')
+}
 
 /**
  * The selected-tab block, its slide in progress, and the last page.
@@ -158,7 +173,10 @@ export function ConsoleKbd(props: { children: ReactNode }) {
  * Console shell: tmux-style window bar on top, status bar at the bottom.
  * Replaces the sidebar layout for the user pages (overview, keys, logs,
  * wallet, models, status) and the account pages (profile, security).
- * Number keys 1–6 switch windows; `n` creates a key. Admin pages keep the
+ * Number keys 1–6 switch windows and 7 opens the docs; `n` creates a key.
+ * The top bar follows the v4 landing header: pages centred across the top,
+ * folding into a floating pill once the page scrolls; below `lg` the pages
+ * move into a menu. Admin pages keep the
  * old layout and are reached via 「管理」.
  */
 export function ConsoleShell(props: { children: ReactNode }) {
@@ -171,6 +189,9 @@ export function ConsoleShell(props: { children: ReactNode }) {
   const self = useSelfUser()
   const { status } = useStatus()
   const [signOutOpen, setSignOutOpen] = useState(false)
+  const [condensed, setCondensed] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const reduceMotion = useReducedMotion()
   const bodyRef = useRef<HTMLDivElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const navRef = useRef<HTMLElement>(null)
@@ -319,9 +340,42 @@ export function ConsoleShell(props: { children: ReactNode }) {
     })
   }, [pathname])
 
+  // At the top the bar spans the page with the pages centred; once the
+  // page scrolls it folds into a floating pill (the v4 landing header).
+  useEffect(() => {
+    let frame = 0
+    const update = () => {
+      frame = 0
+      setCondensed(window.scrollY > CONDENSE_AT)
+    }
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update)
+    }
+    update()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [])
+
+  // The narrow-screen menu closes on Escape (and when a link in it is used).
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!isShortcutTarget(event)) return
+      if (event.key === String(CONSOLE_WINDOWS.length + 1)) {
+        window.location.assign(CONSOLE_DOCS_HREF)
+        return
+      }
       if (/^[1-6]$/.test(event.key)) {
         const index = Number(event.key) - 1
         const win = CONSOLE_WINDOWS[index]
@@ -347,6 +401,10 @@ export function ConsoleShell(props: { children: ReactNode }) {
 
   const balance = self.data ? formatQuota(self.data.quota) : null
   const statusLoaded = Boolean(status)
+  const layoutTransition = {
+    duration: reduceMotion ? 0 : 0.45,
+    ease: MOTION_EASE,
+  }
 
   return (
     <div className='text-t-fg flex min-h-svh flex-col'>
@@ -354,88 +412,295 @@ export function ConsoleShell(props: { children: ReactNode }) {
        * into api.peroai.cc send sonar rings through a glyph field) over a
        * faint grid. Panes sit on it like the cards of the v4 landing page. */}
       <SonarBackdrop className='fixed inset-0 -z-10' />
-      <header className='border-t-line bg-t-bg/75 sticky top-0 z-10 flex h-[58px] items-center gap-5 border-b px-4 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl max-md:h-auto max-md:flex-wrap max-md:gap-x-4 max-md:gap-y-1 max-md:pt-2.5'>
-        <TermLogo />
-        <nav
-          ref={navRef}
-          aria-label={t('Console pages')}
-          className='relative flex min-w-0 [scrollbar-width:none] gap-0.5 overflow-x-auto max-md:order-3 max-md:-mx-2.5 max-md:w-[calc(100%+20px)] max-md:pb-1.5'
-        >
-          <span
-            ref={markRef}
-            aria-hidden='true'
-            className='t-tab-mark max-md:h-[calc(100%-6px)]'
-            style={{
-              width: tabMark.w,
-              transform: `translateX(${tabMark.x}px)`,
-              opacity: tabMark.shown ? 1 : 0,
-            }}
-          />
-          {CONSOLE_WINDOWS.map((win, index) => {
-            const active = current?.key === win.key
-            return (
-              <Link
-                key={win.key}
-                to={win.path}
-                data-scramble=''
-                aria-current={active ? 'page' : undefined}
-                onClick={(event) => {
-                  const plain =
-                    event.button === 0 &&
-                    !event.metaKey &&
-                    !event.ctrlKey &&
-                    !event.shiftKey &&
-                    !event.altKey
-                  if (plain) placeTabMarkOn(event.currentTarget)
+      <header className='pointer-events-none fixed inset-x-0 top-0 z-20 px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] sm:px-6'>
+        <div className='mx-auto flex w-full max-w-[1320px] justify-center'>
+          <motion.div
+            layout
+            data-condensed={condensed ? 'true' : undefined}
+            transition={{ layout: layoutTransition }}
+            style={{ borderRadius: 9999 }}
+            className={cn(
+              'pointer-events-auto relative flex items-center transition-[background-color,box-shadow] duration-300',
+              condensed
+                ? 'bg-t-bg/80 h-14 w-full gap-2 pr-2 pl-4 shadow-[0_0_0_1px_var(--t-hair),0_12px_32px_-16px_rgb(0_0_0/0.7)] backdrop-blur-xl lg:w-auto lg:gap-4'
+                : 'h-16 w-full justify-between gap-4 px-1'
+            )}
+          >
+            <motion.div
+              layout='position'
+              transition={layoutTransition}
+              className={cn(
+                'flex min-w-0 flex-1 items-center lg:min-w-32',
+                condensed && 'lg:w-32 lg:flex-none'
+              )}
+            >
+              <TermLogo className={cn('rounded-full', focusRing)} />
+            </motion.div>
+
+            <motion.nav
+              layout='position'
+              transition={layoutTransition}
+              ref={navRef}
+              aria-label={t('Console pages')}
+              className={cn(
+                'relative hidden items-center gap-0.5 lg:flex',
+                !condensed && 'absolute left-1/2 -translate-x-1/2'
+              )}
+            >
+              <span
+                ref={markRef}
+                aria-hidden='true'
+                className='t-tab-mark'
+                style={{
+                  width: tabMark.w,
+                  transform: `translateX(${tabMark.x}px)`,
+                  opacity: tabMark.shown ? 1 : 0,
                 }}
+              />
+              {CONSOLE_WINDOWS.map((win, index) => {
+                const active = current?.key === win.key
+                return (
+                  <Link
+                    key={win.key}
+                    to={win.path}
+                    data-scramble=''
+                    aria-current={active ? 'page' : undefined}
+                    onClick={(event) => {
+                      const plain =
+                        event.button === 0 &&
+                        !event.metaKey &&
+                        !event.ctrlKey &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      if (plain) placeTabMarkOn(event.currentTarget)
+                    }}
+                    className={cn(
+                      'relative z-[1] flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors duration-200',
+                      focusRing,
+                      active ? 'text-t-fg' : 'text-t-dim hover:text-t-fg'
+                    )}
+                  >
+                    <span
+                      aria-hidden='true'
+                      className={cn(
+                        'font-mono text-[10px] tabular-nums',
+                        active ? 'text-(--t-accent)' : 'text-t-faint'
+                      )}
+                    >
+                      {windowNumber(index)}
+                    </span>
+                    {t(win.labelKey)}
+                  </Link>
+                )
+              })}
+              <a
+                href={CONSOLE_DOCS_HREF}
+                data-scramble=''
                 className={cn(
-                  'relative z-[1] rounded-full px-3 py-[5px] font-mono text-[13px] whitespace-nowrap',
-                  active ? 'text-t-fg' : 'text-t-dim hover:text-t-fg'
+                  'text-t-dim hover:text-t-fg relative z-[1] flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium whitespace-nowrap transition-colors duration-200',
+                  focusRing
                 )}
               >
-                {index + 1} <span className='font-sans'>{t(win.labelKey)}</span>
-              </Link>
-            )
-          })}
-        </nav>
-        <div className='text-t-dim ml-auto flex flex-none items-center gap-3 text-[13px]'>
-          {signedIn ? (
-            <>
-              <span className='max-md:hidden'>{t('Balance')}</span>
-              <b className='text-t-fg font-mono text-sm font-medium'>
-                {balance ? <RollingNumber text={balance} /> : <SkeletonText />}
-              </b>
-              <Button
-                size='sm'
-                variant='outline'
-                render={<Link to='/wallet' />}
-                className='rounded-full'
+                <span
+                  aria-hidden='true'
+                  className='text-t-faint font-mono text-[10px] tabular-nums'
+                >
+                  {windowNumber(CONSOLE_WINDOWS.length)}
+                </span>
+                {t('Docs')}
+                <ArrowUpRight
+                  aria-hidden='true'
+                  className='size-3 opacity-60'
+                  strokeWidth={1.75}
+                />
+              </a>
+            </motion.nav>
+
+            <motion.div
+              layout='position'
+              transition={layoutTransition}
+              className='text-t-dim flex flex-none items-center gap-3 text-[13px]'
+            >
+              {signedIn ? (
+                <>
+                  <span
+                    className={cn('max-md:hidden', condensed && 'lg:hidden')}
+                  >
+                    {t('Balance')}
+                  </span>
+                  <b className='text-t-fg font-mono text-sm font-medium'>
+                    {balance ? (
+                      <RollingNumber text={balance} />
+                    ) : (
+                      <SkeletonText />
+                    )}
+                  </b>
+                  <Button
+                    size='sm'
+                    variant='outline'
+                    render={<Link to='/wallet' />}
+                    className='rounded-full max-[400px]:hidden'
+                  >
+                    {t('Top up')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to='/sign-in'
+                    data-scramble=''
+                    className={cn('hover:text-t-fg rounded-full', focusRing)}
+                  >
+                    {t('Sign in')}
+                  </Link>
+                  <Button
+                    size='sm'
+                    render={<Link to='/sign-up' />}
+                    className='rounded-full hover:bg-white'
+                  >
+                    {t('Sign up')}
+                  </Button>
+                </>
+              )}
+              <button
+                type='button'
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-expanded={menuOpen}
+                aria-controls='console-menu'
+                aria-label={t('Toggle navigation menu')}
+                className={cn(
+                  'text-t-fg2 hover:text-t-fg flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-white/6 lg:hidden',
+                  focusRing
+                )}
               >
-                {t('Top up')}
-              </Button>
-            </>
-          ) : (
-            <>
-              <Link to='/sign-in' data-scramble='' className='hover:text-t-fg'>
-                {t('Sign in')}
-              </Link>
-              <Button
-                size='sm'
-                render={<Link to='/sign-up' />}
-                className='rounded-full hover:bg-white'
-              >
-                {t('Sign up')}
-              </Button>
-            </>
-          )}
+                {menuOpen ? (
+                  <X aria-hidden='true' className='size-5' strokeWidth={1.75} />
+                ) : (
+                  <Menu
+                    aria-hidden='true'
+                    className='size-5'
+                    strokeWidth={1.75}
+                  />
+                )}
+              </button>
+            </motion.div>
+          </motion.div>
         </div>
+
+        <AnimatePresence>
+          {menuOpen && (
+            <motion.div
+              id='console-menu'
+              initial={{ opacity: 0, y: reduceMotion ? 0 : -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{
+                opacity: 0,
+                y: reduceMotion ? 0 : -6,
+                transition: { duration: 0.15 },
+              }}
+              transition={{
+                duration: reduceMotion ? 0 : 0.3,
+                ease: MOTION_EASE,
+              }}
+              className='bg-t-bg2 pointer-events-auto mx-auto mt-2 w-full max-w-[1320px] rounded-[28px] p-2 shadow-[0_0_0_1px_var(--t-hair),0_12px_32px_-16px_rgb(0_0_0/0.8)] lg:hidden'
+            >
+              <p className='text-t-faint px-4 pt-2 pb-1 font-mono text-[11px]'>
+                // peroai
+              </p>
+              <nav aria-label={t('Console menu')}>
+                {CONSOLE_WINDOWS.map((win, index) => {
+                  const active = current?.key === win.key
+                  return (
+                    <Link
+                      key={win.key}
+                      to={win.path}
+                      aria-current={active ? 'page' : undefined}
+                      onClick={() => setMenuOpen(false)}
+                      className={cn(
+                        'flex h-12 items-center gap-3 rounded-2xl px-4 text-[15px] font-medium transition-colors duration-200',
+                        focusRing,
+                        active
+                          ? 'bg-t-bg3 text-t-fg'
+                          : 'text-t-dim hover:text-t-fg hover:bg-white/4'
+                      )}
+                    >
+                      <span
+                        aria-hidden='true'
+                        className={cn(
+                          'font-mono text-[11px] tabular-nums',
+                          active ? 'text-(--t-accent)' : 'text-t-faint'
+                        )}
+                      >
+                        {windowNumber(index)}
+                      </span>
+                      {t(win.labelKey)}
+                      {active && (
+                        <span className='text-t-dim ml-auto font-mono text-xs'>
+                          {'<'} {t('You are here')}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
+                <a
+                  href={CONSOLE_DOCS_HREF}
+                  className={cn(
+                    'text-t-dim hover:text-t-fg flex h-12 items-center gap-3 rounded-2xl px-4 text-[15px] font-medium transition-colors duration-200 hover:bg-white/4',
+                    focusRing
+                  )}
+                >
+                  <span
+                    aria-hidden='true'
+                    className='text-t-faint font-mono text-[11px] tabular-nums'
+                  >
+                    {windowNumber(CONSOLE_WINDOWS.length)}
+                  </span>
+                  {t('Docs')}
+                  <ArrowUpRight
+                    aria-hidden='true'
+                    className='size-3.5 opacity-60'
+                    strokeWidth={1.75}
+                  />
+                </a>
+              </nav>
+              <div
+                aria-hidden='true'
+                className='border-t-line mx-4 my-2 border-t'
+              />
+              <div className='text-t-dim flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pt-1 pb-2 text-[13px]'>
+                {LEGAL_PAGES.map((page) => (
+                  <Link
+                    key={page.key}
+                    to={page.path}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn('hover:text-t-fg rounded-full', focusRing)}
+                  >
+                    {t(page.labelKey)}
+                  </Link>
+                ))}
+                {signedIn && (
+                  <Link
+                    to='/wallet'
+                    onClick={() => setMenuOpen(false)}
+                    className={cn(
+                      'text-t-fg ml-auto rounded-full min-[401px]:hidden',
+                      focusRing
+                    )}
+                  >
+                    {t('Top up')}
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       <div ref={bodyRef} className='flex flex-1 flex-col'>
         <main
           ref={mainRef}
           id='content'
-          className='mx-auto flex w-full max-w-[1320px] flex-1 flex-col gap-[34px] px-4 pt-[30px] pb-14'
+          className='mx-auto flex w-full max-w-[1320px] flex-1 flex-col gap-[34px] px-4 pt-[calc(env(safe-area-inset-top,0px)+100px)] pb-14'
         >
           {props.children}
         </main>
@@ -444,7 +709,8 @@ export function ConsoleShell(props: { children: ReactNode }) {
       <footer className='border-t-line bg-t-bg/75 text-t-dim sticky bottom-0 z-10 flex h-9 items-center gap-[18px] overflow-hidden border-t px-4 pb-[env(safe-area-inset-bottom,0px)] font-mono text-xs whitespace-nowrap backdrop-blur-xl'>
         <span className='flex items-center gap-3.5 max-md:hidden'>
           <span>
-            <ConsoleKbd>1</ConsoleKbd>–<ConsoleKbd>6</ConsoleKbd>{' '}
+            <ConsoleKbd>1</ConsoleKbd>–
+            <ConsoleKbd>{CONSOLE_WINDOWS.length + 1}</ConsoleKbd>{' '}
             {t('Switch page')}
           </span>
           {signedIn && (
@@ -452,6 +718,21 @@ export function ConsoleShell(props: { children: ReactNode }) {
               <ConsoleKbd>n</ConsoleKbd> {t('Create Key')}
             </span>
           )}
+        </span>
+        <span className='flex items-center gap-3.5 font-sans max-lg:hidden'>
+          {LEGAL_PAGES.map((page) => (
+            <Link
+              key={page.key}
+              to={page.path}
+              aria-current={pathname === page.path ? 'page' : undefined}
+              className={cn(
+                'hover:text-t-fg',
+                pathname === page.path && 'text-t-fg'
+              )}
+            >
+              {t(page.labelKey)}
+            </Link>
+          ))}
         </span>
         <span className='ml-auto flex items-center gap-4'>
           {signedIn && username && (

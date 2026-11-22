@@ -1,0 +1,270 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+
+import { RichContent } from '@/components/rich-content'
+import { LoadErrorText } from '@/components/terminal/data-states'
+import { errorReason, prefersReducedMotion } from '@/components/terminal/lib'
+import { Pane } from '@/components/terminal/pane'
+import { Button } from '@/components/ui/button'
+import { getPrivacyPolicy, getUserAgreement } from '@/features/legal/api'
+import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
+import { cn } from '@/lib/utils'
+
+import { LEGAL_PAGES, type LegalPageKey } from '../lib/windows'
+import { ConsolePageHeader } from '../shell/console-shell'
+
+/** Same endpoints and query keys as the old legal pages, so they share a cache. */
+const SOURCES = {
+  terms: {
+    queryKey: 'user-agreement',
+    api: '/api/user-agreement',
+    fetch: getUserAgreement,
+    emptyKey: 'The administrator has not configured a user agreement yet.',
+  },
+  privacy: {
+    queryKey: 'privacy-policy',
+    api: '/api/privacy-policy',
+    fetch: getPrivacyPolicy,
+    emptyKey: 'The administrator has not configured a privacy policy yet.',
+  },
+} as const
+
+/*
+ * Body text of a legal document in the console palette. The shared
+ * Markdown component brings the prose layout; these override its shadcn
+ * colours (primary links, muted code) with the terminal ones and give
+ * long-form reading a calmer size and line height.
+ */
+const DOC_PROSE = cn(
+  'text-t-fg2 max-w-[46em] text-[14.5px] leading-[1.9]',
+  '[&_h2]:text-t-fg [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:scroll-mt-24 [&_h2]:text-[17px] [&_h2]:font-semibold [&_h2]:tracking-[-0.01em]',
+  '[&_h3]:text-t-fg [&_h3]:mt-6 [&_h3]:text-[15px]',
+  '[&_strong]:text-t-fg [&_p]:my-3 [&_li]:my-1.5 [&_li]:pl-1.5 [&_ol]:pl-6 [&_ul]:pl-6',
+  '[&_li::marker]:text-t-dim [&_li::marker]:font-mono [&_li::marker]:text-[12.5px]',
+  '[&_a]:text-(--t-accent) [&_a]:decoration-(--t-accent)/40 [&_a]:underline-offset-4 hover:[&_a]:decoration-(--t-accent)',
+  '[&_code]:bg-white/6 [&_code]:text-t-fg [&_code]:text-[13px]',
+  '[&_hr]:border-t-line [&_table]:text-[13.5px] [&_thead]:bg-white/4 [&_td]:border-t-line [&_th]:border-t-line [&_th]:text-t-fg'
+)
+
+/**
+ * User agreement and privacy policy in the console shell: the document in
+ * a pane, an outline of its sections on the left (wide screens), and a
+ * switch between the two documents.
+ */
+export function ConsoleLegal(props: { doc: LegalPageKey }) {
+  const { t } = useTranslation()
+  const source = SOURCES[props.doc]
+  const page = LEGAL_PAGES.find((item) => item.key === props.doc)
+  const title = t(page?.labelKey ?? 'User Agreement')
+  const query = useQuery({
+    queryKey: [source.queryKey],
+    queryFn: source.fetch,
+    staleTime: 10 * 60 * 1000,
+    meta: { errorToast: false },
+  })
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const [outline, setOutline] = useState<string[]>([])
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const raw = query.data?.success ? (query.data.data?.trim() ?? '') : ''
+  const isUrl = raw !== '' && isHttpUrl(raw)
+  const isHtml = raw !== '' && !isUrl && isLikelyHtml(raw)
+  const isMarkdown = raw !== '' && !isUrl && !isHtml
+
+  // The outline is read back from the rendered section headings, so it
+  // always matches what is shown. Headings are looked up by position each
+  // time: React rewrites the Markdown's innerHTML on every render, so ids
+  // or node references set on them would not last.
+  useLayoutEffect(() => {
+    const body = bodyRef.current
+    const headings = body && isMarkdown ? body.querySelectorAll('h2') : []
+    setOutline([...headings].map((h) => h.textContent?.trim() ?? ''))
+    setActiveIndex(0)
+  }, [raw, isMarkdown])
+
+  // The outline marks the section being read: the last heading that has
+  // passed the top quarter of the window.
+  useEffect(() => {
+    if (outline.length === 0) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const headings = bodyRef.current?.querySelectorAll('h2') ?? []
+      const line = window.innerHeight * 0.25
+      let current = 0
+      headings.forEach((heading, index) => {
+        if (heading.getBoundingClientRect().top <= line) current = index
+      })
+      setActiveIndex(current)
+    }
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (frame) window.cancelAnimationFrame(frame)
+    }
+  }, [outline])
+
+  const showOutline = outline.length > 1
+
+  return (
+    <>
+      <ConsolePageHeader
+        title={title}
+        description={t(
+          'Applies to peroai.cc, api.peroai.cc and the console. Signing up or signing in means you accept both documents.'
+        )}
+        actions={
+          <div
+            role='group'
+            aria-label={t('Legal documents')}
+            className='inline-flex gap-0.5 rounded-full bg-white/4 p-1 shadow-[inset_0_0_0_1px_var(--t-hair)]'
+          >
+            {LEGAL_PAGES.map((item) => {
+              const active = item.key === props.doc
+              return (
+                <Link
+                  key={item.key}
+                  to={item.path}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'rounded-full px-3.5 py-1.5 text-[13px] transition-colors duration-200',
+                    active
+                      ? 'text-t-fg bg-white/9 shadow-[inset_0_1px_0_rgb(255_255_255/0.07)]'
+                      : 'text-t-dim hover:text-t-fg'
+                  )}
+                >
+                  {t(item.labelKey)}
+                </Link>
+              )
+            })}
+          </div>
+        }
+      />
+
+      <div
+        className={cn(
+          'grid items-start gap-x-8 gap-y-6',
+          showOutline && 'lg:grid-cols-[220px_minmax(0,1fr)]'
+        )}
+      >
+        {showOutline && (
+          <nav
+            aria-label={t('On this page')}
+            className='sticky top-[88px] max-h-[calc(100svh-140px)] [scrollbar-width:none] overflow-auto max-lg:hidden'
+          >
+            <p className='text-t-faint mb-2.5 font-mono text-[11px]'>
+              {'// '}
+              {t('On this page')}
+            </p>
+            {outline.map((text, index) => (
+              <button
+                // Headings can repeat; their position is what identifies them.
+                // oxlint-disable-next-line react/no-array-index-key
+                key={index}
+                type='button'
+                aria-current={activeIndex === index ? 'location' : undefined}
+                onClick={() => {
+                  const heading = bodyRef.current?.querySelectorAll('h2')[index]
+                  heading?.scrollIntoView({
+                    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+                    block: 'start',
+                  })
+                  setActiveIndex(index)
+                }}
+                className={cn(
+                  'block w-full py-1 pl-3.5 text-left text-[13px] leading-normal transition-[color,box-shadow] duration-200',
+                  activeIndex === index
+                    ? 'text-t-fg shadow-[inset_2px_0_0_var(--t-accent)]'
+                    : 'text-t-dim hover:text-t-fg shadow-[inset_1px_0_0_var(--t-line)]'
+                )}
+              >
+                {text}
+              </button>
+            ))}
+          </nav>
+        )}
+
+        <Pane
+          title={<b>{title}</b>}
+          aria-label={title}
+          className='min-w-0 px-7 pt-6 pb-8 max-sm:px-5'
+        >
+          {query.isPending && (
+            <div aria-hidden='true' className='flex flex-col gap-3 py-2'>
+              {[34, 52, 46, 28].map((width) => (
+                <span key={width} className='t-skeleton font-mono'>
+                  {'░'.repeat(width)}
+                </span>
+              ))}
+            </div>
+          )}
+          {query.isError && (
+            <LoadErrorText
+              api={source.api}
+              reason={errorReason(query.error)}
+              onRetry={() => void query.refetch()}
+            />
+          )}
+          {query.data && raw === '' && (
+            <p className='text-t-dim m-0 text-sm'>
+              {query.data.message || t(source.emptyKey)}
+            </p>
+          )}
+          {isUrl && (
+            <div className='flex flex-col items-start gap-3'>
+              <p className='text-t-fg2 m-0 text-sm'>
+                {t(
+                  'The administrator configured an external link for this document.'
+                )}
+              </p>
+              <Button
+                variant='outline'
+                className='rounded-full'
+                render={
+                  <a href={raw} target='_blank' rel='noopener noreferrer' />
+                }
+              >
+                {t('View document')}
+              </Button>
+            </div>
+          )}
+          {isHtml && (
+            <RichContent mode='html' htmlVariant='isolated' content={raw} />
+          )}
+          {isMarkdown && (
+            <div ref={bodyRef}>
+              <RichContent
+                mode='markdown'
+                content={raw}
+                className={DOC_PROSE}
+              />
+            </div>
+          )}
+        </Pane>
+      </div>
+    </>
+  )
+}

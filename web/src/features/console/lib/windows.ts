@@ -44,6 +44,21 @@ export const CONSOLE_WINDOWS: readonly ConsoleWindow[] = [
   { key: 'status', labelKey: 'Status', path: '/status' },
 ]
 
+/**
+ * Usage docs: a static site served next to the console (`/docs/` on the
+ * same host, so beta opens the beta docs). It is the last entry of the
+ * window bar and number key 7, but a full page load, not an SPA route.
+ */
+export const CONSOLE_DOCS_HREF = '/docs/'
+
+/** Legal documents, linked from the status bar and the mobile menu. */
+export const LEGAL_PAGES = [
+  { key: 'terms', labelKey: 'User Agreement', path: '/user-agreement' },
+  { key: 'privacy', labelKey: 'Privacy Policy', path: '/privacy-policy' },
+] as const
+
+export type LegalPageKey = (typeof LEGAL_PAGES)[number]['key']
+
 function normalize(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith('/')) {
     return pathname.slice(0, -1)

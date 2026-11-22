@@ -43,6 +43,8 @@ const STUB_PATHS = [
   '/forgot-password',
   '/channels',
   '/profile',
+  '/user-agreement',
+  '/privacy-policy',
 ]
 
 /**
