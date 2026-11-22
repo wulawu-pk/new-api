@@ -23,7 +23,8 @@ import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
-type StatCardTone = 'accent-1' | 'accent-2' | 'accent-3'
+/** `signal` is the landing surface's one accent (terminal green). */
+type StatCardTone = 'accent-1' | 'accent-2' | 'accent-3' | 'signal'
 type StatCardSparklineVariant = 'bars' | 'line'
 type StatCardDetailTone =
   | 'default'
@@ -61,18 +62,22 @@ const TONE_CLASSES: Record<StatCardTone, string> = {
     'from-overview-accent-2/80 via-overview-accent-2/45 to-overview-accent-2/5 dark:from-overview-accent-2/70 dark:via-overview-accent-2/30',
   'accent-3':
     'from-overview-accent-3/80 via-overview-accent-3/45 to-overview-accent-3/5 dark:from-overview-accent-3/70 dark:via-overview-accent-3/30',
+  signal:
+    'from-landing-accent/80 via-landing-accent/40 to-landing-accent/5 dark:from-landing-accent/70 dark:via-landing-accent/25',
 }
 
 const LINE_TONE_CLASSES: Record<StatCardTone, string> = {
   'accent-1': 'text-overview-accent-1',
   'accent-2': 'text-overview-accent-2',
   'accent-3': 'text-overview-accent-3',
+  signal: 'text-landing-accent',
 }
 
 const ICON_TONE_BY_STAT_TONE: Record<StatCardTone, IconBadgeTone> = {
   'accent-1': 'chart-1',
   'accent-2': 'chart-2',
   'accent-3': 'chart-3',
+  signal: 'neutral',
 }
 
 const DETAIL_TONE_CLASSES: Record<StatCardDetailTone, string> = {
@@ -257,7 +262,7 @@ export function StatCard(props: StatCardProps) {
   } else if (props.error) {
     valueContent = (
       <div className='flex flex-col gap-1'>
-        <div className='text-muted-foreground mt-0.5 font-mono text-base font-bold tracking-tight break-all tabular-nums sm:text-2xl'>
+        <div className='text-muted-foreground font-ascii mt-0.5 text-base font-semibold tracking-tight break-all tabular-nums sm:text-2xl'>
           --
         </div>
         <p
@@ -273,7 +278,7 @@ export function StatCard(props: StatCardProps) {
   } else {
     valueContent = (
       <div className='flex flex-col gap-1'>
-        <div className='text-foreground font-mono text-base font-semibold tracking-tight break-all tabular-nums sm:text-2xl'>
+        <div className='text-foreground font-ascii text-base font-semibold tracking-tight break-all tabular-nums sm:text-[1.65rem] sm:leading-tight'>
           {props.value}
         </div>
         <p

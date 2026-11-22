@@ -16,11 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+
+import { DASHBOARD_FRAME } from '../../constants'
 
 interface PanelWrapperProps {
   title: ReactNode
@@ -41,16 +43,18 @@ function PanelHeader(props: {
   actions?: ReactNode
 }) {
   const heading = (
-    <div className='flex flex-col gap-1'>
-      <div className='text-sm font-semibold'>{props.title}</div>
+    <div className='flex min-w-0 flex-col gap-1'>
+      <div className='text-sm font-semibold tracking-tight'>{props.title}</div>
       {props.description != null && (
-        <div className='text-muted-foreground text-xs'>{props.description}</div>
+        <div className='text-muted-foreground text-xs leading-relaxed'>
+          {props.description}
+        </div>
       )}
     </div>
   )
 
   return (
-    <div className='border-b px-4 py-3 sm:px-5'>
+    <div className='relative px-4 pt-4 pb-3.5 sm:px-5'>
       {props.actions != null ? (
         <div className='flex items-start justify-between gap-2'>
           {heading}
@@ -59,6 +63,7 @@ function PanelHeader(props: {
       ) : (
         heading
       )}
+      <div aria-hidden className='ascii-rule absolute inset-x-0 bottom-0' />
     </div>
   )
 }
@@ -67,10 +72,7 @@ export function PanelWrapper(props: PanelWrapperProps) {
   const { t } = useTranslation()
   const resolvedEmptyMessage = props.emptyMessage ?? t('No data available')
   const height = props.height ?? 'h-64'
-  const frameClassName = cn(
-    'overflow-hidden rounded-2xl border bg-card shadow-xs',
-    props.className
-  )
+  const frameClassName = cn(DASHBOARD_FRAME, props.className)
 
   if (props.loading) {
     return (
