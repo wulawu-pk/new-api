@@ -76,7 +76,6 @@ function GroupCard(props: {
           className='mb-5 h-10'
           cellClassName='rounded-t-[2px]'
           label={t('Availability trend')}
-          warnBelow={99}
           cells={slots.map((slot) => ({
             id: slot.start,
             value: slot.rate,

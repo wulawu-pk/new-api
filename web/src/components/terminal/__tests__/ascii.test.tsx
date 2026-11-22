@@ -46,23 +46,48 @@ describe('AsciiBar', () => {
 })
 
 describe('AsciiSpark', () => {
-  it('draws a baseline for an empty period and marks low availability as warning', () => {
+  it('draws a baseline for an empty period and grades the others ok, warn or bad', () => {
     render(
       <AsciiSpark
         label='trend'
         cells={[
           { id: 1, value: null, title: 'no requests' },
-          { id: 2, value: 98.2, title: 'low' },
-          { id: 3, value: 100, title: 'ok' },
+          { id: 2, value: 100, title: 'full' },
+          { id: 3, value: 90, title: 'at the ok line' },
+          { id: 4, value: 89.9, title: 'below ok' },
+          { id: 5, value: 80, title: 'at the bad line' },
+          { id: 6, value: 79.9, title: 'below bad' },
         ]}
       />
     )
 
     const cells = screen.getByRole('img', { name: 'trend' }).children
     expect(cells[0]).toHaveAttribute('data-empty', 'true')
-    expect(cells[1]).toHaveAttribute('data-warn', 'true')
-    expect(cells[2]).not.toHaveAttribute('data-warn')
-    expect(cells[2]).toHaveStyle({ height: '100%' })
+    expect(cells[0]).not.toHaveAttribute('data-level')
+    expect(cells[1]).toHaveAttribute('data-level', 'ok')
+    expect(cells[1]).toHaveStyle({ height: '100%' })
+    expect(cells[2]).toHaveAttribute('data-level', 'ok')
+    expect(cells[3]).toHaveAttribute('data-level', 'warn')
+    expect(cells[4]).toHaveAttribute('data-level', 'warn')
+    expect(cells[5]).toHaveAttribute('data-level', 'bad')
+  })
+
+  it('paints each grade in its status colour', () => {
+    render(
+      <AsciiSpark
+        label='trend'
+        cells={[
+          { id: 1, value: 96, title: 'ok' },
+          { id: 2, value: 85, title: 'warn' },
+          { id: 3, value: 70, title: 'bad' },
+        ]}
+      />
+    )
+
+    const cells = screen.getByRole('img', { name: 'trend' }).children
+    expect(cells[0]).toHaveClass('bg-t-ok')
+    expect(cells[1]).toHaveClass('bg-t-warn')
+    expect(cells[2]).toHaveClass('bg-t-bad')
   })
 
   it('maps 80% or less to the 25% floor and 100% to full height', () => {
