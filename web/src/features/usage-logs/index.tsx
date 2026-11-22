@@ -131,7 +131,7 @@ function UsageLogsContent() {
         <SectionPageLayout.Actions>
           {canManageScope && (
             <Tabs value={viewScope} onValueChange={handleViewScopeChange}>
-              <TabsList>
+              <TabsList variant='pill'>
                 <TabsTrigger value='all'>{t('All')}</TabsTrigger>
                 <TabsTrigger value='self'>{t('Only Mine')}</TabsTrigger>
               </TabsList>
@@ -142,7 +142,7 @@ function UsageLogsContent() {
           <div className='flex h-full min-h-0 flex-col gap-4'>
             {showTaskSwitcher && (
               <Tabs value={activeCategory} onValueChange={handleSectionChange}>
-                <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
+                <TabsList variant='pill' className='max-w-full self-start'>
                   {visibleSections.map((section) => (
                     <TabsTrigger key={section} value={section}>
                       {t(SECTION_META[section].titleKey)}

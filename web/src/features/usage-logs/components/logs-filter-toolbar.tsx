@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { useMediaQuery } from '@/hooks'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { cn } from '@/lib/utils'
 
 interface LogsFilterToolbarProps<TData> {
@@ -175,6 +176,7 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
               </DrawerTrigger>
               <Button
                 type='button'
+                className={CONSOLE_PRIMARY_BUTTON}
                 onClick={props.onSearch}
                 disabled={props.searchLoading}
                 aria-busy={props.searchLoading}
@@ -245,7 +247,7 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
   return (
     <div
       className={cn(
-        'bg-card/50 rounded-lg border p-2.5 sm:p-3',
+        'bg-muted/30 rounded-3xl border p-3 sm:p-4',
         props.className
       )}
     >
@@ -266,13 +268,14 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
         </div>
       )}
 
-      <div className='mt-2 flex flex-wrap items-center gap-2'>
+      <div className='border-border mt-3 flex flex-wrap items-center gap-2 border-t border-dashed pt-3'>
         {props.stats}
         <div className='ms-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2'>
           {props.actionStart}
           <Button
             type='button'
             variant='outline'
+            className='rounded-full px-4'
             onClick={props.onReset}
             disabled={!props.hasActiveFilters}
           >
@@ -280,6 +283,7 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
           </Button>
           <Button
             type='button'
+            className={CONSOLE_PRIMARY_BUTTON}
             onClick={props.onSearch}
             disabled={props.searchLoading}
           >
