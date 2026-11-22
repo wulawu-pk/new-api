@@ -28,10 +28,15 @@ For commercial licensing, please contact support@quantumnous.com
  * arrived for a while the hub pings on its own. Written on a 2D canvas (the
  * v4 one is a licensed WebGL component, not reused).
  *
+ * Smooth by construction: every frame is drawn (no frame cap), each cell's
+ * brightness and tint follow its energy continuously (alpha, not a few
+ * fixed steps), a glyph cross-fades into the next one instead of snapping,
+ * and a request lights the cells around its exact position on the lane, so
+ * it glides rather than hopping a whole cell at a time.
+ *
  * Cheap by construction: glyphs come from a pre-drawn atlas (drawImage, no
- * fillText per frame), cells below a small energy are skipped, and frames
- * are capped at 30 per second. Stops off screen and in background tabs;
- * reduced motion draws one still frame.
+ * fillText per frame) and cells below a small energy are skipped. Stops off
+ * screen and in background tabs; reduced motion draws one still frame.
  */
 
 type Rgb = [number, number, number]
@@ -41,7 +46,7 @@ export type SonarOptions = {
   /** Where the rings start, as a fraction of the width / height. */
   originX?: number
   originY?: number
-  /** Seconds between rings. */
+  /** Seconds between rings when no request arrives. */
   interval?: number
   /** Cell size in CSS pixels. */
   cell?: number
@@ -55,8 +60,10 @@ export type SonarHandle = {
 }
 
 const GLYPHS = ['', '·', '+', '×', '○', '◎', '◉']
-const LEVELS = 6
-const FRAME_MS = 33
+/** Tint steps in the atlas, from neutral grey to the accent. */
+const TINTS = 10
+/** Fraction of a glyph step spent cross-fading into the next glyph. */
+const BLEND = 0.35
 const FG: Rgb = [241, 240, 236]
 const DIM: Rgb = [120, 122, 126]
 /** Accent when the page sets none: mint #3DDBA5, as in theme-presets.css. */
@@ -65,9 +72,12 @@ const DEFAULT_ACCENT: Rgb = [61, 219, 165]
 const RING_SPEED = 0.17
 const RING_REACH = 0.8
 /** A request arriving sooner than this after the last ring adds none. */
-const MIN_RING_GAP = 900
+const MIN_RING_GAP = 2500
 const LANES = 4
 const PACKETS = 5
+/** A request's glow behind and ahead of it, as a fraction of its lane. */
+const TAIL = 0.13
+const LEAD = 0.03
 
 type Point = [number, number]
 type Lane = [Point, Point, Point, Point]
@@ -119,7 +129,7 @@ export function createSonar(
   const ctx = canvas.getContext('2d')
   const reduce = options.reducedMotion ?? false
   let cell = options.cell ?? 18
-  const interval = (options.interval ?? 3.4) * 1000
+  const interval = (options.interval ?? 6) * 1000
   const originX = options.originX ?? 0.5
   const originY = options.originY ?? 0.3
   const accent = readAccentRgb(canvas)
@@ -151,33 +161,24 @@ export function createSonar(
   let visible = false
   let paused = false
   let raf = 0
-  let last = 0
 
-  /** Every glyph at every brightness, in a dim and an accent tint. */
+  /** Every glyph in every tint, fully opaque; brightness is globalAlpha. */
   function buildAtlas(dpr: number): boolean {
     tile = Math.ceil(cell * dpr)
     const sheet = document.createElement('canvas')
     sheet.width = tile * GLYPHS.length
-    sheet.height = tile * LEVELS * 2
+    sheet.height = tile * TINTS
     const o = sheet.getContext('2d')
     if (!o) return false
     o.textAlign = 'center'
     o.textBaseline = 'middle'
     o.font = `${Math.round(cell * 0.62 * dpr)}px ui-monospace, "SF Mono", Consolas, monospace`
-    for (let tint = 0; tint < 2; tint++) {
-      for (let level = 0; level < LEVELS; level++) {
-        const k = (level + 1) / LEVELS
-        const rgb = tint
-          ? mix(FG, accent, 0.35 + 0.65 * k)
-          : mix(DIM, FG, k * 0.6)
-        o.fillStyle = `rgba(${rgb},${(0.1 + 0.9 * k).toFixed(3)})`
-        for (let g = 1; g < GLYPHS.length; g++) {
-          o.fillText(
-            GLYPHS[g],
-            g * tile + tile / 2,
-            (tint * LEVELS + level) * tile + tile / 2
-          )
-        }
+    const grey = mix(DIM, FG, 0.45).split(',').map(Number) as Rgb
+    const lit = mix(FG, accent, 0.9).split(',').map(Number) as Rgb
+    for (let tint = 0; tint < TINTS; tint++) {
+      o.fillStyle = `rgb(${mix(grey, lit, tint / (TINTS - 1))})`
+      for (let g = 1; g < GLYPHS.length; g++) {
+        o.fillText(GLYPHS[g], g * tile + tile / 2, tint * tile + tile / 2)
       }
     }
     atlas = sheet
@@ -298,12 +299,16 @@ export function createSonar(
       }
       const lane = (p.side ? lanesOut : lanesIn)[p.lane]
       if (!lane) continue
-      // A bright head and a short tail behind it.
-      for (let j = 0; j < 7; j++) {
-        const tt = p.t - j * 0.018
-        if (tt < 0) break
+      // A bright head with a tail behind it and a short glow ahead, sampled
+      // finely along the lane so each cell brightens and fades smoothly as
+      // the request passes instead of the request jumping cell to cell.
+      for (let d = -TAIL; d <= LEAD; d += 0.004) {
+        const tt = p.t + d
+        if (tt < 0 || tt > 1) continue
         const k = cellAt(bezier(lane, tt))
-        if (k >= 0) boost[k] = Math.max(boost[k], 1 - j / 7)
+        if (k < 0) continue
+        const v = d <= 0 ? 1 + d / TAIL : 1 - d / LEAD
+        if (v > boost[k]) boost[k] = v
       }
     }
   }
@@ -330,6 +335,28 @@ export function createSonar(
     const c2 = Math.cos(t * 0.24)
     const s3 = Math.sin(t * 0.16)
     const c3 = Math.cos(t * 0.16)
+    const sheet = atlas
+    const top = GLYPHS.length - 1
+    const stamp = (
+      g: number,
+      row: number,
+      alpha: number,
+      x: number,
+      y: number
+    ) => {
+      ctx.globalAlpha = alpha
+      ctx.drawImage(
+        sheet,
+        g * tile,
+        row,
+        tile,
+        tile,
+        x - cell / 2,
+        y - cell / 2,
+        cell,
+        cell
+      )
+    }
     ctx.clearRect(0, 0, W, H)
     for (let r = 0; r < rows; r++) {
       const shift = r % 2 ? cell / 2 : 0
@@ -361,34 +388,35 @@ export function createSonar(
         // Rails show as faint dots; a request is the brightest thing there.
         const lane = Math.max(rails[k] * 0.16 * Math.max(w, 0.5), boost[k])
         const energy = Math.max(field, lane)
-        if (energy < 0.07) continue
-        const g =
-          boost[k] > 0 || rails[k] > 0
-            ? Math.min(GLYPHS.length - 1, 1 + Math.floor(energy * 4.4))
-            : Math.min(GLYPHS.length - 1, 1 + Math.floor(energy * 5.2))
-        const level = Math.min(LEVELS - 1, Math.floor(energy * LEVELS))
-        const tint = boost[k] > 0.3 || crest > 0.25 || base * w > 0.5 ? 1 : 0
-        ctx.drawImage(
-          atlas,
-          g * tile,
-          (tint * LEVELS + level) * tile,
-          tile,
-          tile,
-          x - cell / 2,
-          y - cell / 2,
-          cell,
-          cell
+        if (energy < 0.05) continue
+        // Brightness, glyph and tint all follow the energy continuously.
+        const alpha = Math.min(1, Math.sqrt((energy - 0.05) / 0.8))
+        const onLane = boost[k] > 0 || rails[k] > 0
+        const step = 1 + energy * (onLane ? 4.4 : 5.2)
+        const g = Math.min(top, Math.floor(step))
+        const into = g < top ? step - g : 0
+        const lit = Math.max(
+          (boost[k] - 0.15) / 0.35,
+          (crest - 0.1) / 0.3,
+          (base * w - 0.35) / 0.3
         )
+        const row =
+          Math.round(Math.max(0, Math.min(1, lit)) * (TINTS - 1)) * tile
+        if (into > 1 - BLEND) {
+          const b = (into - (1 - BLEND)) / BLEND
+          stamp(g, row, alpha * (1 - b), x, y)
+          stamp(g + 1, row, alpha * b, x, y)
+        } else {
+          stamp(g, row, alpha, x, y)
+        }
       }
     }
+    ctx.globalAlpha = 1
   }
 
   function loop(now: number) {
     if (!running) return
-    if (now - last >= FRAME_MS) {
-      last = now
-      draw(now)
-    }
+    draw(now)
     raf = window.requestAnimationFrame(loop)
   }
   function start() {
@@ -406,8 +434,8 @@ export function createSonar(
     if (!setup()) return
     ready = true
     const now = performance.now()
-    // A still frame shows one ring half way out.
-    if (reduce) pings = [now - interval * 0.6]
+    // A still frame shows one ring part way out.
+    if (reduce) pings = [now - 1800]
     draw(now)
     start()
   }
