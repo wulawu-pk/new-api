@@ -21,14 +21,15 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ConsoleLegal } from '@/features/console/legal'
 import { ConsoleShell } from '@/features/console/shell/console-shell'
 
-// peroai v3: public legal page in the console shell, like /status.
+// peroai v3: public legal page in the console shell, like /status, over
+// the plain grid (the sonar field behind long text hurts reading).
 export const Route = createFileRoute('/privacy-policy')({
   component: PrivacyPolicyPage,
 })
 
 function PrivacyPolicyPage() {
   return (
-    <ConsoleShell>
+    <ConsoleShell backdrop='grid'>
       <ConsoleLegal doc='privacy' />
     </ConsoleShell>
   )

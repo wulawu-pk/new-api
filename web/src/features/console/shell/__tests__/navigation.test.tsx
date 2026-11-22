@@ -158,6 +158,33 @@ describe('console top bar', () => {
     )
   })
 
+  it('draws the plain grid instead of the sonar canvas when a page asks for the grid backdrop', async () => {
+    const root = createRootRoute({
+      component: () => (
+        <ConsoleShell backdrop='grid'>
+          <div>reading page</div>
+        </ConsoleShell>
+      ),
+    })
+    const router = createRouter({
+      routeTree: root,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    render(<RouterProvider router={router} />)
+    await screen.findByText('reading page')
+
+    expect(document.querySelector('[data-backdrop="grid"]')).not.toBeNull()
+    expect(document.querySelector('canvas')).toBeNull()
+  })
+
+  it('keeps the sonar canvas behind ordinary console pages', async () => {
+    renderShell('/dashboard')
+    await screen.findByText('/dashboard page')
+
+    expect(document.querySelector('canvas')).not.toBeNull()
+    expect(document.querySelector('[data-backdrop="grid"]')).toBeNull()
+  })
+
   it('marks the open legal document in the status bar', async () => {
     renderShell('/user-agreement')
     await screen.findByText('/user-agreement page')

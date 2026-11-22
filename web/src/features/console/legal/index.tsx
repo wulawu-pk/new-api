@@ -38,12 +38,14 @@ const SOURCES = {
   terms: {
     queryKey: 'user-agreement',
     api: '/api/user-agreement',
+    file: 'user-agreement.md',
     fetch: getUserAgreement,
     emptyKey: 'The administrator has not configured a user agreement yet.',
   },
   privacy: {
     queryKey: 'privacy-policy',
     api: '/api/privacy-policy',
+    file: 'privacy-policy.md',
     fetch: getPrivacyPolicy,
     emptyKey: 'The administrator has not configured a privacy policy yet.',
   },
@@ -56,7 +58,7 @@ const SOURCES = {
  * long-form reading a calmer size and line height.
  */
 const DOC_PROSE = cn(
-  'text-t-fg2 max-w-[46em] text-[14.5px] leading-[1.9]',
+  'text-t-fg2 text-[15px] leading-[1.9]',
   '[&_h2]:text-t-fg [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:scroll-mt-24 [&_h2]:text-[17px] [&_h2]:font-semibold [&_h2]:tracking-[-0.01em]',
   '[&_h3]:text-t-fg [&_h3]:mt-6 [&_h3]:text-[15px]',
   '[&_strong]:text-t-fg [&_p]:my-3 [&_li]:my-1.5 [&_li]:pl-1.5 [&_ol]:pl-6 [&_ul]:pl-6',
@@ -129,8 +131,10 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
 
   const showOutline = outline.length > 1
 
+  // One centred reading column (outline + document) rather than the full
+  // console width, so the text column and the page header line up.
   return (
-    <>
+    <div className='mx-auto flex w-full max-w-[1080px] flex-col gap-[34px]'>
       <ConsolePageHeader
         title={title}
         description={t(
@@ -166,8 +170,8 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
 
       <div
         className={cn(
-          'grid items-start gap-x-8 gap-y-6',
-          showOutline && 'lg:grid-cols-[220px_minmax(0,1fr)]'
+          'grid items-start gap-x-10 gap-y-6',
+          showOutline && 'lg:grid-cols-[200px_minmax(0,1fr)]'
         )}
       >
         {showOutline && (
@@ -208,63 +212,65 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
         )}
 
         <Pane
-          title={<b>{title}</b>}
+          title={<b>{source.file}</b>}
           aria-label={title}
-          className='min-w-0 px-7 pt-6 pb-8 max-sm:px-5'
+          className='min-w-0'
         >
-          {query.isPending && (
-            <div aria-hidden='true' className='flex flex-col gap-3 py-2'>
-              {[34, 52, 46, 28].map((width) => (
-                <span key={width} className='t-skeleton font-mono'>
-                  {'░'.repeat(width)}
-                </span>
-              ))}
-            </div>
-          )}
-          {query.isError && (
-            <LoadErrorText
-              api={source.api}
-              reason={errorReason(query.error)}
-              onRetry={() => void query.refetch()}
-            />
-          )}
-          {query.data && raw === '' && (
-            <p className='text-t-dim m-0 text-sm'>
-              {query.data.message || t(source.emptyKey)}
-            </p>
-          )}
-          {isUrl && (
-            <div className='flex flex-col items-start gap-3'>
-              <p className='text-t-fg2 m-0 text-sm'>
-                {t(
-                  'The administrator configured an external link for this document.'
-                )}
-              </p>
-              <Button
-                variant='outline'
-                className='rounded-full'
-                render={
-                  <a href={raw} target='_blank' rel='noopener noreferrer' />
-                }
-              >
-                {t('View document')}
-              </Button>
-            </div>
-          )}
-          {isHtml && (
-            <RichContent mode='html' htmlVariant='isolated' content={raw} />
-          )}
-          {isMarkdown && (
-            <div ref={bodyRef}>
-              <RichContent
-                mode='markdown'
-                content={raw}
-                className={DOC_PROSE}
+          <div className='px-10 pt-8 pb-10 max-sm:px-5 max-sm:pt-6 max-sm:pb-8'>
+            {query.isPending && (
+              <div aria-hidden='true' className='flex flex-col gap-3 py-2'>
+                {[34, 52, 46, 28].map((width) => (
+                  <span key={width} className='t-skeleton font-mono'>
+                    {'░'.repeat(width)}
+                  </span>
+                ))}
+              </div>
+            )}
+            {query.isError && (
+              <LoadErrorText
+                api={source.api}
+                reason={errorReason(query.error)}
+                onRetry={() => void query.refetch()}
               />
-            </div>
-          )}
+            )}
+            {query.data && raw === '' && (
+              <p className='text-t-dim m-0 text-sm'>
+                {query.data.message || t(source.emptyKey)}
+              </p>
+            )}
+            {isUrl && (
+              <div className='flex flex-col items-start gap-3'>
+                <p className='text-t-fg2 m-0 text-sm'>
+                  {t(
+                    'The administrator configured an external link for this document.'
+                  )}
+                </p>
+                <Button
+                  variant='outline'
+                  className='rounded-full'
+                  render={
+                    <a href={raw} target='_blank' rel='noopener noreferrer' />
+                  }
+                >
+                  {t('View document')}
+                </Button>
+              </div>
+            )}
+            {isHtml && (
+              <RichContent mode='html' htmlVariant='isolated' content={raw} />
+            )}
+            {isMarkdown && (
+              <div ref={bodyRef}>
+                <RichContent
+                  mode='markdown'
+                  content={raw}
+                  className={DOC_PROSE}
+                />
+              </div>
+            )}
+          </div>
         </Pane>
       </div>
-    </>
+    </div>
   )
 }

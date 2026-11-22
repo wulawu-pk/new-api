@@ -176,10 +176,14 @@ export function ConsoleKbd(props: { children: ReactNode }) {
  * Number keys 1–6 switch windows and 7 opens the docs; `n` creates a key.
  * The top bar follows the v4 landing header: pages centred across the top,
  * folding into a floating pill once the page scrolls; below `lg` the pages
- * move into a menu. Admin pages keep the
- * old layout and are reached via 「管理」.
+ * move into a menu. Admin pages keep the old layout and are reached via
+ * 「管理」. Reading pages (the legal documents) pass `backdrop='grid'`: the
+ * moving sonar field behind long text gets in the way of reading.
  */
-export function ConsoleShell(props: { children: ReactNode }) {
+export function ConsoleShell(props: {
+  children: ReactNode
+  backdrop?: 'sonar' | 'grid'
+}) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -411,7 +415,15 @@ export function ConsoleShell(props: { children: ReactNode }) {
       {/* Backdrop of every console page: the sonar relay (requests flowing
        * into api.peroai.cc send sonar rings through a glyph field) over a
        * faint grid. Panes sit on it like the cards of the v4 landing page. */}
-      <SonarBackdrop className='fixed inset-0 -z-10' />
+      {props.backdrop === 'grid' ? (
+        <div
+          aria-hidden='true'
+          data-backdrop='grid'
+          className='t-backdrop-grid pointer-events-none fixed inset-0 -z-10'
+        />
+      ) : (
+        <SonarBackdrop className='fixed inset-0 -z-10' />
+      )}
       <header className='pointer-events-none fixed inset-x-0 top-0 z-20 px-3 pt-[calc(env(safe-area-inset-top,0px)+8px)] sm:px-6'>
         <div className='mx-auto flex w-full max-w-[1320px] justify-center'>
           <motion.div
