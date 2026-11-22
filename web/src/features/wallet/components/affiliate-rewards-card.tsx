@@ -25,7 +25,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CONSOLE_EYEBROW, CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { formatQuota } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 import type { UserWalletData } from '../types'
 
@@ -47,7 +49,7 @@ export function AffiliateRewardsCard({
   const { t } = useTranslation()
   if (loading) {
     return (
-      <Card data-card-hover='false' className='bg-muted/20 py-0'>
+      <Card data-card-hover='false' className='bg-muted/30 rounded-3xl py-0'>
         <CardContent className='grid gap-4 p-3 sm:p-4 lg:grid-cols-[minmax(220px,1fr)_minmax(220px,0.72fr)_minmax(320px,1.15fr)] lg:items-center'>
           <div>
             <Skeleton className='h-5 w-32' />
@@ -63,8 +65,8 @@ export function AffiliateRewardsCard({
   const hasRewards = (user?.aff_quota ?? 0) > 0
 
   return (
-    <Card data-card-hover='false' className='bg-muted/20 py-0'>
-      <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(200px,1fr)_minmax(180px,0.65fr)_minmax(280px,1fr)] lg:items-center'>
+    <Card data-card-hover='false' className='bg-muted/30 rounded-3xl py-0'>
+      <CardContent className='grid gap-3 p-4 sm:gap-4 sm:p-5 lg:grid-cols-[minmax(200px,1fr)_minmax(180px,0.65fr)_minmax(280px,1fr)] lg:items-center'>
         <div className='flex min-w-0 items-center gap-2.5'>
           <IconBadge tone='chart-3'>
             <Share2 />
@@ -81,17 +83,17 @@ export function AffiliateRewardsCard({
           </div>
         </div>
 
-        <div className='grid grid-cols-3 gap-1.5 text-center'>
+        <div className='divide-border grid grid-cols-3 divide-x text-center'>
           {[
             [t('Pending'), formatQuota(user?.aff_quota ?? 0)],
             [t('Total Earned'), formatQuota(user?.aff_history_quota ?? 0)],
             [t('Invites'), String(user?.aff_count ?? 0)],
           ].map(([label, value]) => (
-            <div key={label}>
-              <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
+            <div key={label} className='min-w-0 px-1'>
+              <div className={cn(CONSOLE_EYEBROW, 'truncate text-[10px]')}>
                 {label}
               </div>
-              <div className='mt-0.5 truncate text-sm font-semibold tabular-nums'>
+              <div className='font-ascii mt-1 truncate text-sm font-semibold tabular-nums'>
                 {value}
               </div>
             </div>
@@ -102,12 +104,12 @@ export function AffiliateRewardsCard({
           <Input
             value={affiliateLink}
             readOnly
-            className='border-muted bg-background/70 h-9 min-w-0 flex-1 font-mono text-xs'
+            className='border-border bg-background font-ascii h-9 min-w-0 flex-1 rounded-full px-4 text-xs'
           />
           <CopyButton
             value={affiliateLink}
             variant='outline'
-            className='bg-background size-9 shrink-0'
+            className='bg-background size-9 shrink-0 rounded-full'
             iconClassName='size-4'
             tooltip={t('Copy referral link')}
             aria-label={t('Copy referral link')}
@@ -116,7 +118,7 @@ export function AffiliateRewardsCard({
             <Button
               onClick={onTransfer}
               disabled={!complianceConfirmed}
-              className='h-9 shrink-0 px-3'
+              className={cn(CONSOLE_PRIMARY_BUTTON, 'h-9 shrink-0 px-3.5')}
               size='sm'
             >
               {t('Transfer to Balance')}

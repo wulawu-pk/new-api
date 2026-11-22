@@ -34,6 +34,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { CONSOLE_EYEBROW } from '@/lib/console-surface'
 import { formatQuotaWithCurrency } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -156,11 +157,25 @@ export function RechargeFormCard({
   const visiblePresets = cryptoCurrency
     ? presetAmounts.filter((preset) => amountLinks[preset.value])
     : presetAmounts
+  // Crypto shows the quota credited; other methods show the amount to pay.
+  let quoteDisplay = formatCurrency(paymentAmount)
+  if (cryptoCurrency) {
+    quoteDisplay = paymentQuote?.creditQuota
+      ? formatQuotaWithCurrency(paymentQuote.creditQuota, {
+          digitsLarge: 2,
+          digitsSmall: 2,
+          abbreviate: false,
+        })
+      : '-'
+  }
 
   if (loading) {
     return (
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardHeader className='border-b p-3 !pb-3 sm:p-5 sm:!pb-5'>
+      <Card
+        data-card-hover='false'
+        className='gap-0 overflow-hidden rounded-3xl py-0'
+      >
+        <CardHeader className='border-b border-dashed p-4 !pb-4 sm:p-5 sm:!pb-5'>
           <Skeleton className='h-6 w-32' />
           <Skeleton className='mt-2 h-4 w-48' />
         </CardHeader>
@@ -221,7 +236,7 @@ export function RechargeFormCard({
             variant='outline'
             size='sm'
             onClick={onOpenBilling}
-            className='w-full gap-2 sm:w-auto'
+            className='w-full gap-2 rounded-full px-3.5 sm:w-auto'
           >
             <Receipt className='h-4 w-4' />
             {t('Order History')}
@@ -237,7 +252,7 @@ export function RechargeFormCard({
             <>
               {visiblePresets.length > 0 && (
                 <div className='space-y-2.5 sm:space-y-3'>
-                  <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
+                  <Label className={CONSOLE_EYEBROW}>
                     {cryptoCurrency
                       ? t('Buy a redemption code (WeChat / Alipay)')
                       : t('Amount')}
@@ -252,10 +267,10 @@ export function RechargeFormCard({
                             href={link}
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='border-muted hover:bg-foreground/5 flex min-h-16 flex-col items-start rounded-lg border px-3 py-2.5 text-left sm:min-h-[72px] sm:p-4'
+                            className='border-border hover:border-foreground/30 hover:bg-muted/40 flex min-h-16 flex-col items-start rounded-2xl border px-3 py-2.5 text-left transition-colors duration-200 sm:min-h-[72px] sm:p-4'
                           >
                             <div className='flex w-full items-center justify-between gap-2'>
-                              <div className='text-base font-semibold sm:text-lg'>
+                              <div className='font-ascii text-base font-semibold tabular-nums sm:text-lg'>
                                 {formatNumber(preset.value * usdExchangeRate)}
                               </div>
                               <ExternalLink className='text-muted-foreground h-3.5 w-3.5 shrink-0' />
@@ -288,19 +303,19 @@ export function RechargeFormCard({
                           key={preset.value}
                           variant='outline'
                           className={cn(
-                            'flex min-h-16 flex-col items-start rounded-lg px-3 py-2.5 text-left whitespace-normal sm:min-h-[72px] sm:p-4',
+                            'flex min-h-16 flex-col items-start rounded-2xl px-3 py-2.5 text-left whitespace-normal transition-colors duration-200 sm:min-h-[72px] sm:p-4',
                             selectedPreset === preset.value
-                              ? 'border-foreground bg-foreground/5 dark:border-foreground dark:bg-foreground/10'
-                              : 'border-muted'
+                              ? 'border-landing-accent bg-landing-accent-soft hover:bg-landing-accent-soft ring-landing-accent/50 ring-1 dark:border-landing-accent dark:bg-landing-accent-soft'
+                              : 'border-border'
                           )}
                           onClick={() => onSelectPreset(preset)}
                         >
                           <div className='flex w-full items-center justify-between'>
-                            <div className='text-base font-semibold sm:text-lg'>
+                            <div className='font-ascii text-base font-semibold tabular-nums sm:text-lg'>
                               {formatNumber(displayValue)}
                             </div>
                             {hasDiscount && (
-                              <div className='text-xs font-medium text-green-600'>
+                              <div className='text-landing-accent text-xs font-medium'>
                                 {getDiscountLabel(discount, t)}
                               </div>
                             )}
@@ -315,7 +330,9 @@ export function RechargeFormCard({
                                   saved: formatCurrency(savedAmount),
                                 }}
                                 components={{
-                                  savings: <span className='text-green-600' />,
+                                  savings: (
+                                    <span className='text-landing-accent' />
+                                  ),
                                 }}
                               />
                             ) : (
@@ -332,10 +349,7 @@ export function RechargeFormCard({
               )}
 
               <div className='space-y-2.5 sm:space-y-3'>
-                <Label
-                  htmlFor='topup-amount'
-                  className='text-muted-foreground text-xs font-medium tracking-wider uppercase'
-                >
+                <Label htmlFor='topup-amount' className={CONSOLE_EYEBROW}>
                   {cryptoCurrency
                     ? t('Top up with {{currency}}', {
                         currency: 'USDT / USDC',
@@ -357,25 +371,15 @@ export function RechargeFormCard({
                     })}
                     className='h-9 text-base sm:h-10 sm:text-lg'
                   />
-                  <div className='bg-muted/30 flex min-h-9 items-center justify-between gap-2 rounded-md border px-3 lg:min-w-52'>
+                  <div className='bg-muted/40 flex min-h-9 items-center justify-between gap-2 rounded-xl border px-3 lg:min-w-52'>
                     <span className='text-muted-foreground truncate text-xs'>
                       {cryptoCurrency ? t('You receive:') : t('Amount to pay:')}
                     </span>
                     {calculating ? (
                       <Skeleton className='h-5 w-16' />
-                    ) : cryptoCurrency ? (
-                      <span className='text-sm font-semibold'>
-                        {paymentQuote?.creditQuota
-                          ? formatQuotaWithCurrency(paymentQuote.creditQuota, {
-                              digitsLarge: 2,
-                              digitsSmall: 2,
-                              abbreviate: false,
-                            })
-                          : '-'}
-                      </span>
                     ) : (
-                      <span className='text-sm font-semibold'>
-                        {formatCurrency(paymentAmount)}
+                      <span className='font-ascii text-sm font-semibold tabular-nums'>
+                        {quoteDisplay}
                       </span>
                     )}
                   </div>
@@ -395,9 +399,7 @@ export function RechargeFormCard({
               </div>
 
               <div className='space-y-2.5 sm:space-y-3'>
-                <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-                  {t('Payment Method')}
-                </Label>
+                <Label className={CONSOLE_EYEBROW}>{t('Payment Method')}</Label>
                 {hasStandardPaymentMethods ? (
                   <div className='grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-3'>
                     {topupInfo?.pay_methods?.map((method) => {
@@ -427,7 +429,7 @@ export function RechargeFormCard({
                               ? `${method.name}. ${disabledReason}`
                               : method.name
                           }
-                          className='min-h-14 min-w-0 justify-start gap-2 rounded-lg px-3 py-2 text-left'
+                          className='min-h-14 min-w-0 justify-start gap-2 rounded-2xl px-3 py-2 text-left'
                         >
                           {paymentLoading === method.type ? (
                             <Loader2 className='h-4 w-4 animate-spin' />
@@ -480,7 +482,7 @@ export function RechargeFormCard({
                 hasWaffoPaymentMethods &&
                 onWaffoMethodSelect && (
                   <div className='space-y-2.5 sm:space-y-3'>
-                    <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
+                    <Label className={CONSOLE_EYEBROW}>
                       {t('Waffo Payment')}
                     </Label>
                     <div className='grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-3'>
@@ -525,7 +527,7 @@ export function RechargeFormCard({
                                 ? `${method.name}. ${disabledReason}`
                                 : method.name
                             }
-                            className='min-h-14 min-w-0 justify-start gap-2 rounded-lg px-3 py-2 text-left'
+                            className='min-h-14 min-w-0 justify-start gap-2 rounded-2xl px-3 py-2 text-left'
                           >
                             {methodIcon}
                             <span className='flex min-w-0 flex-col items-start gap-0.5'>
@@ -573,10 +575,8 @@ export function RechargeFormCard({
         Array.isArray(creemProducts) &&
         creemProducts.length > 0 &&
         onCreemProductSelect && (
-          <div className='space-y-2.5 border-t pt-4 sm:space-y-3 sm:pt-6'>
-            <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-              {t('Creem Payment')}
-            </Label>
+          <div className='space-y-2.5 border-t border-dashed pt-4 sm:space-y-3 sm:pt-6'>
+            <Label className={CONSOLE_EYEBROW}>{t('Creem Payment')}</Label>
             <CreemProductsSection
               products={creemProducts}
               onProductSelect={onCreemProductSelect}
@@ -586,15 +586,12 @@ export function RechargeFormCard({
 
       {/* Redemption Code Section */}
       {redemptionEnabled ? (
-        <div className='space-y-2.5 border-t pt-4 sm:space-y-3 sm:pt-6'>
+        <div className='space-y-2.5 border-t border-dashed pt-4 sm:space-y-3 sm:pt-6'>
           <div className='flex items-center gap-2'>
             <IconBadge tone='warning' size='xs'>
               <Gift />
             </IconBadge>
-            <Label
-              htmlFor='redemption-code'
-              className='text-muted-foreground text-xs font-medium tracking-wider uppercase'
-            >
+            <Label htmlFor='redemption-code' className={CONSOLE_EYEBROW}>
               {t('Have a Code?')}
             </Label>
           </div>
@@ -610,7 +607,7 @@ export function RechargeFormCard({
               onClick={onRedeem}
               disabled={redeeming}
               variant='outline'
-              className='h-9 px-4'
+              className='h-9 rounded-full px-4'
             >
               {redeeming && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
               {t('Redeem')}

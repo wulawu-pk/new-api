@@ -56,6 +56,7 @@ import type {
   PlanRecord,
   UserSubscriptionRecord,
 } from '@/features/subscriptions/types'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { formatQuota } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 import { requireServerSuccess } from '@/lib/server-error-message'
@@ -238,8 +239,11 @@ export function SubscriptionPlansCard({
 
   if (loading) {
     return (
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardHeader className='border-b p-3 !pb-3 sm:p-5 sm:!pb-5'>
+      <Card
+        data-card-hover='false'
+        className='gap-0 overflow-hidden rounded-3xl py-0'
+      >
+        <CardHeader className='border-b border-dashed p-4 !pb-4 sm:p-5 sm:!pb-5'>
           <Skeleton className='h-6 w-32' />
         </CardHeader>
         <CardContent className='space-y-4 p-3 sm:p-5'>
@@ -269,7 +273,7 @@ export function SubscriptionPlansCard({
         contentClassName='space-y-4 sm:space-y-5'
       >
         {/* My subscriptions & billing preference */}
-        <div className='rounded-xl border p-3 sm:p-4'>
+        <div className='bg-muted/30 rounded-2xl border p-3 sm:p-4'>
           <div className='flex flex-wrap items-center justify-between gap-2.5 sm:gap-3'>
             <div className='flex min-w-0 flex-wrap items-center gap-2'>
               <span className='text-sm font-medium'>
@@ -553,9 +557,12 @@ export function SubscriptionPlansCard({
                 <Card
                   key={plan.id}
                   data-card-hover='false'
-                  className={cn(isPopular && 'border-primary/70 shadow-sm')}
+                  className={cn(
+                    'rounded-2xl transition-transform duration-200 hover:-translate-y-0.5',
+                    isPopular && 'ring-landing-accent/60 ring-2'
+                  )}
                 >
-                  <CardContent className='flex h-full flex-col p-3.5 sm:p-4'>
+                  <CardContent className='flex h-full flex-col p-4 sm:p-5'>
                     <div className='mb-2 flex items-start justify-between gap-3'>
                       <div className='min-w-0'>
                         <h4 className='truncate font-semibold'>
@@ -580,7 +587,7 @@ export function SubscriptionPlansCard({
                     </div>
 
                     <div className='py-2'>
-                      <span className='text-primary text-2xl font-bold'>
+                      <span className='font-ascii text-2xl font-semibold tracking-tight tabular-nums'>
                         ${price}
                       </span>
                     </div>
@@ -591,18 +598,22 @@ export function SubscriptionPlansCard({
                           key={label}
                           className='text-muted-foreground flex items-center gap-2 text-xs'
                         >
-                          <Check className='text-primary h-3 w-3 shrink-0' />
+                          <Check className='text-landing-accent h-3 w-3 shrink-0' />
                           <span>{label}</span>
                         </div>
                       ))}
                     </div>
 
-                    <Separator className='mb-3' />
+                    <div aria-hidden className='ascii-rule mb-3' />
 
                     {reached ? (
                       <Tooltip>
                         <TooltipTrigger render={<div />}>
-                          <Button variant='outline' className='w-full' disabled>
+                          <Button
+                            variant='outline'
+                            className='w-full rounded-full'
+                            disabled
+                          >
                             {t('Limit Reached')}
                           </Button>
                         </TooltipTrigger>
@@ -612,8 +623,11 @@ export function SubscriptionPlansCard({
                       </Tooltip>
                     ) : (
                       <Button
-                        variant='outline'
-                        className='w-full'
+                        variant={isPopular ? 'default' : 'outline'}
+                        className={cn(
+                          'w-full rounded-full',
+                          isPopular && CONSOLE_PRIMARY_BUTTON
+                        )}
                         onClick={() => {
                           setSelectedPlan(p)
                           setPurchaseOpen(true)
