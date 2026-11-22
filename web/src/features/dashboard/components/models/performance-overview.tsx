@@ -23,7 +23,6 @@ import { useTranslation } from 'react-i18next'
 
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DASHBOARD_FRAME } from '@/features/dashboard/constants'
 import { getPerfMetricsSummary } from '@/features/performance-metrics/api'
 import {
   formatLatency,
@@ -33,6 +32,7 @@ import {
   getSuccessRateTextClass,
 } from '@/features/performance-metrics/lib/format'
 import type { PerfModelSummary } from '@/features/performance-metrics/types'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
@@ -69,7 +69,7 @@ export function PerformanceOverview() {
   }
 
   return (
-    <div className={DASHBOARD_FRAME}>
+    <div className={CONSOLE_FRAME}>
       <div className='flex flex-wrap items-center gap-x-5 gap-y-2.5 px-4 py-2.5 sm:px-5 sm:py-3'>
         {/* Title */}
         <div className='flex items-center gap-1.5'>

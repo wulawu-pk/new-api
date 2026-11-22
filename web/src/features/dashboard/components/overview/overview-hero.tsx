@@ -29,9 +29,8 @@ import {
   landingAction,
 } from '@/features/home/constants'
 import { useCssColors } from '@/hooks/use-css-colors'
+import { CONSOLE_EYEBROW, CONSOLE_FRAME } from '@/lib/console-surface'
 import { cn } from '@/lib/utils'
-
-import { DASHBOARD_EYEBROW, DASHBOARD_FRAME } from '../../constants'
 
 // WebGL glyph field pulls in three.js; keep it out of the dashboard chunk.
 const GlyphSonar = lazy(() => import('@/components/react-bits/glyph-sonar'))
@@ -58,7 +57,7 @@ export function OverviewHero(props: OverviewHeroProps) {
       initial={reduce ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: EASE }}
-      className={cn(DASHBOARD_FRAME, 'bg-muted/30 relative')}
+      className={cn(CONSOLE_FRAME, 'bg-muted/30 relative')}
     >
       <div aria-hidden className='pointer-events-none absolute inset-0'>
         <div className='ascii-grid absolute inset-0 [mask-image:radial-gradient(ellipse_80%_90%_at_70%_0%,black,transparent)] opacity-40' />
@@ -115,7 +114,7 @@ export function OverviewHero(props: OverviewHeroProps) {
 
         <div className='border-border bg-background/80 flex min-w-0 flex-col gap-3 rounded-2xl border p-4 backdrop-blur'>
           <div className='flex items-center justify-between gap-2'>
-            <span className={DASHBOARD_EYEBROW}>{t('Base URL')}</span>
+            <span className={CONSOLE_EYEBROW}>{t('Base URL')}</span>
             <span className='text-muted-foreground inline-flex items-center gap-1.5 text-[11px]'>
               <span aria-hidden className='relative flex size-1.5'>
                 <span className='bg-landing-accent absolute inset-0 rounded-full opacity-60 motion-safe:animate-ping' />

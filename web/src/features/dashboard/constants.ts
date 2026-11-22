@@ -67,21 +67,3 @@ export const EMPTY_DASHBOARD_FILTERS: DashboardFilters = {
   time_granularity: 'hour',
   username: '',
 }
-
-/**
- * Dashboard surface classes, matching the public landing pages: one
- * rounded-3xl frame, pill segmented toggles and a monospace eyebrow.
- */
-export const DASHBOARD_FRAME =
-  'border-border bg-background overflow-hidden rounded-3xl border'
-
-export const DASHBOARD_SEGMENT = {
-  group:
-    'bg-muted inline-flex max-w-full shrink-0 items-center gap-1 overflow-x-auto rounded-full p-1',
-  item: 'focus-visible:ring-ring h-8 shrink-0 rounded-full px-3.5 text-xs font-medium whitespace-nowrap transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-none',
-  active: 'bg-background text-foreground shadow-xs',
-  idle: 'text-muted-foreground hover:text-foreground',
-}
-
-export const DASHBOARD_EYEBROW =
-  'font-ascii text-muted-foreground text-[11px] tracking-wide uppercase'

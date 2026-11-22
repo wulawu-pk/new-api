@@ -61,7 +61,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { getFlowQuotaDates } from '@/features/dashboard/api'
-import { DASHBOARD_FRAME } from '@/features/dashboard/constants'
 import {
   buildDashboardFlowData,
   buildFlowSankeySpec,
@@ -85,6 +84,7 @@ import type {
   FlowOverflowMode,
   FlowRole,
 } from '@/features/dashboard/types'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { formatQuota } from '@/lib/format'
 import { ROLE } from '@/lib/roles'
 import { requireServerSuccess } from '@/lib/server-error-message'
@@ -675,7 +675,7 @@ export function FlowCharts(props: FlowChartsProps) {
         </div>
       </div>
 
-      <div className={DASHBOARD_FRAME}>
+      <div className={CONSOLE_FRAME}>
         <div className='flex w-full flex-col gap-2 border-b px-3 py-2 sm:px-5 sm:py-3 lg:flex-row lg:items-center lg:justify-between'>
           <div className='flex min-w-0 items-center gap-2'>
             <IconBadge tone='info' size='sm'>

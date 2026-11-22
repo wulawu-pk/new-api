@@ -28,7 +28,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTheme } from '@/context/theme-provider'
 import { getUserQuotaDataByUsers } from '@/features/dashboard/api'
 import {
-  DASHBOARD_FRAME,
   TIME_GRANULARITY_OPTIONS,
   TIME_RANGE_PRESETS,
 } from '@/features/dashboard/constants'
@@ -41,6 +40,7 @@ import type {
   ProcessedUserChartData,
   UserChartsFilters,
 } from '@/features/dashboard/types'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { getRollingDateRange, type TimeGranularity } from '@/lib/time'
 import { VCHART_OPTION } from '@/lib/vchart'
@@ -229,7 +229,7 @@ export function UserCharts(props: UserChartsProps) {
           const spec = chartData[chart.specKey]
 
           return (
-            <div key={chart.value} className={DASHBOARD_FRAME}>
+            <div key={chart.value} className={CONSOLE_FRAME}>
               <div className='flex w-full items-center gap-2 border-b px-3 py-2 sm:px-5 sm:py-3'>
                 <IconBadge tone='info' size='sm'>
                   <Users />

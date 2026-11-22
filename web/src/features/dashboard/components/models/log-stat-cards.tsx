@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getUserQuotaDates } from '@/features/dashboard/api'
-import { DASHBOARD_FRAME } from '@/features/dashboard/constants'
 import { useModelStatCardsConfig } from '@/features/dashboard/hooks/use-dashboard-config'
 import {
   buildQueryParams,
@@ -34,6 +33,7 @@ import type {
   DashboardFilters,
 } from '@/features/dashboard/types'
 import { toIntlLocale } from '@/i18n/languages'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { formatCompactNumber, formatNumber, formatQuota } from '@/lib/format'
 import { computeTimeRange } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -145,7 +145,7 @@ export function LogStatCards(props: LogStatCardsProps) {
   })
 
   return (
-    <div className={DASHBOARD_FRAME}>
+    <div className={CONSOLE_FRAME}>
       <div className='divide-border/60 grid min-w-0 grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-7'>
         {items.map((it, idx) => {
           const Icon = it.icon

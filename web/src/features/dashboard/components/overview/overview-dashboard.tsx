@@ -52,13 +52,17 @@ import type { ApiKey } from '@/features/keys/types'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useCssColors } from '@/hooks/use-css-colors'
 import { getUserModels } from '@/lib/api'
+import {
+  CONSOLE_EYEBROW,
+  CONSOLE_FRAME,
+  CONSOLE_PRIMARY_BUTTON,
+} from '@/lib/console-surface'
 import { handleServerError } from '@/lib/handle-server-error'
 import { ROLE } from '@/lib/roles'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { DASHBOARD_EYEBROW, DASHBOARD_FRAME } from '../../constants'
 import {
   useApiInfo,
   useDashboardContentVisibility,
@@ -612,12 +616,12 @@ export function OverviewDashboard() {
           <div id={setupGuideId} hidden={!setupGuideExpanded}>
             {setupGuideExpanded && (
               <CardStaggerContainer className='grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]'>
-                <CardStaggerItem className={cn(DASHBOARD_FRAME, 'h-full')}>
+                <CardStaggerItem className={cn(CONSOLE_FRAME, 'h-full')}>
                   <div className='grid h-full gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_23rem]'>
                     <div className='flex min-w-0 flex-col gap-5'>
                       <div className='flex flex-wrap items-start justify-between gap-3'>
                         <div className='flex max-w-2xl flex-col gap-1.5'>
-                          <p aria-hidden className={DASHBOARD_EYEBROW}>
+                          <p aria-hidden className={CONSOLE_EYEBROW}>
                             [ {t('Get started')} ]
                           </p>
                           <h3 className='text-xl font-semibold tracking-tight text-balance sm:text-2xl'>
@@ -643,7 +647,7 @@ export function OverviewDashboard() {
                           </Button>
                           <Button
                             size='sm'
-                            className='bg-foreground text-background hover:bg-foreground/85 h-9 rounded-full px-4'
+                            className={cn(CONSOLE_PRIMARY_BUTTON, 'h-9')}
                             render={<Link to='/keys' />}
                           >
                             <KeyRound data-icon='inline-start' />
@@ -692,10 +696,10 @@ export function OverviewDashboard() {
                   </div>
                 </CardStaggerItem>
 
-                <CardStaggerItem className={cn(DASHBOARD_FRAME, 'h-full p-3')}>
+                <CardStaggerItem className={cn(CONSOLE_FRAME, 'h-full p-3')}>
                   <div className='flex h-full flex-col gap-3'>
                     <div className='flex flex-col gap-1.5 px-2 pt-2'>
-                      <p aria-hidden className={DASHBOARD_EYEBROW}>
+                      <p aria-hidden className={CONSOLE_EYEBROW}>
                         [ {t('Recommended actions')} ]
                       </p>
                       <h3 className='text-lg font-semibold tracking-tight'>
@@ -714,7 +718,7 @@ export function OverviewDashboard() {
           </div>
           {!setupGuideExpanded && !setupComplete && (
             <CardStaggerContainer>
-              <CardStaggerItem className={DASHBOARD_FRAME}>
+              <CardStaggerItem className={CONSOLE_FRAME}>
                 <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5'>
                   <div className='flex min-w-0 items-center gap-3'>
                     <span className='border-landing-accent/40 bg-landing-accent-soft text-landing-accent flex size-9 shrink-0 items-center justify-center rounded-full border'>

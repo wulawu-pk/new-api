@@ -31,10 +31,9 @@ import {
   getSuccessRateDotClass,
   getSuccessRateTextClass,
 } from '@/features/performance-metrics/lib/format'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
-
-import { DASHBOARD_FRAME } from '../../constants'
 
 const PERFORMANCE_WINDOW_HOURS = 24
 const TOP_MODEL_LIMIT = 6
@@ -63,7 +62,7 @@ export function PerformanceHealthPanel() {
   const hasData = models.length > 0
 
   return (
-    <section className={cn(DASHBOARD_FRAME, 'h-full')}>
+    <section className={cn(CONSOLE_FRAME, 'h-full')}>
       <div className='relative flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-4 pb-3.5 sm:px-5'>
         <HeartPulse
           className='text-landing-accent size-4 shrink-0'

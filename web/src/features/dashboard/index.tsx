@@ -30,6 +30,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  CONSOLE_EYEBROW,
+  CONSOLE_FRAME,
+  CONSOLE_SEGMENT,
+} from '@/lib/console-surface'
 import { ROLE } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
@@ -37,12 +42,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { ModelsChartPreferences } from './components/models/models-chart-preferences'
 import { ModelsFilter } from './components/models/models-filter-dialog'
 import { OverviewDashboard } from './components/overview/overview-dashboard'
-import {
-  DASHBOARD_EYEBROW,
-  DASHBOARD_FRAME,
-  DASHBOARD_SEGMENT,
-  DEFAULT_TIME_GRANULARITY,
-} from './constants'
+import { DEFAULT_TIME_GRANULARITY } from './constants'
 import {
   buildDefaultDashboardFilters,
   getDefaultDays,
@@ -121,7 +121,7 @@ const LazyFlowCharts = lazy(() =>
 
 function LogStatCardsFallback() {
   return (
-    <div className={DASHBOARD_FRAME}>
+    <div className={CONSOLE_FRAME}>
       <div className='divide-border/60 grid min-w-0 grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-7'>
         {LOG_STAT_CARD_FALLBACK_KEYS.map((key, index) => (
           <div
@@ -150,7 +150,7 @@ function LogStatCardsFallback() {
 
 function ModelChartsFallback() {
   return (
-    <div className={DASHBOARD_FRAME}>
+    <div className={CONSOLE_FRAME}>
       <div className='flex items-center justify-between border-b px-4 py-3 sm:px-5'>
         <Skeleton className='h-5 w-32' />
         <Skeleton className='h-8 w-72' />
@@ -164,7 +164,7 @@ function ModelChartsFallback() {
 
 function PerformanceOverviewFallback() {
   return (
-    <div className={DASHBOARD_FRAME}>
+    <div className={CONSOLE_FRAME}>
       <div className='flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-5'>
         <div className='flex items-center gap-2'>
           <Skeleton className='h-4 w-24' />
@@ -329,7 +329,7 @@ export function Dashboard() {
             {showSectionTabs ? (
               <nav
                 aria-label={t('Dashboard sections')}
-                className={DASHBOARD_SEGMENT.group}
+                className={CONSOLE_SEGMENT.group}
               >
                 {visibleSections.map((section) => (
                   <Link
@@ -340,11 +340,11 @@ export function Dashboard() {
                       section === activeSection ? 'page' : undefined
                     }
                     className={cn(
-                      DASHBOARD_SEGMENT.item,
+                      CONSOLE_SEGMENT.item,
                       'inline-flex items-center',
                       section === activeSection
-                        ? DASHBOARD_SEGMENT.active
-                        : DASHBOARD_SEGMENT.idle
+                        ? CONSOLE_SEGMENT.active
+                        : CONSOLE_SEGMENT.idle
                     )}
                   >
                     {t(SECTION_META[section].titleKey)}
@@ -352,7 +352,7 @@ export function Dashboard() {
                 ))}
               </nav>
             ) : (
-              <p aria-hidden className={DASHBOARD_EYEBROW}>
+              <p aria-hidden className={CONSOLE_EYEBROW}>
                 [ {t(meta.titleKey)} ]
               </p>
             )}

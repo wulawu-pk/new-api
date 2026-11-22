@@ -20,9 +20,8 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { cn } from '@/lib/utils'
-
-import { DASHBOARD_FRAME } from '../../constants'
 
 interface PanelWrapperProps {
   title: ReactNode
@@ -72,7 +71,7 @@ export function PanelWrapper(props: PanelWrapperProps) {
   const { t } = useTranslation()
   const resolvedEmptyMessage = props.emptyMessage ?? t('No data available')
   const height = props.height ?? 'h-64'
-  const frameClassName = cn(DASHBOARD_FRAME, props.className)
+  const frameClassName = cn(CONSOLE_FRAME, props.className)
 
   if (props.loading) {
     return (

@@ -28,6 +28,7 @@ import { useSummaryCardsConfig } from '@/features/dashboard/hooks/use-dashboard-
 import type { QuotaDataItem } from '@/features/dashboard/types'
 import { landingAction } from '@/features/home/constants'
 import { useStatus } from '@/hooks/use-status'
+import { CONSOLE_EYEBROW, CONSOLE_FRAME } from '@/lib/console-surface'
 import { getCurrencyLabel, isCurrencyDisplayEnabled } from '@/lib/currency'
 import { formatNumber, formatQuota } from '@/lib/format'
 import { requireServerSuccess } from '@/lib/server-error-message'
@@ -35,7 +36,6 @@ import { computeTimeRange } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { DASHBOARD_EYEBROW, DASHBOARD_FRAME } from '../../constants'
 import { StatCard } from '../ui/stat-card'
 
 const SUMMARY_SPARKLINE_BUCKETS = 12
@@ -248,11 +248,11 @@ export function SummaryCards() {
   }))
 
   return (
-    <section className={DASHBOARD_FRAME}>
+    <section className={CONSOLE_FRAME}>
       <div className='grid xl:grid-cols-[minmax(0,1fr)_20rem]'>
         <div className='flex min-w-0 flex-col'>
           <div className='relative flex flex-col gap-1 px-4 pt-4 pb-3.5 sm:px-5'>
-            <p aria-hidden className={DASHBOARD_EYEBROW}>
+            <p aria-hidden className={CONSOLE_EYEBROW}>
               [ {t('Last 24 hours')} ]
             </p>
             <h3 className='text-base font-semibold tracking-tight sm:text-lg'>
@@ -295,7 +295,7 @@ export function SummaryCards() {
           />
           <div className='relative flex flex-col gap-3'>
             <div className='flex items-center justify-between gap-2'>
-              <span className={DASHBOARD_EYEBROW}>{t('Credit remaining')}</span>
+              <span className={CONSOLE_EYEBROW}>{t('Credit remaining')}</span>
               <span className='border-border bg-background/70 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 backdrop-blur'>
                 <span aria-hidden className='relative flex size-1.5'>
                   <span
