@@ -23,6 +23,12 @@ For commercial licensing, please contact support@quantumnous.com
 export const CONSOLE_FRAME =
   'border-border bg-background overflow-hidden rounded-3xl border'
 
+/**
+ * The same frame for a `Card`. A real border, not the card ring: the default
+ * preset replaces card box-shadows (and so the ring) with a soft elevation.
+ */
+export const CONSOLE_CARD = 'bg-background border-border rounded-3xl border'
+
 /** Hand-rolled segmented toggles; prefer `TabsList variant='pill'` for tabs. */
 export const CONSOLE_SEGMENT = {
   group:

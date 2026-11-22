@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import type { ReactNode } from 'react'
 
+import { CONSOLE_CARD } from '@/lib/console-surface'
 import { cn } from '@/lib/utils'
 
 import {
@@ -63,10 +64,7 @@ export function TitledCard({
   return (
     <Card
       data-card-hover={disableHoverEffect ? 'false' : undefined}
-      className={cn(
-        'bg-background ring-border gap-0 overflow-hidden rounded-3xl py-0',
-        className
-      )}
+      className={cn(CONSOLE_CARD, 'gap-0 overflow-hidden py-0', className)}
     >
       <CardHeader
         className={cn('relative p-4 !pb-4 sm:p-5 sm:!pb-5', headerClassName)}
