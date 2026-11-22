@@ -23,6 +23,8 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
+import { CONSOLE_CARD } from '@/lib/console-surface'
+import { cn } from '@/lib/utils'
 
 import { ChangePasswordDialog } from './dialogs/change-password-dialog'
 import { DeleteAccountDialog } from './dialogs/delete-account-dialog'
@@ -60,9 +62,13 @@ export function AccountActionCard(props: AccountActionCardProps) {
     <>
       <Card
         data-card-hover='false'
-        className={`gap-0 py-0 ${props.action === 'delete' ? 'ring-destructive/30' : ''}`}
+        className={cn(
+          CONSOLE_CARD,
+          'gap-0 py-0',
+          props.action === 'delete' && 'ring-destructive/30'
+        )}
       >
-        <div className='flex items-center gap-3 px-3 py-2.5 sm:px-4'>
+        <div className='flex items-center gap-3 px-4 py-3.5 sm:px-5'>
           <IconBadge tone='neutral' size='sm'>
             <action.icon />
           </IconBadge>
@@ -75,6 +81,7 @@ export function AccountActionCard(props: AccountActionCardProps) {
           <Button
             type='button'
             size='sm'
+            className='rounded-full px-3.5'
             variant={props.action === 'delete' ? 'destructive' : 'outline'}
             onClick={() => setOpen(true)}
           >

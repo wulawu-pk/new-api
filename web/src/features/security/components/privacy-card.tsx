@@ -29,6 +29,7 @@ import { TitledCard } from '@/components/ui/titled-card'
 import { updateUserSettings } from '@/features/profile/api'
 import { parseUserSettings } from '@/features/profile/lib/format'
 import type { UserProfile } from '@/features/profile/types'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { handleServerError } from '@/lib/handle-server-error'
 import { createServerError } from '@/lib/server-error-message'
 
@@ -81,6 +82,7 @@ export function PrivacyCard(props: PrivacyCardProps) {
       <div className='mt-4 flex justify-end'>
         <Button
           type='button'
+          className={CONSOLE_PRIMARY_BUTTON}
           onClick={() => save.mutate()}
           disabled={save.isPending}
         >

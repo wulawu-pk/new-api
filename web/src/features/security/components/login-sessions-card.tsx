@@ -48,6 +48,7 @@ import {
   revokeOtherLoginSessions,
 } from '@/features/profile/api'
 import { clearAuthenticatedClientState } from '@/lib/api'
+import { CONSOLE_CARD } from '@/lib/console-surface'
 import { handleServerError } from '@/lib/handle-server-error'
 import { createServerError } from '@/lib/server-error-message'
 import type { LoginSession } from '@/stores/auth-store'
@@ -174,7 +175,7 @@ export function LoginSessionsCard() {
 
   return (
     <>
-      <Card data-card-hover='false'>
+      <Card data-card-hover='false' className={CONSOLE_CARD}>
         <CardHeader>
           <CardTitle>{t('Login sessions')}</CardTitle>
           <CardDescription>
@@ -185,6 +186,7 @@ export function LoginSessionsCard() {
               type='button'
               variant='outline'
               size='sm'
+              className='rounded-full px-3.5'
               disabled={!hasOtherSessions || revokeOthersMutation.isPending}
               onClick={() => setConfirmOthers(true)}
             >

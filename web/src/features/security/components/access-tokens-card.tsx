@@ -46,6 +46,7 @@ import {
 import { SecureVerificationDialog } from '@/features/auth/secure-verification'
 import { AuditLogViewer } from '@/features/usage-logs/audit/components/audit-log-viewer'
 import { toIntlLocale } from '@/i18n/languages'
+import { CONSOLE_CARD, CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 
 import type { AccessTokenItem as AccessToken } from '../api'
 import { useAccessTokens } from '../hooks/use-access-tokens'
@@ -205,7 +206,7 @@ export function AccessTokensCard() {
 
   return (
     <>
-      <Card data-card-hover='false'>
+      <Card data-card-hover='false' className={CONSOLE_CARD}>
         <CardHeader>
           <CardTitle>{t('Access tokens')}</CardTitle>
           <CardDescription>
@@ -214,11 +215,17 @@ export function AccessTokensCard() {
             )}
           </CardDescription>
           <CardAction className='flex flex-wrap justify-end gap-2'>
-            <Button size='sm' variant='outline' onClick={() => setRecords({})}>
+            <Button
+              size='sm'
+              variant='outline'
+              className='rounded-full px-3.5'
+              onClick={() => setRecords({})}
+            >
               {t('Access records')}
             </Button>
             <Button
               size='sm'
+              className={CONSOLE_PRIMARY_BUTTON}
               disabled={!catalog || atLimit || access.pending}
               onClick={() => setCreateOpen(true)}
             >

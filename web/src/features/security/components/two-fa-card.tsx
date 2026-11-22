@@ -32,6 +32,8 @@ import { IconBadge } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SecureVerificationDialog } from '@/features/auth/secure-verification'
 import { useDialogs } from '@/hooks/use-dialog'
+import { CONSOLE_CARD, CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
+import { cn } from '@/lib/utils'
 
 import { useTwoFA } from '../hooks/use-two-fa'
 import { useTwoFASetup } from '../hooks/use-two-fa-setup'
@@ -57,8 +59,11 @@ export function TwoFACard({ loading: pageLoading }: TwoFACardProps) {
 
   if (pageLoading || loading) {
     return (
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardHeader className='p-3 sm:p-5'>
+      <Card
+        data-card-hover='false'
+        className={cn(CONSOLE_CARD, 'gap-0 overflow-hidden py-0')}
+      >
+        <CardHeader className='p-4 sm:p-5'>
           <Skeleton className='h-6 w-48' />
           <Skeleton className='mt-2 h-4 w-64' />
         </CardHeader>
@@ -71,7 +76,7 @@ export function TwoFACard({ loading: pageLoading }: TwoFACardProps) {
 
   if (error) {
     return (
-      <Card>
+      <Card className={CONSOLE_CARD}>
         <CardHeader>
           <CardTitle>{t('Two-Factor Authentication')}</CardTitle>
         </CardHeader>
@@ -85,8 +90,11 @@ export function TwoFACard({ loading: pageLoading }: TwoFACardProps) {
 
   return (
     <>
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardHeader className='p-3 sm:p-5'>
+      <Card
+        data-card-hover='false'
+        className={cn(CONSOLE_CARD, 'gap-0 overflow-hidden py-0')}
+      >
+        <CardHeader className='relative border-b border-dashed p-4 sm:p-5'>
           <CardTitle className='text-lg tracking-tight sm:text-xl'>
             {t('Two-Factor Authentication')}
           </CardTitle>
@@ -142,7 +150,10 @@ export function TwoFACard({ loading: pageLoading }: TwoFACardProps) {
 
               {!status.enabled && (
                 <Button
-                  className='w-full sm:w-auto xl:w-full 2xl:w-auto'
+                  className={cn(
+                    CONSOLE_PRIMARY_BUTTON,
+                    'w-full sm:w-auto xl:w-full 2xl:w-auto'
+                  )}
                   onClick={setup.start}
                   disabled={setup.active}
                 >
@@ -153,10 +164,10 @@ export function TwoFACard({ loading: pageLoading }: TwoFACardProps) {
 
             {/* Actions Section - Only show when enabled */}
             {status.enabled && (
-              <div className='flex flex-col gap-3 border-t pt-6 sm:flex-row xl:flex-col 2xl:flex-row'>
+              <div className='border-border flex flex-col gap-3 border-t border-dashed pt-6 sm:flex-row xl:flex-col 2xl:flex-row'>
                 <Button
                   variant='outline'
-                  className='flex-1'
+                  className='flex-1 rounded-full'
                   onClick={() => dialogs.open('backup')}
                 >
                   <RefreshCw className='mr-2 h-4 w-4' />
@@ -164,7 +175,7 @@ export function TwoFACard({ loading: pageLoading }: TwoFACardProps) {
                 </Button>
                 <Button
                   variant='destructive'
-                  className='flex-1'
+                  className='flex-1 rounded-full'
                   onClick={() => dialogs.open('disable')}
                 >
                   <AlertTriangle className='mr-2 h-4 w-4' />

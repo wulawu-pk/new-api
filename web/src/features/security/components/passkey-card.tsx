@@ -49,9 +49,11 @@ import {
   useSecureVerification,
 } from '@/features/auth/secure-verification'
 import { toIntlLocale } from '@/i18n/languages'
+import { CONSOLE_CARD, CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { formatTimestampRelative } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 import { AuthOperationError } from '@/lib/secure-verification'
+import { cn } from '@/lib/utils'
 
 interface PasskeyCardProps {
   loading: boolean
@@ -110,8 +112,11 @@ export function PasskeyCard({ loading: pageLoading }: PasskeyCardProps) {
 
   if (pageLoading || loading) {
     return (
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardHeader className='p-3 sm:p-5'>
+      <Card
+        data-card-hover='false'
+        className={cn(CONSOLE_CARD, 'gap-0 overflow-hidden py-0')}
+      >
+        <CardHeader className='p-4 sm:p-5'>
           <Skeleton className='h-6 w-48' />
           <Skeleton className='mt-2 h-4 w-64' />
         </CardHeader>
@@ -124,7 +129,7 @@ export function PasskeyCard({ loading: pageLoading }: PasskeyCardProps) {
 
   if (statusError) {
     return (
-      <Card>
+      <Card className={CONSOLE_CARD}>
         <CardHeader>
           <CardTitle>{t('Passkey Login')}</CardTitle>
         </CardHeader>
@@ -163,8 +168,11 @@ export function PasskeyCard({ loading: pageLoading }: PasskeyCardProps) {
 
   return (
     <>
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardHeader className='p-3 sm:p-5'>
+      <Card
+        data-card-hover='false'
+        className={cn(CONSOLE_CARD, 'gap-0 overflow-hidden py-0')}
+      >
+        <CardHeader className='relative border-b border-dashed p-4 sm:p-5'>
           <CardTitle className='text-lg tracking-tight sm:text-xl'>
             {t('Passkey Login')}
           </CardTitle>
@@ -206,7 +214,10 @@ export function PasskeyCard({ loading: pageLoading }: PasskeyCardProps) {
 
               {!enabled && (
                 <Button
-                  className='w-full sm:w-auto xl:w-full 2xl:w-auto'
+                  className={cn(
+                    CONSOLE_PRIMARY_BUTTON,
+                    'w-full sm:w-auto xl:w-full 2xl:w-auto'
+                  )}
                   onClick={handleRegister}
                   disabled={!supported || registering || verification.isActive}
                 >
@@ -219,13 +230,13 @@ export function PasskeyCard({ loading: pageLoading }: PasskeyCardProps) {
             </div>
 
             {enabled && (
-              <div className='flex flex-col gap-3 border-t pt-6 sm:flex-row xl:flex-col 2xl:flex-row'>
+              <div className='border-border flex flex-col gap-3 border-t border-dashed pt-6 sm:flex-row xl:flex-col 2xl:flex-row'>
                 <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                   <AlertDialogTrigger
                     render={
                       <Button
                         variant='destructive'
-                        className='flex-1'
+                        className='flex-1 rounded-full'
                         disabled={removing}
                       />
                     }

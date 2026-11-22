@@ -332,10 +332,10 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
           return (
             <li
               key={binding.id}
-              className='flex min-w-0 items-center justify-between gap-2 rounded-lg border px-2.5 py-2'
+              className='bg-background flex min-w-0 items-center justify-between gap-2 rounded-2xl border px-3 py-2.5'
             >
               <div className='flex min-w-0 items-center gap-2'>
-                <div className='bg-muted shrink-0 rounded-md p-1.5'>
+                <div className='bg-muted shrink-0 rounded-full p-1.5'>
                   <binding.icon className='h-4 w-4' />
                 </div>
                 <div className='min-w-0'>
@@ -362,7 +362,7 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
               <Button
                 variant='outline'
                 size='sm'
-                className='h-7 shrink-0 px-2.5 text-xs'
+                className='h-8 shrink-0 rounded-full px-3 text-xs'
                 onClick={binding.onBind}
                 disabled={
                   bindingsLocked || (binding.isBound && binding.id !== 'email')
@@ -379,10 +379,10 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
           return (
             <li
               key={provider.id}
-              className='flex min-w-0 items-center justify-between gap-2 rounded-lg border px-2.5 py-2'
+              className='bg-background flex min-w-0 items-center justify-between gap-2 rounded-2xl border px-3 py-2.5'
             >
               <div className='flex min-w-0 items-center gap-2'>
-                <div className='bg-muted shrink-0 rounded-md p-1.5'>
+                <div className='bg-muted shrink-0 rounded-full p-1.5'>
                   <Link2 className='h-4 w-4' />
                 </div>
                 <div className='min-w-0'>
@@ -412,7 +412,7 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
                 <Button
                   variant='ghost'
                   size='sm'
-                  className='text-destructive h-7 shrink-0 px-2.5 text-xs'
+                  className='text-destructive h-8 shrink-0 rounded-full px-3 text-xs'
                   onClick={() => setUnbindTarget(binding)}
                   disabled={bindingsLocked}
                 >
@@ -423,7 +423,7 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
                 <Button
                   variant='outline'
                   size='sm'
-                  className='h-7 shrink-0 px-2.5 text-xs'
+                  className='h-8 shrink-0 rounded-full px-3 text-xs'
                   onClick={() => void handleBindCustomOAuth(provider)}
                   disabled={bindingsLocked}
                 >

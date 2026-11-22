@@ -31,6 +31,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
 import { useProfile } from '@/features/profile/hooks/use-profile'
+import { CONSOLE_EYEBROW } from '@/lib/console-surface'
 
 import { AccessTokensCard } from './components/access-tokens-card'
 import { AccountActionCard } from './components/account-action-card'
@@ -79,7 +80,7 @@ export function Security() {
             aria-labelledby='security-authentication'
             className='space-y-3'
           >
-            <h3 id='security-authentication' className='text-sm font-semibold'>
+            <h3 id='security-authentication' className={CONSOLE_EYEBROW}>
               {t('Login & Authentication')}
             </h3>
             <AccountActionCard
@@ -101,14 +102,14 @@ export function Security() {
             </TitledCard>
           </section>
           <section aria-labelledby='security-access' className='space-y-4'>
-            <h3 id='security-access' className='text-sm font-semibold'>
+            <h3 id='security-access' className={CONSOLE_EYEBROW}>
               {t('Sessions & Access')}
             </h3>
             <LoginSessionsCard />
             <AccessTokensCard />
           </section>
           <section aria-labelledby='security-account' className='space-y-4'>
-            <h3 id='security-account' className='text-sm font-semibold'>
+            <h3 id='security-account' className={CONSOLE_EYEBROW}>
               {t('Account Actions')}
             </h3>
             <AccountActionCard action='delete' username={profile.username} />
@@ -119,14 +120,14 @@ export function Security() {
           className='min-w-0 space-y-4 sm:space-y-6 xl:sticky xl:top-0'
         >
           <div className='space-y-3'>
-            <h3 id='security-verification' className='text-sm font-semibold'>
+            <h3 id='security-verification' className={CONSOLE_EYEBROW}>
               {t('Security verification')}
             </h3>
             <PasskeyCard loading={loading} />
             <TwoFACard loading={loading} />
           </div>
           <section aria-labelledby='security-privacy' className='space-y-4'>
-            <h3 id='security-privacy' className='text-sm font-semibold'>
+            <h3 id='security-privacy' className={CONSOLE_EYEBROW}>
               {t('Privacy')}
             </h3>
             <PrivacyCard profile={profile} onUpdate={refreshProfile} />
