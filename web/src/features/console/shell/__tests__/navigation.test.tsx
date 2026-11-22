@@ -229,6 +229,21 @@ describe('console top bar', () => {
     expect(follows(theme, bell)).toBe(true)
   })
 
+  // Regression: with the switches added, the right side outgrew the gap next
+  // to the absolutely centred pages and ran under them at 1024–1280px.
+  it('keeps the pages in their own column of the top bar and offers the menu until the xl width', async () => {
+    renderShell('/dashboard')
+    await screen.findByText('/dashboard page')
+    const bar = topBar()
+
+    const pages = within(bar).getByRole('navigation', { name: 'Console pages' })
+    expect(pages).not.toHaveClass('absolute')
+    expect(pages).toHaveClass('col-start-2', 'xl:flex')
+    expect(
+      within(bar).getByRole('button', { name: 'Toggle navigation menu' })
+    ).toHaveClass('xl:hidden')
+  })
+
   it('offers the language and theme switches in the narrow-screen menu too', async () => {
     renderShell('/dashboard')
     await screen.findByText('/dashboard page')

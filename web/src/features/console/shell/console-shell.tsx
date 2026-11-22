@@ -170,7 +170,7 @@ export function ConsoleKbd(props: { children: ReactNode }) {
  * wallet, models, status) and the account pages (profile, security).
  * Number keys 1–6 switch windows and 7 opens the docs; `n` creates a key.
  * The top bar follows the v4 landing header: pages centred across the top,
- * folding into a floating pill once the page scrolls; below `lg` the pages
+ * folding into a floating pill once the page scrolls; below `xl` the pages
  * move into a menu. The language and theme switches sit before the notice
  * bell; on phones they move into the menu. Admin pages keep the old layout
  * and are reached via
@@ -429,16 +429,18 @@ export function ConsoleShell(props: {
             className={cn(
               'pointer-events-auto relative flex items-center transition-[background-color,box-shadow] duration-300',
               condensed
-                ? 'bg-t-bg/80 h-14 w-full gap-2 pr-2 pl-4 shadow-[0_0_0_1px_var(--t-hair),var(--t-float-shadow)] backdrop-blur-xl lg:w-auto lg:gap-4'
-                : 'h-16 w-full justify-between gap-4 px-1'
+                ? 'bg-t-bg/80 h-14 w-full gap-2 pr-2 pl-4 shadow-[0_0_0_1px_var(--t-hair),var(--t-float-shadow)] backdrop-blur-xl xl:w-auto xl:gap-4'
+                : // Three columns: the pages stay centred while there is room and
+                  // give way to a wider right side instead of running under it.
+                  'grid h-16 w-full grid-cols-[1fr_auto_1fr] gap-4 px-1'
             )}
           >
             <motion.div
               layout='position'
               transition={layoutTransition}
               className={cn(
-                'flex min-w-0 flex-1 items-center lg:min-w-32',
-                condensed && 'lg:w-32 lg:flex-none'
+                'col-start-1 flex min-w-0 flex-1 items-center xl:min-w-32',
+                condensed && 'xl:w-32 xl:flex-none'
               )}
             >
               <TermLogo className={cn('rounded-full', focusRing)} />
@@ -450,8 +452,8 @@ export function ConsoleShell(props: {
               ref={navRef}
               aria-label={t('Console pages')}
               className={cn(
-                'relative hidden items-center gap-0.5 lg:flex',
-                !condensed && 'absolute left-1/2 -translate-x-1/2'
+                'relative hidden items-center gap-0.5 xl:flex',
+                !condensed && 'col-start-2 justify-self-center'
               )}
             >
               <span
@@ -526,7 +528,7 @@ export function ConsoleShell(props: {
             <motion.div
               layout='position'
               transition={layoutTransition}
-              className='text-t-dim flex flex-none items-center gap-3 text-[13px]'
+              className='text-t-dim col-start-3 flex flex-none items-center gap-3 justify-self-end text-[13px]'
             >
               <LanguageToggle className='max-sm:hidden' />
               <ThemeToggle className='-ml-1.5 max-sm:hidden' />
@@ -546,7 +548,7 @@ export function ConsoleShell(props: {
               {signedIn ? (
                 <>
                   <span
-                    className={cn('max-md:hidden', condensed && 'lg:hidden')}
+                    className={cn('max-md:hidden', condensed && 'xl:hidden')}
                   >
                     {t('Balance')}
                   </span>
@@ -591,7 +593,7 @@ export function ConsoleShell(props: {
                 aria-controls='console-menu'
                 aria-label={t('Toggle navigation menu')}
                 className={cn(
-                  'text-t-fg2 hover:text-t-fg flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-t-ink/6 lg:hidden',
+                  'text-t-fg2 hover:text-t-fg flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-t-ink/6 xl:hidden',
                   focusRing
                 )}
               >
@@ -624,7 +626,7 @@ export function ConsoleShell(props: {
                 duration: reduceMotion ? 0 : 0.3,
                 ease: MOTION_EASE,
               }}
-              className='bg-t-bg2 light:shadow-[0_0_0_1px_var(--t-hair),var(--t-float-shadow)] pointer-events-auto mx-auto mt-2 w-full max-w-[1320px] rounded-[28px] p-2 shadow-[0_0_0_1px_var(--t-hair),0_12px_32px_-16px_rgb(0_0_0/0.8)] lg:hidden'
+              className='bg-t-bg2 light:shadow-[0_0_0_1px_var(--t-hair),var(--t-float-shadow)] pointer-events-auto mx-auto mt-2 w-full max-w-[1320px] rounded-[28px] p-2 shadow-[0_0_0_1px_var(--t-hair),0_12px_32px_-16px_rgb(0_0_0/0.8)] xl:hidden'
             >
               <p className='text-t-faint px-4 pt-2 pb-1 font-mono text-[11px]'>
                 // peroai
