@@ -29,7 +29,7 @@ type Doc = { success: boolean; message?: string; data?: string }
 const AGREEMENT = [
   '**更新日期：2026-11-15**',
   '',
-  '欢迎使用 peroai。',
+  '欢迎使用 peroai。另见《[隐私政策](/privacy-policy)》，或联系 [support@peroai.cc](mailto:support@peroai.cc)、[上游](https://example.com/terms)。',
   '',
   '## 一、服务范围',
   '',
@@ -94,6 +94,30 @@ describe('console legal pages', () => {
       '二、账户与 API 密钥'
     )
     expect(second).toHaveAttribute('aria-current', 'location')
+  })
+
+  it('opens the other legal document in the same window when its link in the text is clicked', async () => {
+    const { router } = renderConsole(
+      <ConsoleLegal doc='terms' />,
+      '/user-agreement'
+    )
+    const link = await screen.findByRole('link', { name: '隐私政策' })
+
+    const followed = fireEvent.click(link)
+
+    expect(followed).toBe(false)
+    expect(await screen.findByText('/privacy-policy page')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/privacy-policy')
+  })
+
+  it('leaves links to other sites and mail links to the browser', async () => {
+    renderConsole(<ConsoleLegal doc='terms' />, '/user-agreement')
+    const external = await screen.findByRole('link', { name: '上游' })
+    const mail = screen.getByRole('link', { name: 'support@peroai.cc' })
+
+    expect(fireEvent.click(external)).toBe(true)
+    expect(fireEvent.click(mail)).toBe(true)
+    expect(external).toHaveAttribute('target', '_blank')
   })
 
   it('switches between the two documents and marks the one shown', async () => {

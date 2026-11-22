@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -30,7 +31,7 @@ import { getPrivacyPolicy, getUserAgreement } from '@/features/legal/api'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
 import { cn } from '@/lib/utils'
 
-import { LEGAL_PAGES, type LegalPageKey } from '../lib/windows'
+import { CONSOLE_WINDOWS, LEGAL_PAGES, type LegalPageKey } from '../lib/windows'
 import { ConsolePageHeader } from '../shell/console-shell'
 
 /** Same endpoints and query keys as the old legal pages, so they share a cache. */
@@ -50,6 +51,12 @@ const SOURCES = {
     emptyKey: 'The administrator has not configured a privacy policy yet.',
   },
 } as const
+
+/** Pages of this app; any other same-site path is a static page (docs, home). */
+const APP_PATHS = new Set<string>([
+  ...LEGAL_PAGES.map((page) => page.path),
+  ...CONSOLE_WINDOWS.map((win) => win.path),
+])
 
 /*
  * Body text of a legal document in the console palette. The shared
@@ -84,6 +91,7 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
     staleTime: 10 * 60 * 1000,
     meta: { errorToast: false },
   })
+  const navigate = useNavigate()
   const bodyRef = useRef<HTMLDivElement>(null)
   const [outline, setOutline] = useState<string[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
@@ -246,7 +254,40 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
               <RichContent mode='html' htmlVariant='isolated' content={raw} />
             )}
             {isMarkdown && (
-              <div ref={bodyRef}>
+              // The shared Markdown opens every link in a new tab. Links to
+              // this site stay in the window: the other legal document and
+              // console pages switch in place, static pages (docs) load
+              // here. Other sites, mail links and modified clicks are left
+              // to the browser.
+              <div
+                ref={bodyRef}
+                onClick={(event) => {
+                  if (
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  ) {
+                    return
+                  }
+                  const link = (event.target as Element).closest('a[href]')
+                  if (!link) return
+                  const url = new URL(
+                    link.getAttribute('href') ?? '',
+                    window.location.href
+                  )
+                  if (url.origin !== window.location.origin) return
+                  event.preventDefault()
+                  if (APP_PATHS.has(url.pathname)) {
+                    void navigate({
+                      href: url.pathname + url.search + url.hash,
+                    })
+                    return
+                  }
+                  window.location.assign(url.href)
+                }}
+              >
                 <RichContent
                   mode='markdown'
                   content={raw}
