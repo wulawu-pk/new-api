@@ -256,6 +256,63 @@ For commercial licensing, please contact support@quantumnous.com
     animation: t-breathe 2.6s ease-in-out infinite;
   }
 
+  /* Pick lists (model plaza groups), after the landing page's model list:
+   * rows drop in one after another when the data arrives (--i is the row
+   * index); a block slides on the spring to the row under the pointer and
+   * another to the selected row, which a light sweeps across now and then;
+   * the selected row's dot pops in. */
+  .t-row-in {
+    animation: t-row-in 500ms var(--t-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 22ms);
+  }
+  .t-pick-mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 0;
+    width: 0;
+    border-radius: var(--t-radius);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform 620ms var(--t-spring),
+      height 620ms var(--t-spring),
+      width 620ms var(--t-spring),
+      opacity 250ms var(--t-ease);
+  }
+  .t-pick-mark[data-on='true'] {
+    opacity: 1;
+  }
+  .t-pick-mark[data-kind='hover'] {
+    background: rgb(255 255 255 / 0.04);
+  }
+  .t-pick-mark[data-kind='selected'] {
+    overflow: hidden;
+    background: rgb(255 255 255 / 0.07);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+  }
+  .t-pick-mark[data-kind='selected']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      100deg,
+      transparent 25%,
+      rgb(255 255 255 / 0.08) 50%,
+      transparent 75%
+    );
+    transform: translateX(-110%);
+    animation: t-sheen 5.2s var(--t-ease) 1.4s infinite;
+  }
+  .t-pick-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--t-accent);
+    box-shadow: 0 0 8px rgb(var(--t-accent-rgb) / 0.7);
+    animation: t-dot-in 240ms var(--t-ease);
+  }
+
   /* Status-bar light: a ring spreads out from it now and then. */
   .t-live {
     position: relative;
@@ -436,6 +493,33 @@ For commercial licensing, please contact support@quantumnous.com
     transform: translateX(100%);
   }
 }
+@keyframes t-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+@keyframes t-sheen {
+  0% {
+    transform: translateX(-110%);
+  }
+  32%,
+  100% {
+    transform: translateX(110%);
+  }
+}
+@keyframes t-dot-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
 @keyframes t-grow-x {
   from {
     transform: scaleX(0);
@@ -535,8 +619,14 @@ For commercial licensing, please contact support@quantumnous.com
   .t-bracket,
   .t-grow-x,
   .t-grow-y,
+  .t-row-in,
+  .t-pick-dot,
+  .t-pick-mark[data-kind='selected']::after,
   .t-pane > .t-pane-title::before {
     animation: none !important;
+  }
+  .t-pick-mark {
+    transition: none;
   }
   .t-live::after,
   .t-pane::after,

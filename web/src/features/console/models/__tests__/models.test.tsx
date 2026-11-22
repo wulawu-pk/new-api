@@ -188,6 +188,40 @@ describe('console model plaza', () => {
     expect(onGroupChange).toHaveBeenCalledWith('gpt-pro')
   })
 
+  it('slides the selection block onto the group that is picked', async () => {
+    // jsdom has no layout: give each group row a size and a line of its own.
+    const rowTop: Record<string, number> = { 'gpt-pro': 10, deepseek: 46 }
+    const top = vi
+      .spyOn(HTMLElement.prototype, 'offsetTop', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return rowTop[this.dataset.group ?? ''] ?? 0
+      })
+    const width = vi
+      .spyOn(HTMLElement.prototype, 'offsetWidth', 'get')
+      .mockReturnValue(220)
+    const height = vi
+      .spyOn(HTMLElement.prototype, 'offsetHeight', 'get')
+      .mockReturnValue(36)
+    vi.mocked(pricingApi.getPricing).mockResolvedValue(TWO_GROUPS as never)
+    const user = userEvent.setup()
+    const { container } = renderConsole(<ConsoleModels />)
+
+    await screen.findByRole('region', { name: 'GPT Enterprise' })
+    const block = container.querySelector<HTMLElement>(
+      '.t-pick-mark[data-kind="selected"]'
+    )
+    expect(block?.dataset.on).toBe('true')
+    expect(block?.style.transform).toBe('translate(0px, 10px)')
+
+    await user.click(groupButton(/^DeepSeek/))
+
+    expect(block?.style.transform).toBe('translate(0px, 46px)')
+    expect(block?.style.height).toBe('36px')
+    top.mockRestore()
+    width.mockRestore()
+    height.mockRestore()
+  })
+
   it('arrow keys on the group list move to the next group and wrap around', async () => {
     vi.mocked(pricingApi.getPricing).mockResolvedValue(TWO_GROUPS as never)
     const user = userEvent.setup()

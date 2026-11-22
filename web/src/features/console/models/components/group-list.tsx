@@ -16,7 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { KeyboardEvent } from 'react'
+import {
+  useLayoutEffect,
+  useRef,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Pane } from '@/components/terminal/pane'
@@ -38,10 +44,35 @@ type GroupListProps = {
 }
 
 /**
+ * Moves a slide block onto `row` (hides it without one). The first time it
+ * shows it is put straight on the row instead of flying in from the top;
+ * after that the CSS transition slides it on the spring.
+ */
+function placeMark(mark: HTMLElement | null, row: HTMLElement | null) {
+  if (!mark) return
+  if (!row || row.offsetWidth === 0) {
+    mark.dataset.on = 'false'
+    return
+  }
+  const instant = mark.dataset.on !== 'true'
+  if (instant) mark.style.transition = 'none'
+  mark.style.width = `${row.offsetWidth}px`
+  mark.style.height = `${row.offsetHeight}px`
+  mark.style.transform = `translate(${row.offsetLeft}px, ${row.offsetTop}px)`
+  if (instant) {
+    void mark.offsetWidth
+    mark.style.transition = ''
+  }
+  mark.dataset.on = 'true'
+}
+
+/**
  * Group picker of the model plaza: one line per group with its ratio and
- * model count, the selected one marked like the landing page's model list
- * (▸, pink edge). ↑/↓ (or j/k) move between groups. On phones it becomes a
- * row of chips that scrolls sideways.
+ * model count, moving like the landing page's model list: the rows drop in
+ * one after another, a block slides on the spring to the row under the
+ * pointer and another to the selected row (a glowing accent dot, a light
+ * sweeping across it now and then). ↑/↓ (or j/k) move between groups. On
+ * phones it becomes a row of chips that scrolls sideways.
  *
  * Plain buttons with `aria-pressed` (as the old filter chips) rather than
  * `ui/tabs`: the list also shows per-group search counts and dims groups
@@ -50,6 +81,33 @@ type GroupListProps = {
  */
 export function GroupList(props: GroupListProps) {
   const { t } = useTranslation()
+  const listRef = useRef<HTMLDivElement>(null)
+  const selectedMark = useRef<HTMLElement>(null)
+  const hoverMark = useRef<HTMLElement>(null)
+
+  // The selected block follows the selection (and the rows as they reflow:
+  // search counts, a resized window).
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    const place = () => {
+      const row = props.selected
+        ? list.querySelector<HTMLElement>(`[data-group="${props.selected}"]`)
+        : null
+      placeMark(selectedMark.current, row)
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
+  }, [props.selected, props.groups, props.matches])
+
+  const onPointerOver = (event: PointerEvent<HTMLDivElement>) => {
+    const row = (event.target as HTMLElement).closest<HTMLElement>(
+      '[data-group]'
+    )
+    if (row) placeMark(hoverMark.current, row)
+  }
+  const onPointerLeave = () => placeMark(hoverMark.current, null)
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     let step = 0
@@ -73,12 +131,27 @@ export function GroupList(props: GroupListProps) {
       className='max-md:border-0 max-md:bg-transparent max-md:bg-none max-md:p-0 max-md:shadow-none max-md:[&>.t-pane-title]:hidden'
     >
       <div
+        ref={listRef}
         role='group'
         aria-label={t('Model groups')}
         onKeyDown={onKeyDown}
-        className='flex flex-col py-2.5 max-md:[scrollbar-width:none] max-md:flex-row max-md:gap-1.5 max-md:overflow-x-auto max-md:py-0'
+        onPointerOver={onPointerOver}
+        onPointerLeave={onPointerLeave}
+        className='relative flex flex-col px-2 py-2.5 max-md:[scrollbar-width:none] max-md:flex-row max-md:gap-1.5 max-md:overflow-x-auto max-md:p-0'
       >
-        {props.groups.map((group) => {
+        <i
+          ref={hoverMark}
+          aria-hidden='true'
+          data-kind='hover'
+          className='t-pick-mark max-md:hidden'
+        />
+        <i
+          ref={selectedMark}
+          aria-hidden='true'
+          data-kind='selected'
+          className='t-pick-mark max-md:hidden'
+        />
+        {props.groups.map((group, index) => {
           const active = group.key === props.selected
           const count = props.matches
             ? (props.matches[group.key] ?? 0)
@@ -91,20 +164,21 @@ export function GroupList(props: GroupListProps) {
               data-group={group.key}
               aria-pressed={active}
               onClick={() => props.onSelect(group.key)}
+              style={{ '--i': Math.min(index, 25) } as CSSProperties}
               className={cn(
-                'grid grid-cols-[12px_minmax(0,1fr)_auto] items-baseline gap-x-1.5 border-l-2 border-transparent px-3 py-[7px] text-left text-sm whitespace-nowrap',
+                't-row-in relative z-[1] grid grid-cols-[12px_minmax(0,1fr)_auto] items-baseline gap-x-1.5 rounded-[var(--t-radius)] px-2.5 py-[7px] text-left text-sm whitespace-nowrap',
                 'max-md:border-t-line max-md:flex max-md:shrink-0 max-md:items-center max-md:border max-md:px-2.5 max-md:py-1.5',
                 active
-                  ? 'border-t-accent bg-t-bg3 text-t-fg max-md:border-t-accent'
-                  : 'text-t-fg2 hover:bg-white/[0.04] hover:text-t-fg',
+                  ? 'text-t-fg max-md:border-t-accent max-md:bg-t-bg3'
+                  : 'text-t-fg2 hover:text-t-fg',
                 empty && 'text-t-dim'
               )}
             >
               <span
                 aria-hidden='true'
-                className='text-t-accent font-mono max-md:hidden'
+                className='flex items-center self-center max-md:hidden'
               >
-                {active ? '▸' : ''}
+                {active ? <i className='t-pick-dot' /> : null}
               </span>
               <span className='truncate max-md:overflow-visible'>
                 {groupName(group.key, t, group.description)}
