@@ -479,7 +479,7 @@ export function ConsoleShell(props: { children: ReactNode }) {
               aria-current={onAccountPage ? 'page' : undefined}
               className={cn(
                 'hover:text-t-fg',
-                onAccountPage && 'text-t-fg border-t-accent border-b'
+                onAccountPage && 'text-t-fg border-(--t-accent) border-b'
               )}
             >
               {t('Account')}

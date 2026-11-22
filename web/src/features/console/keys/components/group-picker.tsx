@@ -66,7 +66,7 @@ export function GroupPicker(props: GroupPickerProps) {
             <RadioGroupItem
               id={id}
               value={group.key}
-              className='data-checked:border-t-accent data-checked:bg-t-accent translate-y-[3px]'
+              className='data-checked:bg-t-accent translate-y-[3px] data-checked:border-(--t-accent)'
             />
             <span>{groupName(group.key, t, group.desc)}</span>
             <em className='text-t-dim font-mono text-[12.5px] not-italic'>

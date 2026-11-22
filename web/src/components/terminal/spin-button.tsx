@@ -65,9 +65,9 @@ export function SpinButton(props: SpinButtonProps) {
         'h-auto w-full rounded-full py-3 text-sm whitespace-pre',
         state === 'idle' && 'hover:border-white hover:bg-white',
         state === 'pending' &&
-          'border-t-accent text-t-accent cursor-default bg-transparent font-mono hover:bg-transparent',
+          'border-(--t-accent) text-t-accent cursor-default bg-transparent font-mono hover:bg-transparent',
         state === 'done' &&
-          'bg-t-accent border-t-accent text-t-bg cursor-default hover:bg-t-accent',
+          'bg-t-accent border-(--t-accent) text-t-bg cursor-default hover:bg-t-accent',
         className
       )}
       {...rest}

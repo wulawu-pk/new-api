@@ -19,9 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 import { useTranslation } from 'react-i18next'
 
 import { Pane } from '@/components/terminal/pane'
-import { TERM_SELECT } from '@/components/terminal/styles'
+import { TermSelect } from '@/components/terminal/term-select'
 import { Label } from '@/components/ui/label'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useLanguagePreference } from '@/features/profile/hooks/use-language-preference'
 import type { UserProfile } from '@/features/profile/types'
 import { INTERFACE_LANGUAGE_OPTIONS } from '@/i18n/languages'
@@ -45,21 +44,16 @@ export function LanguagePane(props: LanguagePaneProps) {
         >
           {t('Interface Language')}
         </Label>
-        <NativeSelect
+        <TermSelect
           id='console-language'
           value={preference.language}
           disabled={preference.saving}
-          onChange={(event) =>
-            void preference.changeLanguage(event.target.value)
-          }
-          className={TERM_SELECT}
-        >
-          {INTERFACE_LANGUAGE_OPTIONS.map((language) => (
-            <NativeSelectOption key={language.code} value={language.code}>
-              {language.label}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          options={INTERFACE_LANGUAGE_OPTIONS.map((language) => ({
+            value: language.code,
+            label: language.label,
+          }))}
+          onValueChange={(code) => void preference.changeLanguage(code)}
+        />
         <p className='text-t-dim m-0 text-[12.5px] leading-[1.6]'>
           {t(
             'Language preferences sync across your signed-in devices and affect API error messages.'

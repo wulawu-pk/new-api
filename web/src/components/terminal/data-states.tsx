@@ -96,7 +96,7 @@ export function LoadErrorText(props: ErrorTextProps) {
       {t('Check your network and retry; if it keeps failing, see')}{' '}
       <Link
         to='/status'
-        className='text-t-fg border-t-faint hover:border-t-accent border-b'
+        className='text-t-fg border-t-faint border-b hover:border-(--t-accent)'
       >
         {t('Service status')}
       </Link>

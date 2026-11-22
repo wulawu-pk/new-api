@@ -256,7 +256,8 @@ describe('console logs page for admins', () => {
       )
     )
 
-    await user.selectOptions(screen.getByLabelText('Whose requests'), 'self')
+    await user.click(screen.getByLabelText('Whose requests'))
+    await user.click(screen.getByRole('option', { name: 'My requests' }))
     await waitFor(() => expect(logsApi.getUserLogs).toHaveBeenCalled())
     expect(screen.queryByLabelText('Username')).not.toBeInTheDocument()
     expect(

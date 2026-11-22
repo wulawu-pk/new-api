@@ -119,10 +119,8 @@ describe('console account page', () => {
     const user = userEvent.setup()
     renderConsole(<ConsoleAccount />, '/profile')
 
-    await user.selectOptions(
-      await screen.findByLabelText('Notification Method'),
-      'webhook'
-    )
+    await user.click(await screen.findByLabelText('Notification Method'))
+    await user.click(screen.getByRole('option', { name: 'Webhook' }))
     await user.type(
       screen.getByLabelText('Webhook URL'),
       'https://example.com/hook'

@@ -22,15 +22,11 @@ import { toast } from 'sonner'
 
 import { SkeletonText } from '@/components/terminal/data-states'
 import { Pane } from '@/components/terminal/pane'
-import {
-  TERM_BUTTON_PRIMARY,
-  TERM_INPUT,
-  TERM_SELECT,
-} from '@/components/terminal/styles'
+import { TERM_BUTTON_PRIMARY, TERM_INPUT } from '@/components/terminal/styles'
+import { TermSelect } from '@/components/terminal/term-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { PaymentConfirmDialog } from '@/features/wallet/components/dialogs/payment-confirm-dialog'
 import { isQuoteFor, usePayment } from '@/features/wallet/hooks/use-payment'
 import {
@@ -214,18 +210,12 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
               >
                 {t('Coin')}
               </Label>
-              <NativeSelect
+              <TermSelect
                 id='console-coin'
                 value={coin}
-                onChange={(event) => setCoin(event.target.value)}
-                className={TERM_SELECT}
-              >
-                {coins.map((c) => (
-                  <NativeSelectOption key={c} value={c}>
-                    {c}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                options={coins.map((c) => ({ value: c, label: c }))}
+                onValueChange={setCoin}
+              />
             </div>
             <div className='flex flex-col gap-[7px]'>
               <Label
@@ -234,18 +224,17 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
               >
                 {t('Network')}
               </Label>
-              <NativeSelect
+              <TermSelect
                 id='console-network'
                 value={methodType}
-                onChange={(event) => setMethodType(event.target.value)}
-                className={TERM_SELECT}
-              >
-                {networks.map((n) => (
-                  <NativeSelectOption key={n.type} value={n.type}>
-                    {networkName(splitCryptoMethod(n.type)?.network ?? n.type)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                options={networks.map((n) => ({
+                  value: n.type,
+                  label: networkName(
+                    splitCryptoMethod(n.type)?.network ?? n.type
+                  ),
+                }))}
+                onValueChange={setMethodType}
+              />
             </div>
           </div>
         ) : (
@@ -256,18 +245,12 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
             >
               {t('Payment method')}
             </Label>
-            <NativeSelect
+            <TermSelect
               id='console-method'
               value={methodType}
-              onChange={(event) => setMethodType(event.target.value)}
-              className={TERM_SELECT}
-            >
-              {methods.map((m) => (
-                <NativeSelectOption key={m.type} value={m.type}>
-                  {m.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
+              options={methods.map((m) => ({ value: m.type, label: m.name }))}
+              onValueChange={setMethodType}
+            />
           </div>
         )}
         <div className='flex flex-col gap-[7px]'>

@@ -25,12 +25,11 @@ import {
   TERM_BUTTON_PRIMARY,
   TERM_INPUT,
   TERM_PASSWORD,
-  TERM_SELECT,
 } from '@/components/terminal/styles'
+import { TermSelect } from '@/components/terminal/term-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Switch } from '@/components/ui/switch'
 import { NOTIFICATION_METHODS } from '@/features/profile/constants'
 import { useNotificationSettings } from '@/features/profile/hooks/use-notification-settings'
@@ -126,20 +125,17 @@ export function NotifyPane(props: NotifyPaneProps) {
         {showNotifications && (
           <>
             <Field id='console-notify-type' label={t('Notification Method')}>
-              <NativeSelect
+              <TermSelect
                 id='console-notify-type'
                 value={settings.notify_type}
-                onChange={(event) =>
-                  update('notify_type', event.target.value as NotifyType)
+                options={NOTIFICATION_METHODS.map((method) => ({
+                  value: method.value,
+                  label: t(method.label),
+                }))}
+                onValueChange={(value) =>
+                  update('notify_type', value as NotifyType)
                 }
-                className={TERM_SELECT}
-              >
-                {NOTIFICATION_METHODS.map((method) => (
-                  <NativeSelectOption key={method.value} value={method.value}>
-                    {t(method.label)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+              />
             </Field>
 
             {settings.notify_type === 'email' && (

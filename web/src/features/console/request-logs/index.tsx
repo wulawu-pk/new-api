@@ -38,14 +38,10 @@ import {
 } from '@/components/terminal/data-states'
 import { errorReason } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
-import {
-  TERM_BUTTON,
-  TERM_INPUT,
-  TERM_SELECT,
-} from '@/components/terminal/styles'
+import { TERM_BUTTON, TERM_INPUT } from '@/components/terminal/styles'
+import { TermSelect } from '@/components/terminal/term-select'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import {
   getAllLogs,
   getLogStats,
@@ -77,6 +73,9 @@ import {
   type LogScope,
 } from './lib/filters'
 import { compactTokens, toConsoleLogRow } from './lib/log-row'
+
+/** The filter row's dropdowns: as wide as their text, a little shorter. */
+const FILTER_SELECT = 'w-auto min-w-[130px] py-2 text-[13.5px]'
 
 export function ConsoleLogs() {
   const { t, i18n } = useTranslation()
@@ -173,7 +172,7 @@ export function ConsoleLogs() {
             <Link
               to='/usage-logs/$section'
               params={{ section: 'task' }}
-              className='text-t-fg border-t-faint hover:border-t-accent border-b'
+              className='text-t-fg border-t-faint border-b hover:border-(--t-accent)'
             >
               {t('Image and video tasks')}
             </Link>
@@ -183,21 +182,18 @@ export function ConsoleLogs() {
 
       <div className='flex flex-wrap items-center gap-2.5'>
         {isAdmin && (
-          <NativeSelect
+          <TermSelect
             aria-label={t('Whose requests')}
             value={filters.scope}
-            onChange={(event) =>
-              update({ scope: event.target.value as LogScope, username: '' })
+            options={[
+              { value: 'all', label: t('All users') },
+              { value: 'self', label: t('My requests') },
+            ]}
+            onValueChange={(value) =>
+              update({ scope: value as LogScope, username: '' })
             }
-            className={cn(TERM_SELECT, 'min-w-[130px] py-2 text-[13.5px]')}
-          >
-            <NativeSelectOption value='all'>
-              {t('All users')}
-            </NativeSelectOption>
-            <NativeSelectOption value='self'>
-              {t('My requests')}
-            </NativeSelectOption>
-          </NativeSelect>
+            className={FILTER_SELECT}
+          />
         )}
         {isAdmin && filters.scope === 'all' && (
           <Input
@@ -211,46 +207,40 @@ export function ConsoleLogs() {
             )}
           />
         )}
-        <NativeSelect
+        <TermSelect
           aria-label={t('Time range')}
           value={filters.range}
-          onChange={(event) =>
-            update({ range: event.target.value as LogRange })
-          }
-          className={cn(TERM_SELECT, 'min-w-[130px] py-2 text-[13.5px]')}
-        >
-          <NativeSelectOption value='today'>{t('Today')}</NativeSelectOption>
-          <NativeSelectOption value='7d'>{t('Last 7 days')}</NativeSelectOption>
-          <NativeSelectOption value='month'>
-            {t('Month to date')}
-          </NativeSelectOption>
-        </NativeSelect>
-        <NativeSelect
+          options={[
+            { value: 'today', label: t('Today') },
+            { value: '7d', label: t('Last 7 days') },
+            { value: 'month', label: t('Month to date') },
+          ]}
+          onValueChange={(value) => update({ range: value as LogRange })}
+          className={FILTER_SELECT}
+        />
+        <TermSelect
           aria-label={t('Result')}
           value={filters.kind}
-          onChange={(event) => update({ kind: event.target.value as LogKind })}
-          className={cn(TERM_SELECT, 'min-w-[130px] py-2 text-[13.5px]')}
-        >
-          <NativeSelectOption value='ok'>
-            {t('Successful requests')}
-          </NativeSelectOption>
-          <NativeSelectOption value='failed'>
-            {t('Failed requests')}
-          </NativeSelectOption>
-        </NativeSelect>
-        <NativeSelect
+          options={[
+            { value: 'ok', label: t('Successful requests') },
+            { value: 'failed', label: t('Failed requests') },
+          ]}
+          onValueChange={(value) => update({ kind: value as LogKind })}
+          className={FILTER_SELECT}
+        />
+        <TermSelect
           aria-label={t('Group')}
           value={filters.group}
-          onChange={(event) => update({ group: event.target.value })}
-          className={cn(TERM_SELECT, 'min-w-[150px] py-2 text-[13.5px]')}
-        >
-          <NativeSelectOption value=''>{t('All groups')}</NativeSelectOption>
-          {(groups.data ?? []).map((group) => (
-            <NativeSelectOption key={group.key} value={group.key}>
-              {groupName(group.key, t, group.desc)}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+          options={[
+            { value: '', label: t('All groups') },
+            ...(groups.data ?? []).map((group) => ({
+              value: group.key,
+              label: groupName(group.key, t, group.desc),
+            })),
+          ]}
+          onValueChange={(value) => update({ group: value })}
+          className={cn(FILTER_SELECT, 'min-w-[150px]')}
+        />
         <Input
           aria-label={t('Search model')}
           placeholder={t('Search model')}

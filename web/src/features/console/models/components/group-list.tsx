@@ -169,7 +169,7 @@ export function GroupList(props: GroupListProps) {
                 't-row-in relative z-[1] grid grid-cols-[12px_minmax(0,1fr)_auto] items-baseline gap-x-1.5 rounded-[var(--t-radius)] px-2.5 py-[7px] text-left text-sm whitespace-nowrap',
                 'max-md:border-t-line max-md:flex max-md:shrink-0 max-md:items-center max-md:border max-md:px-2.5 max-md:py-1.5',
                 active
-                  ? 'text-t-fg max-md:border-t-accent max-md:bg-t-bg3'
+                  ? 'text-t-fg max-md:border-(--t-accent) max-md:bg-t-bg3'
                   : 'text-t-fg2 hover:text-t-fg',
                 empty && 'text-t-dim'
               )}

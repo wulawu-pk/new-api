@@ -28,8 +28,8 @@ import {
   TERM_BUTTON,
   TERM_BUTTON_PRIMARY,
   TERM_INPUT,
-  TERM_SELECT,
 } from '@/components/terminal/styles'
+import { TermSelect } from '@/components/terminal/term-select'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -41,7 +41,6 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 import { useUserGroups } from '../../hooks/use-user-groups'
 import { getCreateKeySchema, type CreateKeyValues } from '../lib/create-key'
@@ -206,21 +205,15 @@ export function CreateKeyDialog(props: CreateKeyDialogProps) {
                     {t('Expires')}
                   </FormLabel>
                   <FormControl>
-                    <NativeSelect
+                    <TermSelect
                       value={field.value}
-                      onChange={(event) => field.onChange(event.target.value)}
-                      className={TERM_SELECT}
-                    >
-                      <NativeSelectOption value='never'>
-                        {t('Never')}
-                      </NativeSelectOption>
-                      <NativeSelectOption value='30'>
-                        {t('30 days')}
-                      </NativeSelectOption>
-                      <NativeSelectOption value='90'>
-                        {t('90 days')}
-                      </NativeSelectOption>
-                    </NativeSelect>
+                      options={[
+                        { value: 'never', label: t('Never') },
+                        { value: '30', label: t('30 days') },
+                        { value: '90', label: t('90 days') },
+                      ]}
+                      onValueChange={field.onChange}
+                    />
                   </FormControl>
                 </FormItem>
               )}
