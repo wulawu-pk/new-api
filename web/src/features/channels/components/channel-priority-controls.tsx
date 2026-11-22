@@ -111,7 +111,7 @@ export function ChannelSortControl(props: {
       >
         <SelectTrigger
           aria-label={t('Sort channels by')}
-          className='bg-background min-w-24'
+          className='bg-background min-w-24 rounded-l-full pl-3.5'
         >
           <SelectValue />
         </SelectTrigger>
@@ -127,6 +127,7 @@ export function ChannelSortControl(props: {
         type='button'
         size='icon'
         variant='outline'
+        className='rounded-r-full'
         disabled={props.disabled}
         aria-label={props.desc ? t('Descending') : t('Ascending')}
         title={props.desc ? t('Descending') : t('Ascending')}
@@ -189,7 +190,7 @@ export function ChannelPriorityModeToggle(props: {
           <Button
             type='button'
             variant='outline'
-            className='text-muted-foreground aria-pressed:border-primary/30 aria-pressed:bg-primary/10 aria-pressed:text-primary aria-pressed:hover:bg-primary/15'
+            className='text-muted-foreground aria-pressed:border-landing-accent/40 aria-pressed:bg-landing-accent-soft aria-pressed:text-foreground aria-pressed:hover:bg-landing-accent-soft rounded-l-full pl-3.5'
             aria-pressed={props.active}
             disabled={!!props.reason}
             onClick={() => {

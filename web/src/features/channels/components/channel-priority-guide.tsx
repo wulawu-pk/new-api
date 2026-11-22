@@ -70,7 +70,7 @@ export function ChannelPriorityGuide(props: {
           type='button'
           variant='outline'
           size='icon'
-          className='text-muted-foreground'
+          className='text-muted-foreground rounded-r-full'
           aria-label={t('Drag mode help')}
           title={t('Drag mode help')}
         >

@@ -57,6 +57,7 @@ import {
   ADMIN_PERMISSION_RESOURCES,
   hasPermission,
 } from '@/lib/admin-permissions'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { useAuthStore } from '@/stores/auth-store'
 
 import {
@@ -111,7 +112,7 @@ export function ChannelsPrimaryButtons() {
       <div className='flex flex-wrap items-center gap-2'>
         <div ref={setPriorityActionContainer} className='empty:hidden' />
         {/* Desktop: Toggle switches visible */}
-        <div className='bg-muted/40 hidden h-8 shrink-0 items-center gap-2.5 rounded-lg border px-2.5 sm:flex'>
+        <div className='bg-muted hidden h-9 shrink-0 items-center gap-2.5 rounded-full px-3.5 sm:flex'>
           <div className='text-muted-foreground has-data-checked:text-foreground flex items-center gap-2'>
             <Label
               htmlFor='channel-batch-mode'
@@ -161,6 +162,7 @@ export function ChannelsPrimaryButtons() {
         <Tooltip>
           <TooltipTrigger render={<span className='inline-flex' />}>
             <Button
+              className={CONSOLE_PRIMARY_BUTTON}
               onClick={() => {
                 if (!canEditSensitive) return
                 setCurrentRow(null)
@@ -183,7 +185,9 @@ export function ChannelsPrimaryButtons() {
         {/* More Actions */}
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={<Button variant='outline' size='icon' />}
+            render={
+              <Button variant='outline' size='icon' className='rounded-full' />
+            }
             aria-label={t('More actions')}
           >
             <MoreHorizontal className='size-4' aria-hidden />
