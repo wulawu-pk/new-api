@@ -73,7 +73,8 @@ function GroupCard(props: {
           </span>
         </div>
         <AsciiSpark
-          className='mb-5'
+          className='mb-5 h-10'
+          cellClassName='rounded-t-[2px]'
           label={t('Availability trend')}
           warnBelow={99}
           cells={slots.map((slot) => ({
