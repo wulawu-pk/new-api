@@ -29,6 +29,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { NotificationPopover } from '@/components/notification-popover'
 import { SignOutDialog } from '@/components/sign-out-dialog'
 import { SkeletonText } from '@/components/terminal/data-states'
 import { EASE, SLIDE_EASE, SLIDE_MS } from '@/components/terminal/lib'
@@ -39,6 +40,7 @@ import { useScrambleText } from '@/components/terminal/use-scramble'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { useIsAdmin } from '@/hooks/use-admin'
+import { useNotifications } from '@/hooks/use-notifications'
 import { useStatus } from '@/hooks/use-status'
 import { formatQuota } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -181,6 +183,7 @@ export function ConsoleShell(props: {
   const username = useAuthStore((state) => state.auth.user?.username)
   const isAdmin = useIsAdmin()
   const self = useSelfUser()
+  const notifications = useNotifications()
   const { status } = useStatus()
   const [signOutOpen, setSignOutOpen] = useState(false)
   const [condensed, setCondensed] = useState(false)
@@ -523,6 +526,19 @@ export function ConsoleShell(props: {
               transition={layoutTransition}
               className='text-t-dim flex flex-none items-center gap-3 text-[13px]'
             >
+              {/* Notice and announcement timeline (the old console's bell),
+               * with the unread count; public, like the notice itself. */}
+              <NotificationPopover
+                open={notifications.popoverOpen}
+                onOpenChange={notifications.setPopoverOpen}
+                unreadCount={notifications.unreadCount}
+                activeTab={notifications.activeTab}
+                onTabChange={notifications.setActiveTab}
+                notice={notifications.notice}
+                announcements={notifications.announcements}
+                loading={notifications.loading}
+                className='text-t-fg2 hover:text-t-fg rounded-full hover:bg-white/6'
+              />
               {signedIn ? (
                 <>
                   <span

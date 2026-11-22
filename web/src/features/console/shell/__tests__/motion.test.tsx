@@ -37,8 +37,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConsoleShell } from '../console-shell'
 
+/** What the shell's notice bell reads; tests change the unread count. */
+const notificationsMock = {
+  popoverOpen: false,
+  setPopoverOpen: () => undefined,
+  unreadCount: 0,
+  activeTab: 'notice' as const,
+  setActiveTab: () => undefined,
+  notice: '',
+  announcements: [],
+  loading: false,
+}
+
 vi.mock('@/hooks/use-status', () => ({ useStatus: () => ({ status: null }) }))
 vi.mock('@/hooks/use-admin', () => ({ useIsAdmin: () => false }))
+vi.mock('@/hooks/use-notifications', () => ({
+  useNotifications: () => notificationsMock,
+}))
 vi.mock('../../hooks/use-self-user', () => ({
   useSelfUser: () => ({ data: undefined }),
 }))

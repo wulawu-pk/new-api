@@ -37,8 +37,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ConsoleShell } from '../console-shell'
 
+/** What the shell's notice bell reads; tests change the unread count. */
+const notificationsMock = {
+  popoverOpen: false,
+  setPopoverOpen: () => undefined,
+  unreadCount: 0,
+  activeTab: 'notice' as const,
+  setActiveTab: () => undefined,
+  notice: '',
+  announcements: [],
+  loading: false,
+}
+
 vi.mock('@/hooks/use-status', () => ({ useStatus: () => ({ status: null }) }))
 vi.mock('@/hooks/use-admin', () => ({ useIsAdmin: () => false }))
+vi.mock('@/hooks/use-notifications', () => ({
+  useNotifications: () => notificationsMock,
+}))
 vi.mock('../../hooks/use-self-user', () => ({
   useSelfUser: () => ({ data: undefined }),
 }))
@@ -183,6 +198,16 @@ describe('console top bar', () => {
 
     expect(document.querySelector('canvas')).not.toBeNull()
     expect(document.querySelector('[data-backdrop="grid"]')).toBeNull()
+  })
+
+  it('shows the notice bell with the unread count in the top bar', async () => {
+    notificationsMock.unreadCount = 2
+    renderShell('/dashboard')
+    await screen.findByText('/dashboard page')
+
+    const bell = screen.getByRole('button', { name: 'Notifications' })
+    expect(bell).toHaveTextContent('2')
+    notificationsMock.unreadCount = 0
   })
 
   it('marks the open legal document in the status bar', async () => {
