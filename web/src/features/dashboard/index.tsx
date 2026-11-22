@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { getRouteApi, useNavigate } from '@tanstack/react-router'
+import { getRouteApi, Link } from '@tanstack/react-router'
 import { Eye, EyeOff } from 'lucide-react'
 import { useState, useCallback, useMemo, lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +25,6 @@ import { SectionPageLayout } from '@/components/layout'
 import { FadeIn } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Tooltip,
   TooltipContent,
@@ -38,7 +37,12 @@ import { useAuthStore } from '@/stores/auth-store'
 import { ModelsChartPreferences } from './components/models/models-chart-preferences'
 import { ModelsFilter } from './components/models/models-filter-dialog'
 import { OverviewDashboard } from './components/overview/overview-dashboard'
-import { DEFAULT_TIME_GRANULARITY } from './constants'
+import {
+  DASHBOARD_EYEBROW,
+  DASHBOARD_FRAME,
+  DASHBOARD_SEGMENT,
+  DEFAULT_TIME_GRANULARITY,
+} from './constants'
 import {
   buildDefaultDashboardFilters,
   getDefaultDays,
@@ -117,7 +121,7 @@ const LazyFlowCharts = lazy(() =>
 
 function LogStatCardsFallback() {
   return (
-    <div className='overflow-hidden rounded-lg border'>
+    <div className={DASHBOARD_FRAME}>
       <div className='divide-border/60 grid min-w-0 grid-cols-2 divide-x sm:grid-cols-3 lg:grid-cols-7'>
         {LOG_STAT_CARD_FALLBACK_KEYS.map((key, index) => (
           <div
@@ -146,7 +150,7 @@ function LogStatCardsFallback() {
 
 function ModelChartsFallback() {
   return (
-    <div className='overflow-hidden rounded-lg border'>
+    <div className={DASHBOARD_FRAME}>
       <div className='flex items-center justify-between border-b px-4 py-3 sm:px-5'>
         <Skeleton className='h-5 w-32' />
         <Skeleton className='h-8 w-72' />
@@ -160,7 +164,7 @@ function ModelChartsFallback() {
 
 function PerformanceOverviewFallback() {
   return (
-    <div className='overflow-hidden rounded-lg border'>
+    <div className={DASHBOARD_FRAME}>
       <div className='flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-5'>
         <div className='flex items-center gap-2'>
           <Skeleton className='h-4 w-24' />
@@ -198,7 +202,6 @@ const SECTION_META: Record<DashboardSectionId, { titleKey: string }> = {
 
 export function Dashboard() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const params = route.useParams()
   const userRole = useAuthStore((state) => state.auth.user?.role)
   const activeSection = (params.section ??
@@ -256,15 +259,6 @@ export function Dashboard() {
         (section) => section !== 'overview' && (section !== 'users' || isAdmin)
       ),
     [isAdmin]
-  )
-  const handleSectionChange = useCallback(
-    (section: string) => {
-      void navigate({
-        to: '/dashboard/$section',
-        params: { section: section as DashboardSectionId },
-      })
-    },
-    [navigate]
   )
   const showSectionTabs =
     activeSection !== 'overview' && visibleSections.length > 1
@@ -331,19 +325,36 @@ export function Dashboard() {
       <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <div className='space-y-3 sm:space-y-4'>
-          <div className='flex flex-wrap items-center justify-between gap-1.5 sm:gap-2'>
+          <div className='flex flex-wrap items-center justify-between gap-2'>
             {showSectionTabs ? (
-              <Tabs value={activeSection} onValueChange={handleSectionChange}>
-                <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
-                  {visibleSections.map((section) => (
-                    <TabsTrigger key={section} value={section}>
-                      {t(SECTION_META[section].titleKey)}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-              </Tabs>
+              <nav
+                aria-label={t('Dashboard sections')}
+                className={DASHBOARD_SEGMENT.group}
+              >
+                {visibleSections.map((section) => (
+                  <Link
+                    key={section}
+                    to='/dashboard/$section'
+                    params={{ section }}
+                    aria-current={
+                      section === activeSection ? 'page' : undefined
+                    }
+                    className={cn(
+                      DASHBOARD_SEGMENT.item,
+                      'inline-flex items-center',
+                      section === activeSection
+                        ? DASHBOARD_SEGMENT.active
+                        : DASHBOARD_SEGMENT.idle
+                    )}
+                  >
+                    {t(SECTION_META[section].titleKey)}
+                  </Link>
+                ))}
+              </nav>
             ) : (
-              <div />
+              <p aria-hidden className={DASHBOARD_EYEBROW}>
+                [ {t(meta.titleKey)} ]
+              </p>
             )}
             {sectionActions != null && (
               <div className='flex shrink-0 flex-wrap items-center gap-1.5 sm:gap-2'>

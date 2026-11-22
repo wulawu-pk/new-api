@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next'
 
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { DASHBOARD_FRAME } from '@/features/dashboard/constants'
 import { getPerfMetricsSummary } from '@/features/performance-metrics/api'
 import {
   formatLatency,
@@ -61,14 +62,14 @@ export function PerformanceOverview() {
 
   if (!loading && !hasData) {
     return (
-      <div className='text-muted-foreground overflow-hidden rounded-lg border px-4 py-3 text-center text-xs'>
+      <div className='text-muted-foreground border-border rounded-3xl border border-dashed px-4 py-3 text-center text-xs'>
         {t('No performance data available')}
       </div>
     )
   }
 
   return (
-    <div className='overflow-hidden rounded-lg border'>
+    <div className={DASHBOARD_FRAME}>
       <div className='flex flex-wrap items-center gap-x-5 gap-y-2.5 px-4 py-2.5 sm:px-5 sm:py-3'>
         {/* Title */}
         <div className='flex items-center gap-1.5'>

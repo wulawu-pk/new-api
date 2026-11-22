@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useTheme } from '@/context/theme-provider'
 import { getUserQuotaDataByUsers } from '@/features/dashboard/api'
 import {
+  DASHBOARD_FRAME,
   TIME_GRANULARITY_OPTIONS,
   TIME_RANGE_PRESETS,
 } from '@/features/dashboard/constants'
@@ -228,10 +229,7 @@ export function UserCharts(props: UserChartsProps) {
           const spec = chartData[chart.specKey]
 
           return (
-            <div
-              key={chart.value}
-              className='overflow-hidden rounded-lg border'
-            >
+            <div key={chart.value} className={DASHBOARD_FRAME}>
               <div className='flex w-full items-center gap-2 border-b px-3 py-2 sm:px-5 sm:py-3'>
                 <IconBadge tone='info' size='sm'>
                   <Users />

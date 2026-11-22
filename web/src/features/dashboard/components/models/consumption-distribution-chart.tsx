@@ -26,6 +26,8 @@ import { useThemeCustomization } from '@/context/theme-customization-provider'
 import { useTheme } from '@/context/theme-provider'
 import {
   CONSUMPTION_DISTRIBUTION_CHART_OPTIONS,
+  DASHBOARD_FRAME,
+  DASHBOARD_SEGMENT,
   DEFAULT_TIME_GRANULARITY,
 } from '@/features/dashboard/constants'
 import { processChartData } from '@/features/dashboard/lib'
@@ -120,7 +122,7 @@ export function ConsumptionDistributionChart(
   ].join('-')
 
   return (
-    <div className='overflow-hidden rounded-lg border'>
+    <div className={DASHBOARD_FRAME}>
       <div className='flex w-full flex-col gap-1.5 border-b px-3 py-2 sm:gap-3 sm:px-5 sm:py-3 lg:flex-row lg:items-center lg:justify-between'>
         <div className='flex items-center gap-2'>
           <IconBadge tone='success' size='sm'>
@@ -132,7 +134,7 @@ export function ConsumptionDistributionChart(
           </span>
         </div>
 
-        <div className='bg-muted/60 inline-flex h-7 w-full overflow-x-auto rounded-lg border p-0.5 sm:h-8 sm:w-auto'>
+        <div className={DASHBOARD_SEGMENT.group}>
           {CONSUMPTION_DISTRIBUTION_CHART_OPTIONS.map((item) => {
             const Icon = CHART_TYPE_ICONS[item.value]
             return (
@@ -140,10 +142,10 @@ export function ConsumptionDistributionChart(
                 key={item.value}
                 type='button'
                 onClick={() => setChartType(item.value)}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors ${
+                className={`${DASHBOARD_SEGMENT.item} inline-flex items-center gap-1.5 ${
                   chartType === item.value
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
+                    ? DASHBOARD_SEGMENT.active
+                    : DASHBOARD_SEGMENT.idle
                 }`}
               >
                 <Icon className='size-3.5' />
