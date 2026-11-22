@@ -213,6 +213,43 @@ describe('console top bar', () => {
     notificationsMock.unreadCount = 0
   })
 
+  it('puts the language switch, then the theme switch, before the notice bell in the top bar', async () => {
+    renderShell('/dashboard')
+    await screen.findByText('/dashboard page')
+    const bar = topBar()
+
+    const language = within(bar).getByRole('group', { name: 'Language' })
+    const theme = within(bar).getByRole('button', {
+      name: /Switch to (light|dark) theme/,
+    })
+    const bell = within(bar).getByRole('button', { name: 'Notifications' })
+    const follows = (a: Node, b: Node) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(language, theme)).toBe(true)
+    expect(follows(theme, bell)).toBe(true)
+  })
+
+  it('offers the language and theme switches in the narrow-screen menu too', async () => {
+    renderShell('/dashboard')
+    await screen.findByText('/dashboard page')
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Toggle navigation menu' })
+    )
+    const menu = await waitFor(() => {
+      const el = document.querySelector<HTMLElement>('#console-menu')
+      if (!el) throw new Error('menu not open')
+      return el
+    })
+
+    expect(
+      within(menu).getByRole('group', { name: 'Language' })
+    ).toBeInTheDocument()
+    expect(
+      within(menu).getByRole('button', { name: /Switch to (light|dark) theme/ })
+    ).toBeInTheDocument()
+  })
+
   it('marks the open legal document in the status bar', async () => {
     renderShell('/user-agreement')
     await screen.findByText('/user-agreement page')

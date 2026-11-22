@@ -7598,7 +7598,6 @@
     "peroai sign in": "peroai sign in",
     "peroai sign up": "peroai sign up",
     "requests": "requests",
-    "used {{amount}}": "used {{amount}}",
     "{{count}} keys": "{{count}} keys",
     "{{count}} steps left": "{{count}} steps left",
     "GPT Special": "GPT Special",
@@ -7638,6 +7637,11 @@
     "“{{query}}” in {{count}} groups": "“{{query}}” in {{count}} groups",
     "My requests": "My requests",
     "Whose requests": "Whose requests",
-    "{{count}} in total, {{size}} per page": "{{count}} in total, {{size}} per page"
+    "{{count}} in total, {{size}} per page": "{{count}} in total, {{size}} per page",
+    "Switch to light theme": "Switch to light theme",
+    "Switch to dark theme": "Switch to dark theme",
+    "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.": "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.",
+    ", used {{amount}}": ", used {{amount}}",
+    "USDT / USDC": "USDT / USDC"
   }
 }

@@ -23,9 +23,11 @@ import { Kbd } from '@/components/ui/kbd'
 import { useStatus } from '@/hooks/use-status'
 import { cn } from '@/lib/utils'
 
+import { LanguageToggle } from './language-toggle'
 import { Pane } from './pane'
 import { RelayCanvas, type RelayCanvasRef } from './relay-canvas'
 import { TermLogo } from './term-logo'
+import { ThemeToggle } from './theme-toggle'
 
 type TerminalAuthFrameProps = {
   /** Title on the dialog's border, e.g. "peroai 登录". */
@@ -45,7 +47,7 @@ type TerminalAuthFrameProps = {
 
 function FrameKbd(props: { children: ReactNode }) {
   return (
-    <Kbd className='text-t-fg2 h-auto min-w-0 rounded-md border-0 bg-white/5 px-[5px] py-0 font-mono text-[11.5px] font-normal shadow-[inset_0_0_0_1px_var(--t-hair),0_1px_0_rgb(0_0_0/0.6)]'>
+    <Kbd className='text-t-fg2 bg-t-ink/5 h-auto min-w-0 rounded-md border-0 px-[5px] py-0 font-mono text-[11.5px] font-normal shadow-[inset_0_0_0_1px_var(--t-hair),var(--t-key-shadow)]'>
       {props.children}
     </Kbd>
   )
@@ -84,9 +86,13 @@ export const TerminalAuthFrame = forwardRef<
       />
       <div className='text-t-dim absolute top-0 right-4 left-4 z-[3] flex h-[54px] items-center justify-between text-[13px]'>
         <TermLogo />
-        <a href='/' data-scramble='' className='hover:text-t-fg'>
-          {t('Back to home')}
-        </a>
+        <span className='flex items-center gap-1.5'>
+          <LanguageToggle />
+          <ThemeToggle />
+          <a href='/' data-scramble='' className='hover:text-t-fg ml-2.5'>
+            {t('Back to home')}
+          </a>
+        </span>
       </div>
       <div className='absolute inset-x-0 top-[54px] bottom-9 z-[3] flex items-center justify-center overflow-auto px-4 py-6'>
         <div

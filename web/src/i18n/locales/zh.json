@@ -7598,7 +7598,6 @@
     "peroai sign in": "peroai 登录",
     "peroai sign up": "peroai 注册",
     "requests": "次请求",
-    "used {{amount}}": "已用 {{amount}}",
     "{{count}} keys": "{{count}} 个",
     "{{count}} steps left": "还差 {{count}} 步",
     "GPT Special": "GPT 特惠",
@@ -7638,6 +7637,11 @@
     "“{{query}}” in {{count}} groups": "「{{query}}」出现在 {{count}} 个分组",
     "My requests": "我的请求",
     "Whose requests": "查看谁的请求",
-    "{{count}} in total, {{size}} per page": "共 {{count}} 条，每页 {{size}} 条"
+    "{{count}} in total, {{size}} per page": "共 {{count}} 条，每页 {{size}} 条",
+    "Switch to light theme": "切换到亮色主题",
+    "Switch to dark theme": "切换到暗色主题",
+    "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.": "英文译本仅为方便阅读而提供；如与中文版本不一致，以中文版本为准。",
+    ", used {{amount}}": "，已用 {{amount}}",
+    "USDT / USDC": "USDT、USDC"
   }
 }

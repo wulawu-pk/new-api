@@ -32,10 +32,10 @@ export const TERM_INPUT =
 export const TERM_BUTTON = 'rounded-full h-auto px-4 py-2 text-sm'
 
 export const TERM_BUTTON_PRIMARY =
-  'rounded-full h-auto px-4 py-2 text-sm shadow-[0_8px_24px_-10px_rgb(236_234_230/0.35)] hover:bg-white hover:border-white'
+  'rounded-full h-auto px-4 py-2 text-sm shadow-[0_8px_24px_-10px_var(--t-primary-glow)] hover:bg-(--t-primary-hover) hover:border-(--t-primary-hover)'
 
 export const TERM_BUTTON_GHOST =
-  'rounded-full h-auto px-3 py-1 text-[13px] text-t-dim hover:text-t-fg hover:bg-white/5 border border-transparent'
+  'rounded-full h-auto px-3 py-1 text-[13px] text-t-dim hover:text-t-fg hover:bg-t-ink/5 border border-transparent'
 
 /** `components/password-input` wraps an `<input>`; style that input. */
 export const TERM_PASSWORD =

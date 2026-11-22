@@ -78,13 +78,13 @@ export function TermSelect(props: TermSelectProps) {
       <SelectContent
         alignItemWithTrigger={false}
         sideOffset={6}
-        className='bg-t-bg2 text-t-fg rounded-(--t-radius) p-1 shadow-[0_18px_40px_-14px_rgb(0_0_0/0.7)] ring-(--t-line)'
+        className='bg-t-bg2 text-t-fg rounded-(--t-radius) p-1 shadow-[var(--t-menu-shadow)] ring-(--t-line)'
       >
         {props.options.map((option) => (
           <SelectItem
             key={option.value}
             value={option.value}
-            className='text-t-fg2 focus:text-t-fg not-data-[variant=destructive]:focus:**:text-t-fg data-[selected]:text-t-fg data-[selected]:[&_svg]:text-t-accent! rounded-[calc(var(--t-radius)-3px)] py-2 pr-8 pl-2.5 focus:bg-white/[0.06]'
+            className='text-t-fg2 focus:text-t-fg not-data-[variant=destructive]:focus:**:text-t-fg data-[selected]:text-t-fg data-[selected]:[&_svg]:text-t-accent! focus:bg-t-ink/[0.06] rounded-[calc(var(--t-radius)-3px)] py-2 pr-8 pl-2.5'
           >
             {option.label}
           </SelectItem>

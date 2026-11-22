@@ -613,7 +613,7 @@ For commercial licensing, please contact support@quantumnous.com
   --skeleton-highlight: oklch(0.41 0.004 60);
 }
 
-/* ── peroai (暗色终端 / dark terminal) ─────────────────────────────────── */
+/* ── peroai (暗色终端 / dark terminal, plus a light variant) ──────────── */
 /*
  * peroai brand theme (fork default), v3. Mirrors the design spec in
  * ai-relay/design/v3/l-ascii.html and the live beta landing page:
@@ -625,9 +625,10 @@ For commercial licensing, please contact support@quantumnous.com
  * cards (16px corners, hairline ring, soft deep shadow), controls 10px,
  * buttons pills, one easing curve, faint grid behind the page.
  *
- * The theme is dark-only: ThemeProvider forces the `dark` class for this
- * fork, and the same tokens are declared for both modes so a stale saved
- * "light" preference can never produce a half-light page.
+ * Dark is the brand default (no saved preference → dark). The tokens below
+ * are the dark palette and apply in both modes; the `.light` block after
+ * them swaps in the light palette (design/v7/theme-i18n-spec.md §2), so
+ * every shadcn mapping and component follows without its own override.
  *
  * Fonts: Geist / Geist Mono are bundled with @fontsource (index.css). CJK
  * text uses the system font (PingFang SC / Microsoft YaHei / Noto Sans SC),
@@ -670,6 +671,20 @@ For commercial licensing, please contact support@quantumnous.com
   --t-card: linear-gradient(var(--t-bg2), var(--t-bg2));
   --t-lift: 0 0 0 1px var(--t-hair), 0 40px 80px -40px rgb(0 0 0 / 0.6);
   --t-lift-on: 0 0 0 1px var(--t-hi), 0 40px 80px -40px rgb(0 0 0 / 0.6);
+  /* The lifted pill of segmented controls and the window bar. */
+  --t-pill: rgb(255 255 255 / 0.09);
+  --t-pill-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.07), 0 2px 8px -2px rgb(0 0 0 / 0.6);
+  /* Primary (inverted) buttons: hover fill and the soft glow under them. */
+  --t-primary-hover: #ffffff;
+  --t-primary-glow: rgb(236 234 230 / 0.35);
+  /* A light sweeping across a selected row or along a hero pane's edge. */
+  --t-sheen: rgb(255 255 255 / 0.08);
+  --t-sweep: rgb(255 255 255 / 0.5);
+  /* Floating surfaces (menus, the folded top bar, toasts, dialogs). */
+  --t-float-shadow: 0 12px 32px -16px rgb(0 0 0 / 0.7);
+  --t-menu-shadow: 0 18px 40px -14px rgb(0 0 0 / 0.7);
+  --t-key-shadow: 0 1px 0 rgb(0 0 0 / 0.6);
 
   --background: var(--t-bg);
   --foreground: var(--t-fg);
@@ -788,6 +803,44 @@ For commercial licensing, please contact support@quantumnous.com
 
   color-scheme: dark;
 }
+/* Light palette: cool neutral white, not warm paper. Same structure as the
+ * dark one — white cards a step brighter than the light grey page, lifted by
+ * a hairline and a soft shadow rather than by a grey fill. Text contrast is
+ * at least 4.5:1 on both the page and the cards. */
+.light [data-theme-preset='peroai'],
+.light :where(body:not([data-theme-preset])) {
+  --t-bg: #f5f6f7;
+  --t-bg2: #ffffff;
+  --t-bg3: #eceef0;
+  --t-line: rgb(17 20 24 / 0.08);
+  --t-faint: #c5c8cd;
+  --t-dim: #5b6068;
+  --t-fg2: #2c3036;
+  --t-fg: #111317;
+  --t-ok: #2b8a3e;
+  --t-warn: #a86a0c;
+  --t-bad: #d9363e;
+  --t-hi: rgb(17 20 24 / 0.2);
+  --t-hair: rgb(17 20 24 / 0.1);
+  --t-placeholder: #7d828a;
+  --t-lift: 0 0 0 1px var(--t-hair), 0 24px 48px -28px rgb(17 24 39 / 0.16);
+  --t-lift-on: 0 0 0 1px var(--t-hi), 0 24px 48px -28px rgb(17 24 39 / 0.16);
+  --t-pill: #ffffff;
+  --t-pill-shadow:
+    0 0 0 1px rgb(17 20 24 / 0.07), 0 1px 3px rgb(17 24 39 / 0.12);
+  --t-primary-hover: #2c3036;
+  --t-primary-glow: rgb(17 20 24 / 0.22);
+  --t-sheen: rgb(255 255 255 / 0.7);
+  --t-sweep: rgb(17 20 24 / 0.18);
+  --t-float-shadow: 0 12px 32px -16px rgb(17 24 39 / 0.18);
+  --t-menu-shadow: 0 18px 40px -14px rgb(17 24 39 / 0.2);
+  --t-key-shadow: 0 1px 0 rgb(17 20 24 / 0.12);
+
+  /* Primary buttons stay inverted: dark fill, white text. */
+  --primary-foreground: #ffffff;
+
+  color-scheme: light;
+}
 /* Cards look like panes: lifted surface, hairline ring, soft deep shadow. */
 [data-theme-preset='peroai'] [data-slot='card'],
 :where(body:not([data-theme-preset])) [data-slot='card'] {
@@ -812,6 +865,11 @@ body[data-theme-preset='peroai']::before,
     rgb(255 255 255 / 0.035),
     transparent 70%
   );
+}
+/* No sheen in light mode: a dark one would read as a stain. */
+.light body[data-theme-preset='peroai']::before,
+.light :where(body:not([data-theme-preset]))::before {
+  background: none;
 }
 [data-theme-preset='peroai'] ::selection,
 :where(body:not([data-theme-preset])) ::selection {
@@ -956,4 +1014,13 @@ body[data-theme-preset='peroai']::before,
  * own alpha into it. */
 :root {
   --t-accent-rgb: 61 219 165;
+  /* Ink of the canvas backdrops (sonar, relay, signal grid) and of every
+   * neutral overlay (hairlines, hover fills, grids): white on dark, near
+   * black on light. The same name is used by the beta landing page and docs. */
+  --fx-ink-rgb: 255 255 255;
+}
+/* Light mode: mint is too pale on white; this deep green has 5.3:1. */
+:root.light {
+  --t-accent-rgb: 7 122 87;
+  --fx-ink-rgb: 17 20 24;
 }

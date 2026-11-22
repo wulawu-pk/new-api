@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 @custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
 
 @theme inline {
   --font-sans: var(--font-ui-sans);

@@ -300,12 +300,10 @@ describe('theme font selection', () => {
   })
 })
 
-describe('forced theme (peroai dark-only console)', () => {
-  it('keeps html dark when a light preference is saved', () => {
-    localStorage.setItem('newapi:theme:v1:mode', 'light')
-
+describe('peroai default theme', () => {
+  it('applies dark when nothing is saved, even on a light system', () => {
     render(
-      <ThemeProvider forcedTheme='dark'>
+      <ThemeProvider defaultTheme='dark'>
         <ThemeCustomizationProvider>
           <ThemeControls />
         </ThemeCustomizationProvider>
@@ -314,5 +312,20 @@ describe('forced theme (peroai dark-only console)', () => {
 
     expect(document.documentElement).toHaveClass('dark')
     expect(document.documentElement).not.toHaveClass('light')
+  })
+
+  it('applies a saved light preference over the dark default', () => {
+    localStorage.setItem('newapi:theme:v1:mode', 'light')
+
+    render(
+      <ThemeProvider defaultTheme='dark'>
+        <ThemeCustomizationProvider>
+          <ThemeControls />
+        </ThemeCustomizationProvider>
+      </ThemeProvider>
+    )
+
+    expect(document.documentElement).toHaveClass('light')
+    expect(document.documentElement).not.toHaveClass('dark')
   })
 })

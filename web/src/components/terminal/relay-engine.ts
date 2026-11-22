@@ -31,7 +31,19 @@ For commercial licensing, please contact support@quantumnous.com
  *
  * It only runs while visible and the tab is active, and draws a single
  * still frame when the user prefers reduced motion.
+ *
+ * Colours: greys from the ink of --fx-ink-rgb (light ink keeps the original
+ * dark-theme greys exactly), the accent from --t-accent-rgb; a theme switch
+ * on <html> repaints a frame in the new palette.
  */
+
+import {
+  isLightInk,
+  readAccentRgb,
+  readInkRgb,
+  watchTheme,
+  type Rgb,
+} from './canvas-colors'
 
 type Point = [number, number]
 type Lane = [Point, Point, Point, Point]
@@ -112,50 +124,46 @@ const VISC = Math.min(0.49 - C2, 0.4 * 0.12)
 const KEEP = 1 - 0.045
 const REST = 1 - 0.004
 
-type Rgb = [number, number, number]
+/** Greys on a dark page (light ink), unchanged since the dark theme. */
 const DIM: Rgb = [141, 146, 156]
 const FG: Rgb = [236, 234, 230]
-/** Accent when the page sets none: mint #3DDBA5, as in theme-presets.css. */
-const DEFAULT_ACCENT: Rgb = [61, 219, 165]
+/** On a light page: a darker grey so faint glyphs still show on white. */
+const DIM_ON_LIGHT: Rgb = [104, 110, 120]
 function rgba(a: Rgb, b: Rgb, t: number, alpha: number): string {
   const mix = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t)
   return `rgba(${mix(0)},${mix(1)},${mix(2)},${alpha.toFixed(3)})`
 }
-// Troughs lean white; crests lean to the accent (see accentPalette).
-const TROUGH = Array.from({ length: STEPS + 1 }, (_, i) =>
-  rgba(DIM, FG, i / STEPS, 0.14 + (0.86 * i) / STEPS)
-)
-const LOGO_COLORS = Array.from({ length: 9 }, (_, i) =>
-  rgba(FG, FG, 0, 0.55 + (0.45 * i) / 8)
-)
-const FIELD_COLORS = Array.from({ length: 6 }, (_, i) =>
-  rgba(DIM, DIM, 0, 0.04 + (0.2 * i) / 5)
-)
-const RAIL = 'rgba(141,146,156,.38)'
 
-/** The page accent as RGB, read from --t-accent-rgb ("61 219 165"). */
-function readAccent(el: Element): Rgb {
-  const raw = getComputedStyle(el).getPropertyValue('--t-accent-rgb').trim()
-  const parts = raw.split(/[\s,]+/).map(Number)
-  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
-    return DEFAULT_ACCENT
-  }
-  return [parts[0], parts[1], parts[2]]
-}
-
-/** Every colour the animation takes from the accent. */
-function accentPalette(accent: Rgb) {
+/** Every colour the animation draws with, for one ink and accent. */
+function relayPalette(ink: Rgb, accent: Rgb) {
+  const onDark = isLightInk(ink)
+  const fg = onDark ? FG : ink
+  const dim = onDark ? DIM : DIM_ON_LIGHT
   return {
-    // At zero a crest equals the base dim, at full strength the accent.
+    // Troughs lean to the ink; crests lean to the accent: at zero a crest
+    // equals the base dim, at full strength the accent.
+    trough: Array.from({ length: STEPS + 1 }, (_, i) =>
+      rgba(dim, fg, i / STEPS, 0.14 + (0.86 * i) / STEPS)
+    ),
     crest: Array.from({ length: STEPS + 1 }, (_, i) =>
-      rgba(DIM, accent, i / STEPS, 0.14 + (0.86 * i) / STEPS)
+      rgba(dim, accent, i / STEPS, 0.14 + (0.86 * i) / STEPS)
+    ),
+    logo: Array.from({ length: 9 }, (_, i) =>
+      rgba(fg, fg, 0, 0.55 + (0.45 * i) / 8)
+    ),
+    field: Array.from({ length: 6 }, (_, i) =>
+      rgba(dim, dim, 0, 0.04 + (0.2 * i) / 5)
     ),
     ring: Array.from({ length: 9 }, (_, i) =>
-      rgba(FG, accent, i / 8, 0.5 + (0.5 * i) / 8)
+      rgba(fg, accent, i / 8, 0.5 + (0.5 * i) / 8)
     ),
+    rail: `rgba(${dim.join(',')},.38)`,
     railOn: `rgba(${accent.join(',')},.5)`,
     hot: accent.join(','),
     text: `rgb(${accent.join(',')})`,
+    // A request on its way in: the ink-side colour.
+    inHot: fg.join(','),
+    inText: `rgb(${fg.join(',')})`,
   }
 }
 
@@ -274,7 +282,9 @@ export function createRelay(
   options: RelayOptions = {}
 ): RelayHandle {
   const ctx = canvas.getContext('2d')
-  const tint = accentPalette(readAccent(canvas))
+  let ink = readInkRgb(canvas)
+  let accent = readAccentRgb(canvas)
+  let tint = relayPalette(ink, accent)
   const clients = options.clients ?? ['Claude Code', 'Codex', 'curl', 'Python']
   let models = options.models ?? ['claude', 'gpt', 'grok', 'deepseek']
   const reduce = options.reducedMotion ?? false
@@ -555,7 +565,7 @@ export function createRelay(
         if (mask[k] > 0.3) {
           const b = mask[k] * (0.75 + 0.25 * Math.sin(t * 2 - (c + r) * 0.22))
           glyph = LOGO[Math.min(9, 3 + Math.floor(b * 6.9))]
-          color = LOGO_COLORS[Math.min(8, Math.round(b * 8))]
+          color = tint.logo[Math.min(8, Math.round(b * 8))]
           solid = true
         } else if (ring[k] > 0.3) {
           glyph = LOGO[Math.min(9, 4 + Math.floor(ring[k] * 5.9))]
@@ -563,7 +573,7 @@ export function createRelay(
           solid = true
         } else if (rails[k]) {
           glyph = '·'
-          color = rails[k] === 2 ? tint.railOn : RAIL
+          color = rails[k] === 2 ? tint.railOn : tint.rail
         } else {
           // Slowly drifting clouds whose opacity changes continuously.
           const v =
@@ -572,7 +582,7 @@ export function createRelay(
           const a = Math.min(1, (v - 0.55) / 1.2)
           if (a > 0) {
             glyph = PALETTE[1 + Math.floor(a * 3.99)]
-            color = FIELD_COLORS[Math.round(a * 5)]
+            color = tint.field[Math.round(a * 5)]
           }
         }
         if (active) {
@@ -592,7 +602,7 @@ export function createRelay(
                   Math.max(0, Math.min(9, Math.round(level * 9 + jitter)))
                 ]
             }
-            color = (sample[0] >= 0 ? tint.crest : TROUGH)[
+            color = (sample[0] >= 0 ? tint.crest : tint.trough)[
               Math.round(level * STEPS)
             ]
           }
@@ -630,7 +640,7 @@ export function createRelay(
       if (p.t < 0 || p.x === null) continue
       const edge = Math.min(1, p.t / 0.06, (1 - p.t) / 0.06)
       if (edge <= 0) continue
-      const hot = p.side ? tint.hot : '236,234,230'
+      const hot = p.side ? tint.hot : tint.inHot
       ctx.globalAlpha = edge
       ctx.fillStyle = `rgba(${hot},.22)`
       ctx.beginPath()
@@ -668,7 +678,7 @@ export function createRelay(
       ctx.fillStyle = '#000'
       ctx.fillRect(box[0], box[1], box[2], box[3])
       ctx.globalCompositeOperation = 'source-over'
-      ctx.fillStyle = p.side ? tint.text : '#ECEAE6'
+      ctx.fillStyle = p.side ? tint.text : tint.inText
       ctx.fillText(p.txt, tx, p.y)
     }
     ctx.globalAlpha = 1
@@ -757,6 +767,15 @@ export function createRelay(
     drop(x, y, 24, 0.7)
   }
   const onVisibility = () => (document.hidden ? stop() : start())
+  const unwatchTheme = watchTheme(() => {
+    const nextInk = readInkRgb(canvas)
+    const nextAccent = readAccentRgb(canvas)
+    if (`${nextInk}|${nextAccent}` === `${ink}|${accent}`) return
+    ink = nextInk
+    accent = nextAccent
+    tint = relayPalette(ink, accent)
+    if (ready) frame(performance.now(), 0)
+  })
   let resizeTimer = 0
   const onResize = () => {
     window.clearTimeout(resizeTimer)
@@ -833,6 +852,7 @@ export function createRelay(
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('resize', onResize)
       window.clearTimeout(resizeTimer)
+      unwatchTheme()
     },
   }
 }

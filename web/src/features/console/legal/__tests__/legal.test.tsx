@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import i18next from 'i18next'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
@@ -42,7 +43,9 @@ const AGREEMENT = [
 
 let responses: Record<string, Doc | Error>
 
-beforeEach(() => {
+beforeEach(async () => {
+  // The documents are Chinese; a Chinese interface shows the server's text.
+  await i18next.changeLanguage('zhCN')
   responses = {
     '/api/user-agreement': { success: true, data: AGREEMENT },
     '/api/privacy-policy': { success: true, data: '' },
@@ -55,9 +58,10 @@ beforeEach(() => {
   })
 })
 
-afterEach(() => {
+afterEach(async () => {
   cleanup()
   vi.restoreAllMocks()
+  await i18next.changeLanguage('en')
 })
 
 describe('console legal pages', () => {
@@ -168,5 +172,46 @@ describe('console legal pages', () => {
     expect(
       await screen.findByRole('button', { name: 'View document' })
     ).toHaveAttribute('href', 'https://example.com/terms')
+  })
+})
+
+describe('console legal pages in English', () => {
+  beforeEach(async () => {
+    await i18next.changeLanguage('en')
+  })
+
+  it('shows the bundled English translation with the Chinese-prevails note instead of the server text', async () => {
+    renderConsole(<ConsoleLegal doc='terms' />, '/user-agreement')
+
+    const region = await screen.findByRole('region', {
+      name: 'User Agreement',
+    })
+    expect(
+      within(region).getByText(
+        /If it differs from the Chinese version, the Chinese version prevails\./
+      )
+    ).toBeInTheDocument()
+    expect(
+      within(region).getByRole('heading', {
+        name: '1. Scope of service and eligibility',
+      })
+    ).toBeInTheDocument()
+    expect(within(region).queryByText(/服务范围/)).not.toBeInTheDocument()
+    expect(api.get).not.toHaveBeenCalled()
+  })
+
+  it('shows the English privacy policy, whose link leads to the agreement', async () => {
+    renderConsole(<ConsoleLegal doc='privacy' />, '/privacy-policy')
+
+    const region = await screen.findByRole('region', {
+      name: 'Privacy Policy',
+    })
+
+    expect(
+      within(region).getByRole('heading', { name: '1. Information we collect' })
+    ).toBeInTheDocument()
+    expect(
+      within(region).getByRole('link', { name: 'User Agreement' })
+    ).toHaveAttribute('href', '/user-agreement')
   })
 })

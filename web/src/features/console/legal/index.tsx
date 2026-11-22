@@ -33,14 +33,21 @@ import { cn } from '@/lib/utils'
 
 import { CONSOLE_WINDOWS, LEGAL_PAGES, type LegalPageKey } from '../lib/windows'
 import { ConsolePageHeader } from '../shell/console-shell'
+import { PRIVACY_POLICY_EN } from './translations/privacy-policy.en'
+import { USER_AGREEMENT_EN } from './translations/user-agreement.en'
 
-/** Same endpoints and query keys as the old legal pages, so they share a cache. */
+/**
+ * Same endpoints and query keys as the old legal pages, so they share a
+ * cache. The documents are written in Chinese (admin settings); an English
+ * translation ships with the console for every non-Chinese interface.
+ */
 const SOURCES = {
   terms: {
     queryKey: 'user-agreement',
     api: '/api/user-agreement',
     file: 'user-agreement.md',
     fetch: getUserAgreement,
+    english: USER_AGREEMENT_EN,
     emptyKey: 'The administrator has not configured a user agreement yet.',
   },
   privacy: {
@@ -48,6 +55,7 @@ const SOURCES = {
     api: '/api/privacy-policy',
     file: 'privacy-policy.md',
     fetch: getPrivacyPolicy,
+    english: PRIVACY_POLICY_EN,
     emptyKey: 'The administrator has not configured a privacy policy yet.',
   },
 } as const
@@ -71,8 +79,8 @@ const DOC_PROSE = cn(
   '[&_strong]:text-t-fg [&_p]:my-3 [&_li]:my-1.5 [&_li]:pl-1.5 [&_ol]:pl-6 [&_ul]:pl-6',
   '[&_li::marker]:text-t-dim [&_li::marker]:font-mono [&_li::marker]:text-[12.5px]',
   '[&_a]:text-(--t-accent) [&_a]:decoration-(--t-accent)/40 [&_a]:underline-offset-4 hover:[&_a]:decoration-(--t-accent)',
-  '[&_code]:bg-white/6 [&_code]:text-t-fg [&_code]:text-[13px]',
-  '[&_hr]:border-t-line [&_table]:text-[13.5px] [&_thead]:bg-white/4 [&_td]:border-t-line [&_th]:border-t-line [&_th]:text-t-fg'
+  '[&_code]:bg-t-ink/6 [&_code]:text-t-fg [&_code]:text-[13px]',
+  '[&_hr]:border-t-line [&_table]:text-[13.5px] [&_thead]:bg-t-ink/4 [&_td]:border-t-line [&_th]:border-t-line [&_th]:text-t-fg'
 )
 
 /**
@@ -81,8 +89,11 @@ const DOC_PROSE = cn(
  * switch between the two documents.
  */
 export function ConsoleLegal(props: { doc: LegalPageKey }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const source = SOURCES[props.doc]
+  const english = !(i18n.resolvedLanguage || i18n.language || '')
+    .toLowerCase()
+    .startsWith('zh')
   const page = LEGAL_PAGES.find((item) => item.key === props.doc)
   const title = t(page?.labelKey ?? 'User Agreement')
   const query = useQuery({
@@ -90,13 +101,17 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
     queryFn: source.fetch,
     staleTime: 10 * 60 * 1000,
     meta: { errorToast: false },
+    enabled: !english,
   })
   const navigate = useNavigate()
   const bodyRef = useRef<HTMLDivElement>(null)
   const [outline, setOutline] = useState<string[]>([])
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const raw = query.data?.success ? (query.data.data?.trim() ?? '') : ''
+  const served = query.data?.success ? (query.data.data?.trim() ?? '') : ''
+  const raw = english ? source.english.trim() : served
+  const loading = !english && query.isPending
+  const failed = !english && query.isError
   const isUrl = raw !== '' && isHttpUrl(raw)
   const isHtml = raw !== '' && !isUrl && isLikelyHtml(raw)
   const isMarkdown = raw !== '' && !isUrl && !isHtml
@@ -211,7 +226,7 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
           className='min-w-0'
         >
           <div className='px-10 pt-8 pb-10 max-sm:px-5 max-sm:pt-6 max-sm:pb-8'>
-            {query.isPending && (
+            {loading && (
               <div aria-hidden='true' className='flex flex-col gap-3 py-2'>
                 {[34, 52, 46, 28].map((width) => (
                   <span key={width} className='t-skeleton font-mono'>
@@ -220,14 +235,14 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
                 ))}
               </div>
             )}
-            {query.isError && (
+            {failed && (
               <LoadErrorText
                 api={source.api}
                 reason={errorReason(query.error)}
                 onRetry={() => void query.refetch()}
               />
             )}
-            {query.data && raw === '' && (
+            {!english && query.data && raw === '' && (
               <p className='text-t-dim m-0 text-sm'>
                 {query.data.message || t(source.emptyKey)}
               </p>
@@ -252,6 +267,13 @@ export function ConsoleLegal(props: { doc: LegalPageKey }) {
             )}
             {isHtml && (
               <RichContent mode='html' htmlVariant='isolated' content={raw} />
+            )}
+            {english && (
+              <p className='text-t-dim border-t-line m-0 mb-6 border-b pb-5 text-[13.5px] leading-[1.7] italic'>
+                {t(
+                  'This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.'
+                )}
+              </p>
             )}
             {isMarkdown && (
               // The shared Markdown opens every link in a new tab. Links to

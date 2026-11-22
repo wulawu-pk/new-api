@@ -65,6 +65,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  document.documentElement.classList.remove('light')
 })
 
 /** Runs the frames queued so far; returns how many new ones they queued. */
@@ -130,6 +131,30 @@ describe('createRelay accent', () => {
     playFrames(performance.now(), 60)
 
     expect(fills).toContain('rgb(61,219,165)')
+    relay.destroy()
+  })
+})
+
+describe('createRelay theme', () => {
+  it('repaints a frame in the new ink when <html> switches theme', async () => {
+    const canvas = document.createElement('canvas')
+    const relay = createRelay(canvas, null, { reducedMotion: true })
+    relay.refresh()
+    relay.burst()
+    const darkFills = [...fills]
+    fills = []
+
+    canvas.style.setProperty('--fx-ink-rgb', '17 20 24')
+    document.documentElement.classList.add('light')
+    await Promise.resolve()
+
+    expect(fills.length).toBeGreaterThan(0)
+    expect(fills.some((fill) => fill.startsWith('rgba(104,110,120,'))).toBe(
+      true
+    )
+    expect(darkFills.some((fill) => fill.startsWith('rgba(104,110,120,'))).toBe(
+      false
+    )
     relay.destroy()
   })
 })

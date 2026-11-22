@@ -32,11 +32,13 @@ import { useTranslation } from 'react-i18next'
 import { NotificationPopover } from '@/components/notification-popover'
 import { SignOutDialog } from '@/components/sign-out-dialog'
 import { SkeletonText } from '@/components/terminal/data-states'
+import { LanguageToggle } from '@/components/terminal/language-toggle'
 import { EASE, SLIDE_EASE, SLIDE_MS } from '@/components/terminal/lib'
 import { RollingNumber } from '@/components/terminal/rolling-number'
 import { SignalBackdrop } from '@/components/terminal/signal-backdrop'
 import { SonarBackdrop } from '@/components/terminal/sonar-backdrop'
 import { TermLogo } from '@/components/terminal/term-logo'
+import { ThemeToggle } from '@/components/terminal/theme-toggle'
 import { useScrambleText } from '@/components/terminal/use-scramble'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
@@ -156,7 +158,7 @@ function drawnTabMark(el: HTMLElement | null, fallback: TabMark): TabMark {
 
 export function ConsoleKbd(props: { children: ReactNode }) {
   return (
-    <Kbd className='text-t-fg2 h-auto min-w-0 rounded-md border-0 bg-white/5 px-[5px] py-0 font-mono text-[11.5px] font-normal shadow-[inset_0_0_0_1px_var(--t-hair),0_1px_0_rgb(0_0_0/0.6)]'>
+    <Kbd className='text-t-fg2 bg-t-ink/5 h-auto min-w-0 rounded-md border-0 px-[5px] py-0 font-mono text-[11.5px] font-normal shadow-[inset_0_0_0_1px_var(--t-hair),var(--t-key-shadow)]'>
       {props.children}
     </Kbd>
   )
@@ -169,7 +171,9 @@ export function ConsoleKbd(props: { children: ReactNode }) {
  * Number keys 1–6 switch windows and 7 opens the docs; `n` creates a key.
  * The top bar follows the v4 landing header: pages centred across the top,
  * folding into a floating pill once the page scrolls; below `lg` the pages
- * move into a menu. Admin pages keep the old layout and are reached via
+ * move into a menu. The language and theme switches sit before the notice
+ * bell; on phones they move into the menu. Admin pages keep the old layout
+ * and are reached via
  * 「管理」. Reading pages (the legal documents) pass `backdrop='signal'`: the
  * moving sonar field behind long text gets in the way of reading, so they get
  * the signal grid, which only moves while the reader scrolls, points or clicks.
@@ -425,7 +429,7 @@ export function ConsoleShell(props: {
             className={cn(
               'pointer-events-auto relative flex items-center transition-[background-color,box-shadow] duration-300',
               condensed
-                ? 'bg-t-bg/80 h-14 w-full gap-2 pr-2 pl-4 shadow-[0_0_0_1px_var(--t-hair),0_12px_32px_-16px_rgb(0_0_0/0.7)] backdrop-blur-xl lg:w-auto lg:gap-4'
+                ? 'bg-t-bg/80 h-14 w-full gap-2 pr-2 pl-4 shadow-[0_0_0_1px_var(--t-hair),var(--t-float-shadow)] backdrop-blur-xl lg:w-auto lg:gap-4'
                 : 'h-16 w-full justify-between gap-4 px-1'
             )}
           >
@@ -524,6 +528,8 @@ export function ConsoleShell(props: {
               transition={layoutTransition}
               className='text-t-dim flex flex-none items-center gap-3 text-[13px]'
             >
+              <LanguageToggle className='max-sm:hidden' />
+              <ThemeToggle className='-ml-1.5 max-sm:hidden' />
               {/* Notice and announcement timeline (the old console's bell),
                * with the unread count; public, like the notice itself. */}
               <NotificationPopover
@@ -535,7 +541,7 @@ export function ConsoleShell(props: {
                 notice={notifications.notice}
                 announcements={notifications.announcements}
                 loading={notifications.loading}
-                className='text-t-fg2 hover:text-t-fg rounded-full hover:bg-white/6'
+                className='text-t-fg2 hover:text-t-fg hover:bg-t-ink/6 rounded-full'
               />
               {signedIn ? (
                 <>
@@ -572,7 +578,7 @@ export function ConsoleShell(props: {
                   <Button
                     size='sm'
                     render={<Link to='/sign-up' />}
-                    className='rounded-full hover:bg-white'
+                    className='rounded-full hover:bg-(--t-primary-hover)'
                   >
                     {t('Sign up')}
                   </Button>
@@ -585,7 +591,7 @@ export function ConsoleShell(props: {
                 aria-controls='console-menu'
                 aria-label={t('Toggle navigation menu')}
                 className={cn(
-                  'text-t-fg2 hover:text-t-fg flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-white/6 lg:hidden',
+                  'text-t-fg2 hover:text-t-fg flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-t-ink/6 lg:hidden',
                   focusRing
                 )}
               >
@@ -618,7 +624,7 @@ export function ConsoleShell(props: {
                 duration: reduceMotion ? 0 : 0.3,
                 ease: MOTION_EASE,
               }}
-              className='bg-t-bg2 pointer-events-auto mx-auto mt-2 w-full max-w-[1320px] rounded-[28px] p-2 shadow-[0_0_0_1px_var(--t-hair),0_12px_32px_-16px_rgb(0_0_0/0.8)] lg:hidden'
+              className='bg-t-bg2 light:shadow-[0_0_0_1px_var(--t-hair),var(--t-float-shadow)] pointer-events-auto mx-auto mt-2 w-full max-w-[1320px] rounded-[28px] p-2 shadow-[0_0_0_1px_var(--t-hair),0_12px_32px_-16px_rgb(0_0_0/0.8)] lg:hidden'
             >
               <p className='text-t-faint px-4 pt-2 pb-1 font-mono text-[11px]'>
                 // peroai
@@ -637,7 +643,7 @@ export function ConsoleShell(props: {
                         focusRing,
                         active
                           ? 'bg-t-bg3 text-t-fg'
-                          : 'text-t-dim hover:text-t-fg hover:bg-white/4'
+                          : 'text-t-dim hover:text-t-fg hover:bg-t-ink/4'
                       )}
                     >
                       <span
@@ -661,7 +667,7 @@ export function ConsoleShell(props: {
                 <a
                   href={CONSOLE_DOCS_HREF}
                   className={cn(
-                    'text-t-dim hover:text-t-fg flex h-12 items-center gap-3 rounded-2xl px-4 text-[15px] font-medium transition-colors duration-200 hover:bg-white/4',
+                    'text-t-dim hover:text-t-fg flex h-12 items-center gap-3 rounded-2xl px-4 text-[15px] font-medium transition-colors duration-200 hover:bg-t-ink/4',
                     focusRing
                   )}
                 >
@@ -679,6 +685,10 @@ export function ConsoleShell(props: {
                   />
                 </a>
               </nav>
+              <div className='flex items-center justify-end gap-1.5 px-2 pt-1 sm:hidden'>
+                <LanguageToggle />
+                <ThemeToggle />
+              </div>
               <div
                 aria-hidden='true'
                 className='border-t-line mx-4 my-2 border-t'

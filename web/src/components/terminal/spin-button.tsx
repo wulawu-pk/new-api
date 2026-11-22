@@ -63,7 +63,8 @@ export function SpinButton(props: SpinButtonProps) {
       aria-busy={state === 'pending' ? true : undefined}
       className={cn(
         'h-auto w-full rounded-full py-3 text-sm whitespace-pre',
-        state === 'idle' && 'hover:border-white hover:bg-white',
+        state === 'idle' &&
+          'hover:border-(--t-primary-hover) hover:bg-(--t-primary-hover)',
         state === 'pending' &&
           'border-(--t-accent) text-t-accent cursor-default bg-transparent font-mono hover:bg-transparent',
         state === 'done' &&

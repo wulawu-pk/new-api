@@ -38,9 +38,19 @@ For commercial licensing, please contact support@quantumnous.com
  * Frames are requested only while one of these is running; an idle page
  * draws nothing. Reduced motion draws the grid once, fixed, and answers
  * nothing.
+ *
+ * Colours: lines and labels in the ink of --fx-ink-rgb, the crosshair,
+ * streak heads and ripples in the accent (see canvas-colors.ts). On a light
+ * page the dark ink is drawn a little stronger, as the same alpha of black
+ * on white reads fainter. A theme switch redraws one frame in the new ones.
  */
 
-import { readAccentRgb } from './sonar-engine'
+import {
+  isLightInk,
+  readAccentRgb,
+  readInkRgb,
+  watchTheme,
+} from './canvas-colors'
 
 export type SignalOptions = {
   reducedMotion?: boolean
@@ -75,6 +85,8 @@ const RIPPLE_CELLS_PER_SECOND = 16
 const MAX_STREAKS = 14
 const MAX_RIPPLES = 3
 const LABEL_FONT = '10px "Geist Mono", ui-monospace, Consolas, monospace'
+/** Alpha factor for dark ink on a light page. */
+const LIGHT_INK_GAIN = 1.25
 const IGNORE =
   'a,button,input,textarea,select,summary,label,pre,code,kbd,table,header,nav,' +
   '[role="button"],[role="tab"],[role="menu"],[role="dialog"],[contenteditable]'
@@ -108,7 +120,22 @@ export function createSignal(
   const ignore = options.ignore ? `${IGNORE},${options.ignore}` : IGNORE
   const fineSpeed = reduce ? 0 : FINE_SPEED
   const coarseSpeed = reduce ? 0 : COARSE_SPEED
-  const accent = readAccentRgb(document.documentElement).join(',')
+  let accent = ''
+  let ink = ''
+  let inkGain = 1
+  /** Ink at an alpha given for the dark theme (scaled on light pages). */
+  const inked = (alpha: number) => `rgba(${ink},${alpha * inkGain})`
+  const readColors = (): boolean => {
+    const root = document.documentElement
+    const nextInk = readInkRgb(root)
+    const next = [readAccentRgb(root).join(','), nextInk.join(',')]
+    if (next[0] === accent && next[1] === ink) return false
+    accent = next[0]
+    ink = next[1]
+    inkGain = isLightInk(nextInk) ? 1 : LIGHT_INK_GAIN
+    return true
+  }
+  readColors()
 
   let W = 0
   let H = 0
@@ -148,7 +175,7 @@ export function createSignal(
   // like the CSS grid it replaces.
   function drawGrid(c: CanvasRenderingContext2D) {
     const fy = scrollY * fineSpeed
-    c.strokeStyle = 'rgba(255,255,255,.05)'
+    c.strokeStyle = inked(0.05)
     c.lineWidth = 1
     c.beginPath()
     for (let x = fineX; x <= W; x += FINE) {
@@ -164,7 +191,7 @@ export function createSignal(
 
     const cy = scrollY * coarseSpeed
     const row0 = Math.floor(cy / COARSE)
-    c.strokeStyle = 'rgba(255,255,255,.16)'
+    c.strokeStyle = inked(0.16)
     c.beginPath()
     for (let x = coarseX; x <= W + 8; x += COARSE) {
       for (let j = row0; j * COARSE - cy <= H + 8; j++) {
@@ -177,7 +204,7 @@ export function createSignal(
       }
     }
     c.stroke()
-    c.fillStyle = 'rgba(255,255,255,.1)'
+    c.fillStyle = inked(0.1)
     c.font = LABEL_FONT
     c.textBaseline = 'top'
     for (let col = 0, x = coarseX; x <= W; x += COARSE, col++) {
@@ -216,8 +243,8 @@ export function createSignal(
       pointerY,
       R
     )
-    glow.addColorStop(0, `rgba(255,255,255,${0.13 * pointerGlow})`)
-    glow.addColorStop(1, 'rgba(255,255,255,0)')
+    glow.addColorStop(0, inked(0.13 * pointerGlow))
+    glow.addColorStop(1, inked(0))
     c.strokeStyle = glow
     c.lineWidth = 1
     c.beginPath()
@@ -276,8 +303,8 @@ export function createSignal(
       const tail = s.y + (s.v < 0 ? 1 : -1) * s.len
       const X = s.x + 0.5
       const g = c.createLinearGradient(X, s.y, X, tail)
-      g.addColorStop(0, `rgba(255,255,255,${0.32 * a})`)
-      g.addColorStop(1, 'rgba(255,255,255,0)')
+      g.addColorStop(0, inked(0.32 * a))
+      g.addColorStop(1, inked(0))
       c.strokeStyle = g
       c.beginPath()
       c.moveTo(X, s.y)
@@ -423,6 +450,9 @@ export function createSignal(
 
   size()
   window.addEventListener('resize', size)
+  const unwatchTheme = watchTheme(() => {
+    if (readColors()) kick()
+  })
   if (!reduce) {
     window.addEventListener('scroll', onScroll, { passive: true })
     document.addEventListener('click', onClick)
@@ -443,6 +473,7 @@ export function createSignal(
       document.removeEventListener('visibilitychange', onVisibility)
       document.removeEventListener('pointermove', onPointerMove)
       document.documentElement.removeEventListener('mouseleave', onPointerLeave)
+      unwatchTheme()
     },
   }
 }

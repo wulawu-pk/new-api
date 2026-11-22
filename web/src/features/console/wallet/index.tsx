@@ -123,7 +123,9 @@ export function ConsoleWallet() {
               {self.data ? formatQuota(self.data.quota) : <SkeletonText />}
             </b>
             {self.data
-              ? `，${t('used {{amount}}', { amount: formatQuota(self.data.used_quota) })}`
+              ? t(', used {{amount}}', {
+                  amount: formatQuota(self.data.used_quota),
+                })
               : ''}
             {t('. Both ways of topping up credit $1 for every ¥1.')}
           </>

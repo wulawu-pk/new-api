@@ -23,10 +23,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { THEME_STORAGE_KEYS } from '@/lib/theme-storage'
 
-// The inline script in index.html must apply the theme class before React
-// mounts; Dark Reader checks `html.dark` only once while the page loads.
-// peroai fork: the v3 console is dark-only, so the script always applies
-// `dark` and ignores saved or system light preferences.
+// The inline script in index.html must apply the theme class (and the page
+// language) before React mounts; Dark Reader checks `html.dark` only once
+// while the page loads. peroai fork: the rules are shared with the beta
+// landing page and docs — saved light / dark wins, "system" follows the OS,
+// nothing saved means dark; a saved zh* language means Chinese, else English,
+// and with nothing saved the browser language decides.
 const html = readFileSync(
   resolve(import.meta.dirname, '../../../index.html'),
   'utf8'
@@ -47,6 +49,8 @@ function mockSystemDarkMode(dark: boolean) {
   )
 }
 
+const root = document.documentElement
+
 beforeEach(() => {
   localStorage.clear()
 })
@@ -54,19 +58,20 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   localStorage.clear()
-  document.documentElement.classList.remove('light', 'dark')
+  root.classList.remove('light', 'dark')
+  root.lang = ''
 })
 
 describe('index.html theme boot script', () => {
-  it('applies dark before React mounts when the saved preference is light', () => {
-    mockSystemDarkMode(false)
+  it('applies light before React mounts when the saved preference is light', () => {
+    mockSystemDarkMode(true)
     localStorage.setItem(THEME_STORAGE_KEYS.mode, 'light')
-    document.documentElement.classList.add('light')
+    root.classList.add('dark')
 
     runBootScript()
 
-    expect(document.documentElement).toHaveClass('dark')
-    expect(document.documentElement).not.toHaveClass('light')
+    expect(root).toHaveClass('light')
+    expect(root).not.toHaveClass('dark')
   })
 
   it('applies dark when the system is light and nothing is saved', () => {
@@ -74,6 +79,53 @@ describe('index.html theme boot script', () => {
 
     runBootScript()
 
-    expect(document.documentElement).toHaveClass('dark')
+    expect(root).toHaveClass('dark')
+    expect(root).not.toHaveClass('light')
+  })
+
+  it('follows a light system when the saved preference is system', () => {
+    mockSystemDarkMode(false)
+    localStorage.setItem(THEME_STORAGE_KEYS.mode, 'system')
+
+    runBootScript()
+
+    expect(root).toHaveClass('light')
+  })
+
+  it('falls back to dark when storage cannot be read', () => {
+    mockSystemDarkMode(false)
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+
+    runBootScript()
+
+    expect(root).toHaveClass('dark')
+  })
+})
+
+describe('index.html language boot script', () => {
+  it('marks the page Chinese for a saved zh* language', () => {
+    localStorage.setItem('i18nextLng', 'zhCN')
+
+    runBootScript()
+
+    expect(root.lang).toBe('zh-CN')
+  })
+
+  it('marks the page English for any other saved language', () => {
+    localStorage.setItem('i18nextLng', 'fr')
+
+    runBootScript()
+
+    expect(root.lang).toBe('en')
+  })
+
+  it('uses the browser language when nothing is saved', () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('zh-TW')
+
+    runBootScript()
+
+    expect(root.lang).toBe('zh-CN')
   })
 })

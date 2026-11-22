@@ -41,9 +41,6 @@ type ThemeProviderProps = {
   children: React.ReactNode
   defaultTheme?: Theme
   storageKey?: string
-  /** peroai fork: the v3 console is dark-only. When set, this mode is
-   * applied regardless of the saved preference or the system setting. */
-  forcedTheme?: ResolvedTheme
 }
 
 type ThemeProviderState = {
@@ -64,6 +61,12 @@ const initialState: ThemeProviderState = {
 
 const ThemeContext = createContext<ThemeProviderState>(initialState)
 
+/** Browser UI colour per theme: the page background of the peroai palette. */
+const THEME_COLORS: Record<ResolvedTheme, string> = {
+  dark: '#121417',
+  light: '#f5f6f7',
+}
+
 function getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined') return 'light'
   return window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -79,14 +82,13 @@ export function ThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
   storageKey = THEME_STORAGE_KEYS.mode,
-  forcedTheme,
   ...props
 }: ThemeProviderProps) {
   const [theme, _setTheme] = useState<Theme>(() =>
     readThemePreference(storageKey, THEMES, defaultTheme)
   )
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(
-    () => forcedTheme ?? resolveTheme(theme)
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    resolveTheme(theme)
   )
 
   useEffect(() => {
@@ -94,10 +96,12 @@ export function ThemeProvider({
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     const applyTheme = () => {
-      const nextResolvedTheme =
-        forcedTheme ?? (theme === 'system' ? getSystemTheme() : theme)
+      const nextResolvedTheme = theme === 'system' ? getSystemTheme() : theme
       root.classList.remove('light', 'dark')
       root.classList.add(nextResolvedTheme)
+      document
+        .querySelector("meta[name='theme-color']")
+        ?.setAttribute('content', THEME_COLORS[nextResolvedTheme])
       setResolvedTheme(nextResolvedTheme)
     }
 
@@ -106,7 +110,7 @@ export function ThemeProvider({
     mediaQuery.addEventListener('change', applyTheme)
 
     return () => mediaQuery.removeEventListener('change', applyTheme)
-  }, [theme, forcedTheme])
+  }, [theme])
 
   const setTheme = useCallback(
     (theme: Theme) => {

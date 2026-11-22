@@ -37,9 +37,21 @@ For commercial licensing, please contact support@quantumnous.com
  * Cheap by construction: glyphs come from a pre-drawn atlas (drawImage, no
  * fillText per frame) and cells below a small energy are skipped. Stops off
  * screen and in background tabs; reduced motion draws one still frame.
+ *
+ * Colours: ink from --fx-ink-rgb, accent from --t-accent-rgb (see
+ * canvas-colors.ts). When <html> switches theme the atlas is redrawn in the
+ * new colours and a frame drawn at once, also while paused or still.
  */
 
-type Rgb = [number, number, number]
+import {
+  isLightInk,
+  readAccentRgb,
+  readInkRgb,
+  watchTheme,
+  type Rgb,
+} from './canvas-colors'
+
+export { readAccentRgb } from './canvas-colors'
 
 export type SonarOptions = {
   reducedMotion?: boolean
@@ -64,10 +76,11 @@ const GLYPHS = ['', '·', '+', '×', '○', '◎', '◉']
 const TINTS = 10
 /** Fraction of a glyph step spent cross-fading into the next glyph. */
 const BLEND = 0.35
+/** Glyph greys on a dark page (light ink), unchanged since the dark theme. */
 const FG: Rgb = [241, 240, 236]
 const DIM: Rgb = [120, 122, 126]
-/** Accent when the page sets none: mint #3DDBA5, as in theme-presets.css. */
-const DEFAULT_ACCENT: Rgb = [61, 219, 165]
+/** On a light page: dark glyphs, a mid grey for the faint ones. */
+const DIM_ON_LIGHT: Rgb = [150, 154, 160]
 /** Ring speed and reach, as fractions of the canvas diagonal. */
 const RING_SPEED = 0.17
 const RING_REACH = 0.8
@@ -97,16 +110,6 @@ function bezier(p: Lane, t: number): Point {
   ]
 }
 
-/** The page accent as RGB, read from --t-accent-rgb ("61 219 165"). */
-export function readAccentRgb(el: Element): Rgb {
-  const raw = getComputedStyle(el).getPropertyValue('--t-accent-rgb').trim()
-  const parts = raw.split(/[\s,]+/).map(Number)
-  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) {
-    return DEFAULT_ACCENT
-  }
-  return [parts[0], parts[1], parts[2]]
-}
-
 function mix(a: Rgb, b: Rgb, t: number): string {
   const c = (i: number) => Math.round(a[i] + (b[i] - a[i]) * t)
   return `${c(0)},${c(1)},${c(2)}`
@@ -132,7 +135,9 @@ export function createSonar(
   const interval = (options.interval ?? 6) * 1000
   const originX = options.originX ?? 0.5
   const originY = options.originY ?? 0.3
-  const accent = readAccentRgb(canvas)
+  let accent = readAccentRgb(canvas)
+  let ink = readInkRgb(canvas)
+  let dpr = 1
   let W = 0
   let H = 0
   let cols = 0
@@ -163,7 +168,7 @@ export function createSonar(
   let raf = 0
 
   /** Every glyph in every tint, fully opaque; brightness is globalAlpha. */
-  function buildAtlas(dpr: number): boolean {
+  function buildAtlas(): boolean {
     tile = Math.ceil(cell * dpr)
     const sheet = document.createElement('canvas')
     sheet.width = tile * GLYPHS.length
@@ -173,8 +178,11 @@ export function createSonar(
     o.textAlign = 'center'
     o.textBaseline = 'middle'
     o.font = `${Math.round(cell * 0.62 * dpr)}px ui-monospace, "SF Mono", Consolas, monospace`
-    const grey = mix(DIM, FG, 0.45).split(',').map(Number) as Rgb
-    const lit = mix(FG, accent, 0.9).split(',').map(Number) as Rgb
+    const onDark = isLightInk(ink)
+    const fg = onDark ? FG : ink
+    const dim = onDark ? DIM : DIM_ON_LIGHT
+    const grey = mix(dim, fg, 0.45).split(',').map(Number) as Rgb
+    const lit = mix(fg, accent, 0.9).split(',').map(Number) as Rgb
     for (let tint = 0; tint < TINTS; tint++) {
       o.fillStyle = `rgb(${mix(grey, lit, tint / (TINTS - 1))})`
       for (let g = 1; g < GLYPHS.length; g++) {
@@ -191,7 +199,7 @@ export function createSonar(
     if (rect.width < 10 || rect.height < 10) return false
     W = rect.width
     H = rect.height
-    const dpr = Math.min(2, window.devicePixelRatio || 1)
+    dpr = Math.min(2, window.devicePixelRatio || 1)
     canvas.width = Math.round(W * dpr)
     canvas.height = Math.round(H * dpr)
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
@@ -264,7 +272,7 @@ export function createSonar(
         v: 0.18 + Math.random() * 0.12,
       }))
     }
-    return buildAtlas(dpr)
+    return buildAtlas()
   }
 
   /** The cell under a point (odd rows sit half a cell to the right). */
@@ -441,6 +449,19 @@ export function createSonar(
   }
 
   const onVisibility = () => (document.hidden ? stop() : start())
+  // A theme switch: new colours, and one frame in them right away (the
+  // loop, if running, carries on from there).
+  const unwatchTheme = watchTheme(() => {
+    const nextInk = readInkRgb(canvas)
+    const nextAccent = readAccentRgb(canvas)
+    if (`${nextInk}|${nextAccent}` === `${ink}|${accent}`) return
+    ink = nextInk
+    accent = nextAccent
+    if (!ready || !buildAtlas()) return
+    const now = performance.now()
+    if (reduce) pings = [now - 1800]
+    draw(now)
+  })
   let resizeTimer = 0
   const onResize = () => {
     window.clearTimeout(resizeTimer)
@@ -477,6 +498,7 @@ export function createSonar(
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('resize', onResize)
       observer?.disconnect()
+      unwatchTheme()
     },
   }
 }

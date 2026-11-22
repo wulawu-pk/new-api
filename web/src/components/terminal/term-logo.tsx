@@ -93,18 +93,18 @@ export function TermLogo(props: { className?: string; href?: string }) {
           {MARK_PATHS.map((path) => (
             <path
               key={path.d}
-              fill='#FFFFFF'
+              className='fill-t-ink'
               fillRule={path.evenOdd ? 'evenodd' : undefined}
               d={path.d}
             />
           ))}
-          <path fill='#1EE8A6' d={MARK_DOT} />
+          <path className='light:fill-[#0fa97a] fill-[#1ee8a6]' d={MARK_DOT} />
         </g>
         <g transform='translate(282.12 0)'>
           {LETTER_PATHS.map((path) => (
             <path
               key={path.d}
-              fill='#FFFFFF'
+              className='fill-t-ink'
               fillRule={path.evenOdd ? 'evenodd' : undefined}
               d={path.d}
             />

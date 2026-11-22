@@ -7428,8 +7428,8 @@
     "Account created": "Account created",
     "Account created. Please sign in.": "Account created. Please sign in.",
     "Address, groups, billing": "Address, groups, billing",
-    "After sign-in a key in the 「{{group}}」 group is created for you": "After sign-in a key in the 「{{group}}」 group is created for you",
-    "After sign-up a key in the 「{{group}}」 group is created for you": "After sign-up a key in the 「{{group}}」 group is created for you",
+    "After sign-in a key in the 「{{group}}」 group is created for you": "After sign-in a key in the “{{group}}” group is created for you",
+    "After sign-up a key in the 「{{group}}」 group is created for you": "After sign-up a key in the “{{group}}” group is created for you",
     "After signing up, create a key on the Keys page; top up and it is ready to call.": "After signing up, create a key on the Keys page; top up and it is ready to call.",
     "All done": "All done",
     "All groups": "All groups",
@@ -7475,8 +7475,8 @@
     "Create Key": "Create Key",
     "Create a key and pick its group": "Create a key and pick its group",
     "Create it": "Create it",
-    "Created a key in the 「{{group}}」 group": "Created a key in the 「{{group}}」 group",
-    "You already have a key in the 「{{group}}」 group ({{name}}); use it directly": "You already have a key in the 「{{group}}」 group ({{name}}); use it directly",
+    "Created a key in the 「{{group}}」 group": "Created a key in the “{{group}}” group",
+    "You already have a key in the 「{{group}}」 group ({{name}}); use it directly": "You already have a key in the “{{group}}” group ({{name}}); use it directly",
     "Created {{name}}; the key is copied": "Created {{name}}; the key is copied",
     "Creating…": "Creating…",
     "Credited": "Credited",
@@ -7598,7 +7598,6 @@
     "peroai sign in": "peroai sign in",
     "peroai sign up": "peroai sign up",
     "requests": "requests",
-    "used {{amount}}": "used {{amount}}",
     "{{count}} keys": "{{count}} keys",
     "{{count}} steps left": "{{count}} steps left",
     "GPT Special": "GPT Special",
@@ -7638,6 +7637,11 @@
     "“{{query}}” in {{count}} groups": "“{{query}}” in {{count}} groups",
     "My requests": "My requests",
     "Whose requests": "Whose requests",
-    "{{count}} in total, {{size}} per page": "{{count}} in total, {{size}} per page"
+    "{{count}} in total, {{size}} per page": "{{count}} in total, {{size}} per page",
+    "Switch to light theme": "Switch to light theme",
+    "Switch to dark theme": "Switch to dark theme",
+    "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.": "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.",
+    ", used {{amount}}": ", used {{amount}}",
+    "USDT / USDC": "USDT / USDC"
   }
 }

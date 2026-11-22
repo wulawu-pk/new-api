@@ -21,8 +21,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSignal } from '../signal-engine'
 
 // jsdom has no canvas: a 2D context that answers every call and counts the
-// frames the engine clears.
+// frames the engine clears, and the grid's stroke colours.
 let clears = 0
+let strokes: string[] = []
 function stubContext(): CanvasRenderingContext2D {
   const noop = () => undefined
   return new Proxy({} as CanvasRenderingContext2D, {
@@ -33,7 +34,10 @@ function stubContext(): CanvasRenderingContext2D {
       }
       return noop
     },
-    set: () => true,
+    set(_target, key, value) {
+      if (key === 'strokeStyle') strokes.push(String(value))
+      return true
+    },
   })
 }
 
@@ -43,6 +47,7 @@ let now = 1000
 beforeEach(() => {
   frames = []
   clears = 0
+  strokes = []
   now = 1000
   Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
@@ -59,6 +64,8 @@ afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   document.body.innerHTML = ''
+  document.documentElement.classList.remove('light')
+  document.documentElement.style.removeProperty('--fx-ink-rgb')
 })
 
 /** Plays queued frames 16 ms apart until none is queued or `limit` is hit. */
@@ -167,5 +174,31 @@ describe('createSignal', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
 
     expect(createSignal(document.createElement('canvas'))).toBeNull()
+  })
+})
+
+describe('createSignal theme', () => {
+  it('draws the fine grid in white at the dark-theme alpha', () => {
+    const signal = createSignal(document.createElement('canvas'))
+    playUntilIdle()
+
+    expect(strokes[0]).toBe('rgba(255,255,255,0.05)')
+    signal?.destroy()
+  })
+
+  it('redraws in the dark ink when <html> switches to the light theme', async () => {
+    const signal = createSignal(document.createElement('canvas'), {
+      reducedMotion: true,
+    })
+    playUntilIdle()
+    strokes = []
+
+    document.documentElement.style.setProperty('--fx-ink-rgb', '17 20 24')
+    document.documentElement.classList.add('light')
+    await Promise.resolve()
+    playUntilIdle()
+
+    expect(strokes[0]?.startsWith('rgba(17,20,24,')).toBe(true)
+    signal?.destroy()
   })
 })

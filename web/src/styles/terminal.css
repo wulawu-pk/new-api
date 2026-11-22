@@ -38,6 +38,9 @@ For commercial licensing, please contact support@quantumnous.com
   --color-t-warn: var(--t-warn);
   --color-t-bad: var(--t-bad);
   --color-t-hi: var(--t-hi);
+  /* Neutral ink for overlays: `bg-t-ink/6` is white 6% on dark, near-black
+   * 6% on light. */
+  --color-t-ink: rgb(var(--fx-ink-rgb));
   --font-t-mono: var(--font-mono);
   --font-t-cn: var(--font-cjk);
 }
@@ -87,10 +90,8 @@ For commercial licensing, please contact support@quantumnous.com
     z-index: 0;
     height: 100%;
     border-radius: 999px;
-    background: rgb(255 255 255 / 0.09);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.07),
-      0 2px 8px -2px rgb(0 0 0 / 0.6);
+    background: var(--t-pill);
+    box-shadow: var(--t-pill-shadow);
     pointer-events: none;
     transition: opacity 240ms var(--t-ease);
   }
@@ -103,10 +104,8 @@ For commercial licensing, please contact support@quantumnous.com
     left: 0;
     z-index: 0;
     border-radius: 999px;
-    background: rgb(255 255 255 / 0.09);
-    box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.07),
-      0 2px 8px -2px rgb(0 0 0 / 0.6);
+    background: var(--t-pill);
+    box-shadow: var(--t-pill-shadow);
     pointer-events: none;
     transition: opacity 240ms var(--t-ease);
   }
@@ -175,13 +174,13 @@ For commercial licensing, please contact support@quantumnous.com
     padding: 4px 12px;
   }
   .t-bracket:hover {
-    background: rgb(255 255 255 / 0.04);
+    background: rgb(var(--fx-ink-rgb) / 0.04);
   }
   .t-bracket[aria-pressed='true'],
   .t-bracket[aria-selected='true'],
   .t-bracket[aria-current='page'] {
-    background: rgb(255 255 255 / 0.09);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07);
+    background: var(--t-pill);
+    box-shadow: inset 0 1px 0 rgb(var(--fx-ink-rgb) / 0.07);
     animation: t-pill-in 320ms var(--t-ease);
   }
 
@@ -300,12 +299,12 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 1;
   }
   .t-pick-mark[data-kind='hover'] {
-    background: rgb(255 255 255 / 0.04);
+    background: rgb(var(--fx-ink-rgb) / 0.04);
   }
   .t-pick-mark[data-kind='selected'] {
     overflow: hidden;
-    background: rgb(255 255 255 / 0.07);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+    background: rgb(var(--fx-ink-rgb) / 0.07);
+    box-shadow: inset 0 0 0 1px rgb(var(--fx-ink-rgb) / 0.06);
   }
   .t-pick-mark[data-kind='selected']::after {
     content: '';
@@ -314,7 +313,7 @@ For commercial licensing, please contact support@quantumnous.com
     background: linear-gradient(
       100deg,
       transparent 25%,
-      rgb(255 255 255 / 0.08) 50%,
+      var(--t-sheen) 50%,
       transparent 75%
     );
     transform: translateX(-110%);
@@ -372,7 +371,7 @@ For commercial licensing, please contact support@quantumnous.com
       ),
       linear-gradient(
         112deg,
-        rgb(255 255 255 / 0.015),
+        rgb(var(--fx-ink-rgb) / 0.015),
         transparent 45%,
         rgb(var(--t-accent-rgb) / 0.03)
       );
@@ -384,7 +383,7 @@ For commercial licensing, please contact support@quantumnous.com
     z-index: -1;
     margin: 0;
     pointer-events: none;
-    color: rgb(255 255 255 / 0.045);
+    color: rgb(var(--fx-ink-rgb) / 0.045);
     font: 11px/20px var(--font-mono);
     letter-spacing: 0.3em;
     text-align: right;
@@ -409,7 +408,7 @@ For commercial licensing, please contact support@quantumnous.com
       90deg,
       transparent,
       rgb(var(--t-accent-rgb) / 0.6),
-      rgb(255 255 255 / 0.5),
+      var(--t-sweep),
       transparent
     );
     transform: translateX(-100%);
@@ -425,8 +424,16 @@ For commercial licensing, please contact support@quantumnous.com
    * out from the top middle, as on the refactor/ui-v4 landing page. */
   .t-backdrop-grid {
     background-image:
-      linear-gradient(to right, rgb(255 255 255 / 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgb(255 255 255 / 0.05) 1px, transparent 1px);
+      linear-gradient(
+        to right,
+        rgb(var(--fx-ink-rgb) / 0.05) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        rgb(var(--fx-ink-rgb) / 0.05) 1px,
+        transparent 1px
+      );
     background-size: 40px 40px;
     mask-image: radial-gradient(ellipse 60% 50% at 50% 30%, #000, transparent);
   }
@@ -442,13 +449,31 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 0;
     background: radial-gradient(
       420px circle at var(--mx, 50%) var(--my, 50%),
-      rgb(255 255 255 / 0.035),
+      rgb(var(--fx-ink-rgb) / 0.035),
       transparent 45%
     );
     transition: opacity 500ms var(--t-ease);
   }
   .t-pane:hover::after {
     opacity: 1;
+  }
+
+  /* Light mode: no coloured glow behind the hero pane (only the faint slant
+   * tint stays), and the pointer light is a little fainter on white. */
+  .light .t-hero::before {
+    background: linear-gradient(
+      112deg,
+      rgb(var(--fx-ink-rgb) / 0.015),
+      transparent 45%,
+      rgb(var(--t-accent-rgb) / 0.03)
+    );
+  }
+  .light .t-pane::after {
+    background: radial-gradient(
+      420px circle at var(--mx, 50%) var(--my, 50%),
+      rgb(var(--fx-ink-rgb) / 0.025),
+      transparent 45%
+    );
   }
 
   /* Native selects styled as terminal inputs: CSS chevron, no OS arrow. */
@@ -483,8 +508,8 @@ For commercial licensing, please contact support@quantumnous.com
 }
 @keyframes t-pill-in {
   from {
-    background: rgb(255 255 255 / 0);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0);
+    background: rgb(var(--fx-ink-rgb) / 0);
+    box-shadow: inset 0 1px 0 rgb(var(--fx-ink-rgb) / 0);
   }
 }
 /* A page or pane coming in: up a few pixels, out of a slight blur. */
@@ -687,6 +712,16 @@ For commercial licensing, please contact support@quantumnous.com
       0 0 0 1px var(--t-hi),
       0 40px 80px -30px rgb(0 0 0 / 0.9);
   }
+  :root.light & [data-slot='dialog-overlay'],
+  :root.light & [data-slot='alert-dialog-overlay'] {
+    background: rgb(17 20 24 / 0.28);
+  }
+  :root.light & [data-slot='dialog-content'],
+  :root.light & [data-slot='alert-dialog-content'] {
+    box-shadow:
+      0 0 0 1px var(--t-hair),
+      0 40px 80px -30px rgb(17 24 39 / 0.28);
+  }
   & [data-slot='dialog-footer'],
   & [data-slot='alert-dialog-footer'] {
     background: transparent;
@@ -707,4 +742,20 @@ For commercial licensing, please contact support@quantumnous.com
     box-shadow: 0 20px 40px -16px rgb(0 0 0 / 0.8);
     font-family: var(--font-ui-sans);
   }
+  :root.light & [data-sonner-toast] {
+    box-shadow: 0 20px 40px -16px rgb(17 24 39 / 0.3);
+  }
+}
+
+/* Switching themes: colours ease over for a moment (the toggle adds this
+ * class for 350ms), instead of every element carrying a colour transition
+ * all the time. Not added under reduced motion. */
+html.theme-anim,
+html.theme-anim *,
+html.theme-anim *::before,
+html.theme-anim *::after {
+  transition-property:
+    background-color, color, border-color, box-shadow, fill, stroke !important;
+  transition-duration: 300ms !important;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1) !important;
 }

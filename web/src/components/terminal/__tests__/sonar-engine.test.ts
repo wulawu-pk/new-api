@@ -21,9 +21,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createSonar, readAccentRgb } from '../sonar-engine'
 
 // jsdom has no canvas: a 2D context that answers the calls the engine makes
-// and counts the glyphs it stamps from the atlas.
+// and counts the glyphs it stamps from the atlas (and the atlas colours).
 let stamps = 0
 let clears = 0
+let fills: string[] = []
 function stubContext(): CanvasRenderingContext2D {
   const noop = () => undefined
   return new Proxy({} as CanvasRenderingContext2D, {
@@ -32,7 +33,10 @@ function stubContext(): CanvasRenderingContext2D {
       if (key === 'clearRect') return () => (clears += 1)
       return noop
     },
-    set: () => true,
+    set(_target, key, value) {
+      if (key === 'fillStyle') fills.push(String(value))
+      return true
+    },
   })
 }
 
@@ -42,6 +46,7 @@ beforeEach(() => {
   frames = []
   stamps = 0
   clears = 0
+  fills = []
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
     () => stubContext() as never
   )
@@ -58,6 +63,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  document.documentElement.classList.remove('light', 'dark')
 })
 
 /** Plays `count` frames `gap` ms apart from `start`; returns frames queued after. */
@@ -121,5 +127,61 @@ describe('sonar helpers', () => {
     el.style.setProperty('--t-accent-rgb', '91 157 255')
     expect(readAccentRgb(el)).toEqual([91, 157, 255])
     expect(readAccentRgb(document.createElement('div'))).toEqual([61, 219, 165])
+  })
+})
+
+describe('createSonar theme', () => {
+  // The faintest atlas tint: the dark theme's grey, kept exactly as before
+  // the light theme existed, and the light theme's (dark ink on white).
+  const DARK_GREY = 'rgb(174,175,176)'
+  const LIGHT_GREY = 'rgb(90,94,99)'
+
+  it('draws the glyph atlas in the dark greys when the ink is white', () => {
+    const canvas = document.createElement('canvas')
+    canvas.style.setProperty('--fx-ink-rgb', '255 255 255')
+    const sonar = createSonar(canvas, { reducedMotion: true })
+    sonar.refresh()
+
+    expect(fills[0]).toBe(DARK_GREY)
+    sonar.destroy()
+  })
+
+  it('re-reads the ink and redraws a frame when <html> switches theme', async () => {
+    const canvas = document.createElement('canvas')
+    const sonar = createSonar(canvas, { reducedMotion: true })
+    sonar.refresh()
+    fills = []
+    clears = 0
+
+    canvas.style.setProperty('--fx-ink-rgb', '17 20 24')
+    document.documentElement.classList.add('light')
+    await Promise.resolve()
+
+    expect(fills[0]).toBe(LIGHT_GREY)
+    expect(clears).toBe(1)
+    sonar.destroy()
+  })
+
+  it('stops watching the theme after destroy', async () => {
+    const canvas = document.createElement('canvas')
+    const sonar = createSonar(canvas, { reducedMotion: true })
+    sonar.refresh()
+    sonar.destroy()
+    clears = 0
+
+    canvas.style.setProperty('--fx-ink-rgb', '17 20 24')
+    document.documentElement.classList.add('light')
+    await Promise.resolve()
+
+    expect(clears).toBe(0)
+  })
+})
+
+describe('canvas colours', () => {
+  it('reads the accent from --accent-rgb when --t-accent-rgb is not set', () => {
+    const el = document.createElement('div')
+    el.style.setProperty('--accent-rgb', '7,122,87')
+
+    expect(readAccentRgb(el)).toEqual([7, 122, 87])
   })
 })

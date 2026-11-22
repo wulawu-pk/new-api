@@ -181,7 +181,7 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
     <Pane
       title={
         <>
-          <b>{cryptoMode ? 'USDT、USDC' : t('Online top-up')}</b>
+          <b>{cryptoMode ? t('USDT / USDC') : t('Online top-up')}</b>
           {cryptoMode ? `　${t('On-chain')}` : ''}
         </>
       }

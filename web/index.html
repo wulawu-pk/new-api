@@ -21,23 +21,50 @@
          home-screen icon and web app manifest from the logo kit. -->
     <link rel="apple-touch-icon" href="/brand/icons/apple-touch-icon.png" />
     <link rel="manifest" href="/brand/icons/manifest.json" />
-    <!-- peroai fork: the v3 console is dark-only (see ThemeProvider
-         forcedTheme). Apply the class before first paint so the page never
-         flashes light and one-shot detectors (e.g. Dark Reader) see it. -->
+    <!-- peroai fork: apply the theme class and page language before first
+         paint, by the rules shared with the beta landing page and docs
+         (design/v7/theme-i18n-spec.md §1): saved "light"/"dark" wins,
+         "system" follows the OS, nothing saved means dark. The language is
+         Chinese for any saved zh* value, else English; with nothing saved the
+         browser language decides. ThemeProvider and i18next take over later
+         with the same answer, so the page never flashes the other theme. -->
     <script>
-      document.documentElement.classList.remove('light')
-      document.documentElement.classList.add('dark')
-      // The accent trial (11-22) left a choice in localStorage; it no longer
-      // means anything.
-      try {
-        localStorage.removeItem('peroai:accent')
-      } catch (e) {}
+      ;(function () {
+        var root = document.documentElement
+        var mode = null
+        var lang = null
+        try {
+          mode = localStorage.getItem('newapi:theme:v1:mode')
+          lang = localStorage.getItem('i18nextLng')
+          // The accent trial (11-22) left a choice in localStorage; it no
+          // longer means anything.
+          localStorage.removeItem('peroai:accent')
+        } catch (e) {}
+        if (mode === 'system') {
+          mode =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+        }
+        if (mode !== 'light') mode = 'dark'
+        root.classList.remove('light', 'dark')
+        root.classList.add(mode)
+        var meta = document.querySelector('meta[name="theme-color"]')
+        if (meta)
+          meta.setAttribute('content', mode === 'light' ? '#f5f6f7' : '#121417')
+        if (!lang) lang = navigator.language || ''
+        root.lang = /^zh/i.test(lang) ? 'zh-CN' : 'en'
+      })()
     </script>
     <style>
       /* Body stays transparent so the console backdrop (body::before in
          theme-presets.css, a neutral sheen from the top) shows. */
       html {
         background: #121417;
+      }
+      html.light {
+        background: #f5f6f7;
       }
       body {
         background: transparent;

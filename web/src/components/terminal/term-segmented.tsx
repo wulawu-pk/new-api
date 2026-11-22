@@ -60,6 +60,8 @@ export function TermSegmented(props: {
   onValueChange?: (value: string) => void
   /** Name to carry the pill position across a remount (route choices). */
   memoryKey?: string
+  /** `sm`: compact, as tall as the top bar's buttons. */
+  size?: 'sm'
   className?: string
 }) {
   const groupRef = useRef<HTMLDivElement>(null)
@@ -135,7 +137,7 @@ export function TermSegmented(props: {
       role='group'
       aria-label={props.label}
       className={cn(
-        'relative inline-flex rounded-full bg-white/4 p-1 shadow-[inset_0_0_0_1px_var(--t-hair)]',
+        'relative inline-flex rounded-full bg-t-ink/4 p-1 shadow-[inset_0_0_0_1px_var(--t-hair)]',
         props.className
       )}
     >
@@ -148,7 +150,10 @@ export function TermSegmented(props: {
       {props.items.map((item) => {
         const active = item.value === props.value
         const className = cn(
-          'relative z-[1] rounded-full px-3.5 py-1.5 text-[13px] whitespace-nowrap transition-colors duration-200',
+          'relative z-[1] rounded-full whitespace-nowrap transition-colors duration-200',
+          props.size === 'sm'
+            ? 'px-2.5 py-1 text-[12px] leading-5'
+            : 'px-3.5 py-1.5 text-[13px]',
           'focus-visible:ring-(--t-accent)/60 focus-visible:ring-2 focus-visible:outline-none',
           active ? 'text-t-fg' : 'text-t-dim hover:text-t-fg'
         )

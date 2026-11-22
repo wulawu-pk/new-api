@@ -20,7 +20,7 @@ import i18n from 'i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 
-import { convertDetectedLanguage } from './languages'
+import { convertDetectedLanguage, toIntlLocale } from './languages'
 import en from './locales/en.json'
 import fr from './locales/fr.json'
 import ja from './locales/ja.json'
@@ -60,5 +60,12 @@ i18n
       convertDetectedLanguage,
     },
   })
+
+// Keep <html lang> on the interface language (index.html sets a first guess
+// before React), so fonts, hyphenation and screen readers follow a switch.
+i18n.on('languageChanged', (lng) => {
+  if (typeof document === 'undefined') return
+  document.documentElement.lang = toIntlLocale(lng) ?? 'en'
+})
 
 export default i18n
