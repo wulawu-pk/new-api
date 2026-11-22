@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/popover'
 import { useApiInfo } from '@/features/dashboard/hooks/use-status-data'
 import { useStatus } from '@/hooks/use-status'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 
 import { useApiKeys } from './api-keys-provider'
 
@@ -63,7 +64,15 @@ export function ApiKeysPrimaryButtons() {
   return (
     <div className='flex flex-wrap gap-2'>
       <Popover>
-        <PopoverTrigger render={<Button variant='outline' size='sm' />}>
+        <PopoverTrigger
+          render={
+            <Button
+              variant='outline'
+              size='sm'
+              className='rounded-full px-3.5'
+            />
+          }
+        >
           <Globe aria-hidden='true' />
           {t('API Addresses')}
           <ChevronDown aria-hidden='true' />
@@ -112,7 +121,11 @@ export function ApiKeysPrimaryButtons() {
           )}
         </PopoverContent>
       </Popover>
-      <Button size='sm' onClick={() => setOpen('create')}>
+      <Button
+        size='sm'
+        className={CONSOLE_PRIMARY_BUTTON}
+        onClick={() => setOpen('create')}
+      >
         <Plus className='h-4 w-4' />
         {t('Create API Key')}
       </Button>
