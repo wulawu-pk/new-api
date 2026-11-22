@@ -34,6 +34,7 @@ import { SignOutDialog } from '@/components/sign-out-dialog'
 import { SkeletonText } from '@/components/terminal/data-states'
 import { EASE, SLIDE_EASE, SLIDE_MS } from '@/components/terminal/lib'
 import { RollingNumber } from '@/components/terminal/rolling-number'
+import { SignalBackdrop } from '@/components/terminal/signal-backdrop'
 import { SonarBackdrop } from '@/components/terminal/sonar-backdrop'
 import { TermLogo } from '@/components/terminal/term-logo'
 import { useScrambleText } from '@/components/terminal/use-scramble'
@@ -169,12 +170,13 @@ export function ConsoleKbd(props: { children: ReactNode }) {
  * The top bar follows the v4 landing header: pages centred across the top,
  * folding into a floating pill once the page scrolls; below `lg` the pages
  * move into a menu. Admin pages keep the old layout and are reached via
- * 「管理」. Reading pages (the legal documents) pass `backdrop='grid'`: the
- * moving sonar field behind long text gets in the way of reading.
+ * 「管理」. Reading pages (the legal documents) pass `backdrop='signal'`: the
+ * moving sonar field behind long text gets in the way of reading, so they get
+ * the signal grid, which only moves while the reader scrolls, points or clicks.
  */
 export function ConsoleShell(props: {
   children: ReactNode
-  backdrop?: 'sonar' | 'grid'
+  backdrop?: 'sonar' | 'signal'
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -408,12 +410,8 @@ export function ConsoleShell(props: {
       {/* Backdrop of every console page: the sonar relay (requests flowing
        * into api.peroai.cc send sonar rings through a glyph field) over a
        * faint grid. Panes sit on it like the cards of the v4 landing page. */}
-      {props.backdrop === 'grid' ? (
-        <div
-          aria-hidden='true'
-          data-backdrop='grid'
-          className='t-backdrop-grid pointer-events-none fixed inset-0 -z-10'
-        />
+      {props.backdrop === 'signal' ? (
+        <SignalBackdrop className='fixed inset-0 -z-10' />
       ) : (
         <SonarBackdrop className='fixed inset-0 -z-10' />
       )}

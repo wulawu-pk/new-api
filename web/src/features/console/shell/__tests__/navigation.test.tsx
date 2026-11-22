@@ -173,10 +173,10 @@ describe('console top bar', () => {
     )
   })
 
-  it('draws the plain grid instead of the sonar canvas when a page asks for the grid backdrop', async () => {
+  it('puts the signal grid instead of the sonar behind a page that asks for the signal backdrop', async () => {
     const root = createRootRoute({
       component: () => (
-        <ConsoleShell backdrop='grid'>
+        <ConsoleShell backdrop='signal'>
           <div>reading page</div>
         </ConsoleShell>
       ),
@@ -188,8 +188,11 @@ describe('console top bar', () => {
     render(<RouterProvider router={router} />)
     await screen.findByText('reading page')
 
-    expect(document.querySelector('[data-backdrop="grid"]')).not.toBeNull()
-    expect(document.querySelector('canvas')).toBeNull()
+    const backdrop = document.querySelector('[data-backdrop="signal"]')
+    expect(backdrop).not.toBeNull()
+    // The only canvas on the page is the signal grid's: no sonar behind it
+    expect(document.querySelectorAll('canvas')).toHaveLength(1)
+    expect(backdrop?.querySelector('canvas')).not.toBeNull()
   })
 
   it('keeps the sonar canvas behind ordinary console pages', async () => {
@@ -197,7 +200,7 @@ describe('console top bar', () => {
     await screen.findByText('/dashboard page')
 
     expect(document.querySelector('canvas')).not.toBeNull()
-    expect(document.querySelector('[data-backdrop="grid"]')).toBeNull()
+    expect(document.querySelector('[data-backdrop="signal"]')).toBeNull()
   })
 
   it('shows the notice bell with the unread count in the top bar', async () => {

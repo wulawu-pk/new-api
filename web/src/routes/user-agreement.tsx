@@ -22,14 +22,15 @@ import { ConsoleLegal } from '@/features/console/legal'
 import { ConsoleShell } from '@/features/console/shell/console-shell'
 
 // peroai v3: public legal page in the console shell, like /status, over
-// the plain grid (the sonar field behind long text hurts reading).
+// the signal grid, which only moves while the reader scrolls, points or
+// clicks (the sonar field behind long text hurts reading).
 export const Route = createFileRoute('/user-agreement')({
   component: UserAgreementPage,
 })
 
 function UserAgreementPage() {
   return (
-    <ConsoleShell backdrop='grid'>
+    <ConsoleShell backdrop='signal'>
       <ConsoleLegal doc='terms' />
     </ConsoleShell>
   )
