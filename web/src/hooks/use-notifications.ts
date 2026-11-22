@@ -94,9 +94,9 @@ export function useNotifications() {
   // Notification store
   const {
     lastReadNotice,
+    readAnnouncementKeys,
     markNoticeRead,
     markAnnouncementsRead,
-    isAnnouncementRead,
   } = useNotificationStore()
 
   // Extract notice content
@@ -109,11 +109,12 @@ export function useNotifications() {
     const noticeUnread =
       noticeContent && noticeContent !== lastReadNotice ? 1 : 0
 
+    // Read from the read keys themselves: the store's isAnnouncementRead is
+    // one stable function, so depending on it kept the count from updating
+    // when the timeline was opened.
+    const readKeys = new Set(readAnnouncementKeys)
     const announcementsUnread = announcements.filter(
-      (item: Record<string, unknown>) => {
-        const key = getAnnouncementKey(item)
-        return !isAnnouncementRead(key)
-      }
+      (item: Record<string, unknown>) => !readKeys.has(getAnnouncementKey(item))
     ).length
 
     return {
@@ -121,7 +122,7 @@ export function useNotifications() {
       announcements: announcementsUnread,
       total: noticeUnread + announcementsUnread,
     }
-  }, [noticeContent, lastReadNotice, announcements, isAnnouncementRead])
+  }, [noticeContent, lastReadNotice, announcements, readAnnouncementKeys])
 
   const markAnnouncementsAsRead = () => {
     if (announcements.length > 0) {
