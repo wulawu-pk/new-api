@@ -21,59 +21,49 @@ import { useTranslation } from 'react-i18next'
 
 import { StatusBadge } from '@/components/status-badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Card, CardContent } from '@/components/ui/card'
-import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toIntlLocale } from '@/i18n/languages'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
+import { CONSOLE_EYEBROW, CONSOLE_FRAME } from '@/lib/console-surface'
 import { formatCompactNumber, formatQuota } from '@/lib/format'
 import { getRoleLabel } from '@/lib/roles'
+import { cn } from '@/lib/utils'
 
 import { getDisplayName } from '../lib'
 import type { UserProfile } from '../types'
-
-// ============================================================================
-// Profile Header Component
-// ============================================================================
 
 interface ProfileHeaderProps {
   profile: UserProfile | null
   loading: boolean
 }
 
+const STAT_KEYS = ['balance', 'usage', 'requests'] as const
+
+/** Account identity over the landing ASCII grid, with a ruled stats row. */
 export function ProfileHeader({ profile, loading }: ProfileHeaderProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
 
   if (loading) {
     return (
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardContent className='p-4 sm:p-5'>
-          <div className='flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left'>
-            <Skeleton className='h-16 w-16 rounded-2xl' />
-            <div className='space-y-3'>
-              <div className='flex flex-col items-center gap-2 sm:flex-row sm:justify-start'>
-                <Skeleton className='h-8 w-48' />
-                <Skeleton className='h-5 w-16' />
-              </div>
-              <div className='flex flex-col items-center gap-1 sm:flex-row sm:justify-start sm:gap-4'>
-                <Skeleton className='h-4 w-24' />
-                <Skeleton className='h-4 w-40' />
-                <Skeleton className='h-4 w-20' />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-        <div className='border-t'>
-          <div className='divide-border/60 grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0'>
-            {['balance', 'usage', 'requests'].map((key) => (
-              <div key={key} className='px-4 py-3.5 sm:px-5 sm:py-4'>
-                <Skeleton className='h-3.5 w-20' />
-                <Skeleton className='mt-2 h-7 w-28' />
-                <Skeleton className='mt-1.5 h-3.5 w-24' />
-              </div>
-            ))}
+      <section aria-busy className={CONSOLE_FRAME}>
+        <div className='flex items-center gap-4 p-5 sm:p-7'>
+          <Skeleton className='size-12 rounded-2xl sm:size-16' />
+          <div className='space-y-3'>
+            <Skeleton className='h-3.5 w-32' />
+            <Skeleton className='h-8 w-48' />
+            <Skeleton className='h-4 w-56' />
           </div>
         </div>
-      </Card>
+        <div className='divide-border grid grid-cols-3 divide-x border-t'>
+          {STAT_KEYS.map((key) => (
+            <div key={key} className='px-4 py-4 sm:px-6'>
+              <Skeleton className='h-3.5 w-20' />
+              <Skeleton className='mt-2.5 h-7 w-28' />
+            </div>
+          ))}
+        </div>
+      </section>
     )
   }
 
@@ -81,59 +71,66 @@ export function ProfileHeader({ profile, loading }: ProfileHeaderProps) {
 
   const displayName = getDisplayName(profile)
   const avatarName = profile.username || displayName
-  const avatarFallback = getUserAvatarFallback(avatarName)
-  const avatarFallbackStyle = getUserAvatarStyle(avatarName)
-  const roleLabel = getRoleLabel(profile.role)
-  const stats: {
-    label: string
-    value: string
-    description: string
-    icon: typeof WalletCards
-    tone: IconBadgeTone
-  }[] = [
+  const stats = [
     {
+      key: 'balance',
       label: t('Current Balance'),
       value: formatQuota(profile.quota),
       description: t('Remaining quota'),
       icon: WalletCards,
-      tone: 'success',
     },
     {
+      key: 'usage',
       label: t('Total Usage'),
       value: formatQuota(profile.used_quota),
       description: t('Total consumed quota'),
       icon: BarChart3,
-      tone: 'info',
     },
     {
+      key: 'requests',
       label: t('API Requests'),
-      value: formatCompactNumber(profile.request_count),
+      value: formatCompactNumber(profile.request_count, locale),
       description: t('Total requests made'),
       icon: Activity,
-      tone: 'chart-4',
     },
   ]
+  const meta = [profile.email, profile.group].filter(Boolean)
 
   return (
-    <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-      <CardContent className='p-3 sm:p-5'>
-        <div className='flex items-center gap-3 text-left sm:gap-4'>
-          <Avatar className='ring-background h-12 w-12 rounded-xl text-sm ring-2 sm:h-16 sm:w-16 sm:rounded-2xl sm:text-lg sm:ring-4'>
+    <section className={CONSOLE_FRAME}>
+      <div className='bg-muted/30 relative overflow-hidden'>
+        <div
+          aria-hidden
+          className='ascii-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_80%_100%_at_100%_0%,black,transparent)] opacity-40'
+        />
+        <div className='relative flex items-center gap-4 p-5 sm:gap-5 sm:p-7'>
+          <Avatar className='ring-background size-12 rounded-2xl text-sm ring-4 sm:size-16 sm:text-lg'>
             <AvatarFallback
-              className='rounded-xl font-semibold text-white sm:rounded-2xl'
-              style={avatarFallbackStyle}
+              className='rounded-2xl font-semibold text-white'
+              style={getUserAvatarStyle(avatarName)}
             >
-              {avatarFallback}
+              {getUserAvatarFallback(avatarName)}
             </AvatarFallback>
           </Avatar>
 
-          <div className='min-w-0 flex-1 space-y-1.5 sm:space-y-3'>
-            <div className='flex min-w-0 items-center gap-2'>
-              <h1 className='truncate text-xl font-semibold tracking-tight sm:text-2xl'>
+          <div className='min-w-0 flex-1'>
+            <p
+              aria-hidden
+              className='font-ascii text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs'
+            >
+              <span className='text-landing-accent'>$</span>
+              <span>whoami</span>
+              <span className='text-foreground truncate'>
+                {profile.username}
+              </span>
+              <span className='ascii-caret'>_</span>
+            </p>
+            <div className='mt-2 flex min-w-0 flex-wrap items-center gap-2'>
+              <h1 className='truncate text-xl font-semibold tracking-(--tracking-display) sm:text-3xl'>
                 {displayName}
               </h1>
               <StatusBadge
-                label={roleLabel}
+                label={getRoleLabel(profile.role)}
                 variant='neutral'
                 copyable={false}
               />
@@ -143,48 +140,57 @@ export function ProfileHeader({ profile, loading }: ProfileHeaderProps) {
                 copyText={String(profile.id)}
               />
             </div>
-
-            <div className='text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:gap-x-4 sm:text-sm'>
-              <span className='truncate'>@{profile.username}</span>
-              {profile.email && (
-                <>
-                  <span>•</span>
-                  <span className='truncate'>{profile.email}</span>
-                </>
-              )}
-              {profile.group && (
-                <>
-                  <span>•</span>
-                  <span className='truncate'>{profile.group}</span>
-                </>
-              )}
-            </div>
+            {meta.length > 0 && (
+              <p className='font-ascii text-muted-foreground mt-1.5 truncate text-xs'>
+                {meta.join(' · ')}
+              </p>
+            )}
           </div>
         </div>
-      </CardContent>
-      <div className='border-t'>
-        <div className='divide-border/60 grid grid-cols-3 divide-x'>
-          {stats.map((item) => (
-            <div key={item.label} className='min-w-0 px-3 py-3 sm:px-5 sm:py-4'>
-              <div className='flex items-center gap-2'>
-                <IconBadge tone={item.tone} size='stat'>
-                  <item.icon />
-                </IconBadge>
-                <div className='text-muted-foreground truncate text-xs font-medium tracking-wider uppercase'>
-                  {item.label}
-                </div>
-              </div>
-
-              <div className='text-foreground mt-1.5 truncate font-mono text-lg font-bold tracking-tight tabular-nums sm:mt-2 sm:text-2xl'>
-                {item.value}
-              </div>
-              <div className='text-muted-foreground/60 mt-1 hidden text-xs md:block'>
-                {item.description}
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
-    </Card>
+
+      <div className='border-border grid grid-cols-2 border-t sm:grid-cols-3'>
+        {stats.map((item) => (
+          <div
+            key={item.key}
+            className={cn(
+              'border-border min-w-0 px-4 py-3.5 sm:px-6 sm:py-5',
+              item.key === 'balance' &&
+                'col-span-2 border-b sm:col-span-1 sm:border-b-0',
+              item.key === 'usage' && 'sm:border-l',
+              item.key === 'requests' && 'border-l'
+            )}
+          >
+            <div className='flex min-w-0 items-center gap-1.5'>
+              {item.key === 'balance' ? (
+                <span aria-hidden className='relative flex size-1.5 shrink-0'>
+                  <span className='bg-landing-accent absolute inset-0 rounded-full opacity-60 motion-safe:animate-ping' />
+                  <span className='bg-landing-accent relative size-1.5 rounded-full' />
+                </span>
+              ) : (
+                <item.icon
+                  className='text-muted-foreground size-3.5 shrink-0'
+                  aria-hidden
+                />
+              )}
+              <span className={cn(CONSOLE_EYEBROW, 'truncate')}>
+                {item.label}
+              </span>
+            </div>
+            <div
+              className={cn(
+                'font-ascii mt-2.5 truncate font-semibold tracking-tight tabular-nums sm:text-[1.75rem] sm:leading-tight',
+                item.key === 'balance' ? 'text-2xl leading-tight' : 'text-base'
+              )}
+            >
+              {item.value}
+            </div>
+            <div className='text-muted-foreground mt-1 hidden text-xs md:block'>
+              {item.description}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }

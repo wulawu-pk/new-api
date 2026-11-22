@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TitledCard } from '@/components/ui/titled-card'
+import { CONSOLE_CARD } from '@/lib/console-surface'
+import { cn } from '@/lib/utils'
 
 import type { UserProfile } from '../types'
 import { NotificationTab } from './tabs/notification-tab'
@@ -49,8 +51,11 @@ export function ProfileSettingsCard({
 
   if (loading) {
     return (
-      <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-        <CardHeader className='border-b p-3 !pb-3 sm:p-5 sm:!pb-5'>
+      <Card
+        data-card-hover='false'
+        className={cn(CONSOLE_CARD, 'gap-0 overflow-hidden py-0')}
+      >
+        <CardHeader className='border-b border-dashed p-4 !pb-4 sm:p-5 sm:!pb-5'>
           <Skeleton className='h-6 w-32' />
           <Skeleton className='mt-2 h-4 w-48' />
         </CardHeader>

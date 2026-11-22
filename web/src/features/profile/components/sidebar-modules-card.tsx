@@ -22,17 +22,12 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { IconBadge } from '@/components/ui/icon-badge'
 import { Switch } from '@/components/ui/switch'
+import { TitledCard } from '@/components/ui/titled-card'
 import { api } from '@/lib/api'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { handleServerError } from '@/lib/handle-server-error'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
 type SidebarModuleConfig = {
@@ -213,81 +208,78 @@ export function SidebarModulesCard() {
   }
 
   return (
-    <Card data-card-hover='false' className='gap-0 overflow-hidden py-0'>
-      <CardHeader className='border-b p-3 !pb-3 sm:p-5 sm:!pb-5'>
-        <div className='flex items-center gap-3'>
-          <IconBadge tone='info' size='title'>
-            <LayoutDashboard />
-          </IconBadge>
-          <div className='min-w-0'>
-            <CardTitle className='text-lg tracking-tight sm:text-xl'>
-              {t('Sidebar Personal Settings')}
-            </CardTitle>
-            <CardDescription className='text-xs sm:text-sm'>
-              {t('Customize sidebar display content')}
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className='space-y-4 p-3 sm:space-y-5 sm:p-5'>
-        {sectionDefs.map((section) => {
-          const sectionEnabled = config[section.key]?.enabled !== false
-          return (
-            <div
-              key={section.key}
-              className='bg-background/60 rounded-xl border p-3'
-            >
-              <div className='flex items-start justify-between gap-3'>
-                <div className='min-w-0'>
-                  <p className='text-sm font-medium'>{section.title}</p>
-                  <p className='text-muted-foreground text-xs'>
-                    {section.description}
-                  </p>
-                </div>
-                <Switch
-                  checked={sectionEnabled}
-                  onCheckedChange={(v) => toggleSection(section.key, v)}
-                />
+    <TitledCard
+      title={t('Sidebar Personal Settings')}
+      description={t('Customize sidebar display content')}
+      icon={<LayoutDashboard className='h-4 w-4' />}
+      iconTone='info'
+      disableHoverEffect
+      contentClassName='space-y-4 sm:space-y-5'
+    >
+      {sectionDefs.map((section) => {
+        const sectionEnabled = config[section.key]?.enabled !== false
+        return (
+          <div
+            key={section.key}
+            className='bg-muted/30 rounded-2xl border p-3 sm:p-4'
+          >
+            <div className='flex items-start justify-between gap-3'>
+              <div className='min-w-0'>
+                <p className='text-sm font-medium'>{section.title}</p>
+                <p className='text-muted-foreground text-xs'>
+                  {section.description}
+                </p>
               </div>
-              <div className='mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1'>
-                {section.modules.map((mod) => (
-                  <div
-                    key={mod.key}
-                    className={`flex min-h-16 items-center justify-between rounded-lg border p-3 ${
-                      sectionEnabled ? '' : 'opacity-50'
-                    }`}
-                  >
-                    <div className='mr-2 min-w-0'>
-                      <p className='truncate text-sm font-medium'>
-                        {mod.title}
-                      </p>
-                      <p className='text-muted-foreground truncate text-xs'>
-                        {mod.description}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={config[section.key]?.[mod.key] !== false}
-                      onCheckedChange={(v) =>
-                        toggleModule(section.key, mod.key, v)
-                      }
-                      disabled={!sectionEnabled}
-                    />
-                  </div>
-                ))}
-              </div>
+              <Switch
+                checked={sectionEnabled}
+                onCheckedChange={(v) => toggleSection(section.key, v)}
+              />
             </div>
-          )
-        })}
+            <div className='mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1'>
+              {section.modules.map((mod) => (
+                <div
+                  key={mod.key}
+                  className={cn(
+                    'bg-background flex min-h-16 items-center justify-between rounded-xl border p-3',
+                    !sectionEnabled && 'opacity-50'
+                  )}
+                >
+                  <div className='mr-2 min-w-0'>
+                    <p className='truncate text-sm font-medium'>{mod.title}</p>
+                    <p className='text-muted-foreground truncate text-xs'>
+                      {mod.description}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={config[section.key]?.[mod.key] !== false}
+                    onCheckedChange={(v) =>
+                      toggleModule(section.key, mod.key, v)
+                    }
+                    disabled={!sectionEnabled}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
 
-        <div className='flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end'>
-          <Button variant='outline' onClick={handleReset}>
-            {t('Reset to Default')}
-          </Button>
-          <Button onClick={handleSave} disabled={loading}>
-            {loading ? t('Saving...') : t('Save Changes')}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      <div className='border-border flex flex-col-reverse gap-2 border-t border-dashed pt-4 sm:flex-row sm:justify-end'>
+        <Button
+          variant='outline'
+          className='rounded-full px-4'
+          onClick={handleReset}
+        >
+          {t('Reset to Default')}
+        </Button>
+        <Button
+          className={CONSOLE_PRIMARY_BUTTON}
+          onClick={handleSave}
+          disabled={loading}
+        >
+          {loading ? t('Saving...') : t('Save Changes')}
+        </Button>
+      </div>
+    </TitledCard>
   )
 }

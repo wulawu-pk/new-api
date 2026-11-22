@@ -32,6 +32,7 @@ import {
   SettingsControlGroup,
   SettingsSwitchField,
 } from '@/features/system-settings/components/settings-form-layout'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import {
   formatQuota,
@@ -291,7 +292,7 @@ export function NotificationTab({
                   )}
                 </p>
               </div>
-              <div className='bg-muted/50 rounded-lg border p-3 sm:p-4'>
+              <div className='bg-muted/30 rounded-2xl border p-3 sm:p-4'>
                 <h5 className='mb-1.5 text-sm font-medium sm:mb-2'>
                   {t('Setup Instructions')}
                 </h5>
@@ -418,7 +419,7 @@ export function NotificationTab({
         </div>
 
         {/* Accept Unset Model Price */}
-        <div className='flex items-start justify-between gap-3 rounded-lg border p-3 sm:items-center sm:p-4'>
+        <div className='flex items-start justify-between gap-3 rounded-2xl border p-3 sm:items-center sm:p-4'>
           <div className='space-y-0.5'>
             <Label htmlFor='acceptUnsetPrice'>
               {t('Accept Unpriced Models')}
@@ -440,7 +441,11 @@ export function NotificationTab({
 
       {/* Save Button */}
       <div className='flex justify-end'>
-        <Button onClick={handleSave} disabled={loading}>
+        <Button
+          className={CONSOLE_PRIMARY_BUTTON}
+          onClick={handleSave}
+          disabled={loading}
+        >
           {loading && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
           {loading ? t('Saving...') : t('Save Settings')}
         </Button>
