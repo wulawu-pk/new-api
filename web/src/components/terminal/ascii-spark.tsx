@@ -32,23 +32,29 @@ export type SparkCell = {
 type AsciiSparkProps = {
   cells: SparkCell[]
   label: string
-  /** At or above this availability a cell is green (ok); default 90. */
+  /** Dark theme: below this availability a cell is drawn in the warning
+   * colour (otherwise the text colour). Default 99. */
+  warnBelow?: number
+  /** Light theme: at or above this a cell is green (ok); default 90. */
   okFrom?: number
-  /** Below this availability a cell is red (bad); between the two it is
-   * orange (warn). Default 80. */
+  /** Light theme: below this a cell is red (bad), between the two orange
+   * (warn); default 80. */
   badBelow?: number
   className?: string
   cellClassName?: string
 }
 
 /**
- * Availability trend: one equal-width CSS column per period, graded green
- * (ok), orange (warn) or red (bad) by its availability.
+ * Availability trend: one equal-width CSS column per period. The dark theme
+ * draws the bars in the text colour with the warning colour below
+ * `warnBelow`; the light theme grades them green (ok), orange (warn) or red
+ * (bad) instead (user request, light only).
  *
  * Not drawn with █▆▄ glyphs because their height and weight differ from font
  * to font. An empty period draws only a short baseline.
  */
 export function AsciiSpark(props: AsciiSparkProps) {
+  const warnBelow = props.warnBelow ?? 99
   const okFrom = props.okFrom ?? 90
   const badBelow = props.badBelow ?? 80
   return (
@@ -71,6 +77,7 @@ export function AsciiSpark(props: AsciiSparkProps) {
             />
           )
         }
+        const warn = cell.value < warnBelow
         let level: 'ok' | 'warn' | 'bad' = 'bad'
         if (cell.value >= okFrom) level = 'ok'
         else if (cell.value >= badBelow) level = 'warn'
@@ -78,12 +85,14 @@ export function AsciiSpark(props: AsciiSparkProps) {
           <i
             key={cell.id}
             title={cell.title}
+            data-warn={warn ? 'true' : undefined}
             data-level={level}
             className={cn(
               't-grow-y block min-w-[3px] flex-1',
-              level === 'ok' && 'bg-t-ok',
-              level === 'warn' && 'bg-t-warn',
-              level === 'bad' && 'bg-t-bad',
+              warn ? 'bg-t-warn' : 'bg-t-fg2',
+              level === 'ok' && 'light:bg-t-ok',
+              level === 'warn' && 'light:bg-t-warn',
+              level === 'bad' && 'light:bg-t-bad',
               props.cellClassName
             )}
             style={
