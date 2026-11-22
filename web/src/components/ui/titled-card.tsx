@@ -63,10 +63,13 @@ export function TitledCard({
   return (
     <Card
       data-card-hover={disableHoverEffect ? 'false' : undefined}
-      className={cn('gap-0 overflow-hidden py-0', className)}
+      className={cn(
+        'bg-background ring-border gap-0 overflow-hidden rounded-3xl py-0',
+        className
+      )}
     >
       <CardHeader
-        className={cn('border-b p-3 !pb-3 sm:p-5 sm:!pb-5', headerClassName)}
+        className={cn('relative p-4 !pb-4 sm:p-5 sm:!pb-5', headerClassName)}
       >
         <div className='flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between'>
           <div className='flex min-w-0 items-center gap-3'>
@@ -97,8 +100,9 @@ export function TitledCard({
             <div className='w-full shrink-0 sm:w-auto'>{action}</div>
           )}
         </div>
+        <div aria-hidden className='ascii-rule absolute inset-x-0 bottom-0' />
       </CardHeader>
-      <CardContent className={cn('p-3 sm:p-5', contentClassName)}>
+      <CardContent className={cn('p-4 sm:p-5', contentClassName)}>
         {children}
       </CardContent>
     </Card>
