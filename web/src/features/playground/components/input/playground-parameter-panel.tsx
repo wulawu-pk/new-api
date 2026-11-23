@@ -210,7 +210,7 @@ export function PlaygroundParameterPanel(props: PlaygroundParameterPanelProps) {
       variant='ghost'
     >
       <SlidersHorizontalIcon size={16} />
-      <span className='bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-1 text-[9px] leading-none font-semibold'>
+      <span className='bg-landing-accent text-background font-ascii absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-1 text-[9px] leading-none font-semibold'>
         {activeCount}
       </span>
     </PromptInputButton>
@@ -226,7 +226,7 @@ export function PlaygroundParameterPanel(props: PlaygroundParameterPanelProps) {
           </TooltipContent>
         </Tooltip>
         <SheetContent
-          className='max-h-[85vh] overflow-hidden rounded-t-xl'
+          className='max-h-[85vh] overflow-hidden rounded-t-3xl'
           side='bottom'
         >
           <SheetHeader>
@@ -248,7 +248,7 @@ export function PlaygroundParameterPanel(props: PlaygroundParameterPanelProps) {
       </Tooltip>
       <PopoverContent
         align='start'
-        className='w-[22rem] max-w-[calc(100vw-2rem)] gap-3 p-3'
+        className='w-[22rem] max-w-[calc(100vw-2rem)] gap-3 rounded-2xl p-3'
         collisionPadding={8}
         side='top'
         sideOffset={8}

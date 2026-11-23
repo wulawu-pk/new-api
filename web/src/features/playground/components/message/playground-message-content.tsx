@@ -128,7 +128,7 @@ export function PlaygroundMessageContent({
 
       {isError && (
         <>
-          <MessageError message={message} className='mb-2' />
+          <MessageError message={message} className='mb-2 rounded-2xl' />
           <MessageMetadata alignment={alignment} message={message} />
           {errorActions}
         </>
