@@ -59,7 +59,7 @@ import { cn } from '@/lib/utils'
 import { useUserGroups } from '../hooks/use-user-groups'
 import { groupName } from '../lib/groups'
 import { ConsolePageHeader } from '../shell/console-shell'
-import { CacheHitCell } from './components/cells'
+import { CacheHitCell, StreamCell } from './components/cells'
 import { LogDetail } from './components/log-detail'
 import {
   LOG_PAGE_SIZE,
@@ -98,7 +98,7 @@ export function ConsoleLogs() {
   const effective = { ...filters, model, username }
   const allUsers = isAllUsers(effective, isAdmin)
   const logApi = allUsers ? '/api/log/' : '/api/log/self'
-  const cols = allUsers ? 10 : 9
+  const cols = allUsers ? 11 : 10
   const narrowed = Boolean(
     filters.group || filters.model || (allUsers && filters.username)
   )
@@ -278,7 +278,7 @@ export function ConsoleLogs() {
 
       <Pane hero title={<b>{t('Requests')}</b>}>
         <div className='overflow-x-auto px-1 pt-2 pb-1'>
-          <ConsoleTable minWidth={900} stateMode={showState}>
+          <ConsoleTable minWidth={960} stateMode={showState}>
             <ConsoleTableHeader>
               <ConsoleTableRow className='hover:bg-transparent'>
                 <ConsoleTh>{t('Time')}</ConsoleTh>
@@ -289,6 +289,7 @@ export function ConsoleLogs() {
                 <ConsoleTh kind='num'>{t('Input')}</ConsoleTh>
                 <ConsoleTh kind='num'>{t('Output')}</ConsoleTh>
                 <ConsoleTh>{t('Cache hit')}</ConsoleTh>
+                <ConsoleTh>{t('Mode')}</ConsoleTh>
                 <ConsoleTh kind='num'>{t('Time taken')}</ConsoleTh>
                 <ConsoleTh kind='num'>{t('Charge')}</ConsoleTh>
               </ConsoleTableRow>
@@ -378,6 +379,9 @@ export function ConsoleLogs() {
                         ) : (
                           <CacheHitCell rate={row.cacheHit} />
                         )}
+                      </ConsoleTd>
+                      <ConsoleTd>
+                        <StreamCell streamed={row.isStream} />
                       </ConsoleTd>
                       <ConsoleTd kind='num'>{row.useTime}s</ConsoleTd>
                       <ConsoleTd kind='num'>

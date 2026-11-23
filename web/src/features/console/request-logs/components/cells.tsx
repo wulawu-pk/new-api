@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useTranslation } from 'react-i18next'
+
 import { AsciiBar } from '@/components/terminal/ascii-bar'
 import { formatCacheHitRate } from '@/features/usage-logs/lib/cache-hit-rate'
 import { formatCredits } from '@/features/usage-logs/lib/credit-billing'
@@ -30,6 +32,21 @@ export function CacheHitCell(props: { rate: number | null }) {
     <span className='inline-flex items-center gap-2 whitespace-nowrap'>
       <AsciiBar value={props.rate * 100} label={text} />
       <span className='text-t-dim font-mono text-xs'>{text}</span>
+    </span>
+  )
+}
+
+/** Whether the response was streamed; non-streamed is dimmed. */
+export function StreamCell(props: { streamed: boolean }) {
+  const { t } = useTranslation()
+  if (props.streamed) {
+    return (
+      <span className='text-[12.5px] whitespace-nowrap'>{t('Streamed')}</span>
+    )
+  }
+  return (
+    <span className='text-t-dim text-[12.5px] whitespace-nowrap'>
+      {t('Not streamed')}
     </span>
   )
 }

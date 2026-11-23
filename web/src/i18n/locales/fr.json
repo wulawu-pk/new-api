@@ -7647,6 +7647,8 @@
     "Edit key {{name}}": "Edit key {{name}}",
     "Keep {{date}}": "Keep {{date}}",
     "Saving…": "Saving…",
-    "Saved": "Saved"
+    "Saved": "Saved",
+    "Streamed": "Streamed",
+    "Not streamed": "Not streamed"
   }
 }

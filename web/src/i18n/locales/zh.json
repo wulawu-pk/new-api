@@ -7647,6 +7647,8 @@
     "Edit key {{name}}": "编辑密钥 {{name}}",
     "Keep {{date}}": "不变（{{date}}）",
     "Saving…": "保存中…",
-    "Saved": "已保存"
+    "Saved": "已保存",
+    "Streamed": "流式",
+    "Not streamed": "非流式"
   }
 }

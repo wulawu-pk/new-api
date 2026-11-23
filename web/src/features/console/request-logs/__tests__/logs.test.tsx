@@ -207,6 +207,32 @@ describe('console logs page', () => {
     expect(within(detail).getByText('By token')).toBeInTheDocument()
     expect(within(detail).getByText('7,471')).toBeInTheDocument()
   })
+
+  it('shows whether each request was streamed in its own column', async () => {
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          log({ id: 1, model_name: 'gpt-6-astra', is_stream: true }),
+          log({ id: 2, model_name: 'deepseek-v4', is_stream: false }),
+        ],
+        total: 2,
+        page: 1,
+        page_size: 50,
+      },
+    })
+    renderConsole(<ConsoleLogs />)
+
+    const streamed = (await screen.findByText('gpt-6-astra')).closest(
+      'tr'
+    ) as HTMLElement
+    expect(
+      screen.getByRole('columnheader', { name: 'Mode' })
+    ).toBeInTheDocument()
+    const plain = screen.getByText('deepseek-v4').closest('tr') as HTMLElement
+    expect(within(streamed).getByText('Streamed')).toBeInTheDocument()
+    expect(within(plain).getByText('Not streamed')).toBeInTheDocument()
+  })
 })
 
 describe('console logs page for admins', () => {
