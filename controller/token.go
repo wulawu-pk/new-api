@@ -44,6 +44,53 @@ type tokenRequest struct {
 	// against it and a concurrent change answers token_conflict.
 	ExpectedRemainQuota    *int  `json:"expected_remain_quota"`
 	ExpectedUnlimitedQuota *bool `json:"expected_unlimited_quota"`
+	// peroai: the configuration the editor saw when it opened the token
+	// (full PUT only). A field submitted unchanged is left alone; a changed
+	// field is written only while the row still holds the original.
+	ExpectedOriginal *tokenExpectedOriginal `json:"expected_original"`
+	// peroai: idempotency key for POST /api/token/ (see token_create_once.go).
+	ClientRequestId *string `json:"client_request_id"`
+}
+
+// tokenExpectedOriginal holds the values a legacy full editor opened with.
+// A nil field was not sent and keeps the old behaviour.
+type tokenExpectedOriginal struct {
+	Name                *string             `json:"name"`
+	ExpiredTime         *int64              `json:"expired_time"`
+	ModelLimitsEnabled  *bool               `json:"model_limits_enabled"`
+	ModelLimits         *string             `json:"model_limits"`
+	AllowIps            tokenOptionalString `json:"allow_ips"`
+	Group               *string             `json:"group"`
+	CrossGroupRetry     *bool               `json:"cross_group_retry"`
+	AllowUserQuotaQuery *bool               `json:"allow_user_quota_query"`
+}
+
+// tokenOptionalString tells a missing key (Set false) from an explicit null
+// (Set true, Value nil).
+type tokenOptionalString struct {
+	Set   bool
+	Value *string
+}
+
+func (value *tokenOptionalString) UnmarshalJSON(data []byte) error {
+	value.Set = true
+	if strings.TrimSpace(string(data)) == "null" {
+		value.Value = nil
+		return nil
+	}
+	var text string
+	if err := common.Unmarshal(data, &text); err != nil {
+		return err
+	}
+	value.Value = &text
+	return nil
+}
+
+func sameOptionalString(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
 
 type tokenResponse struct {
@@ -334,10 +381,30 @@ func AddToken(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if request.ClientRequestId != nil {
+		if !tokenClientRequestIdPattern.MatchString(*request.ClientRequestId) {
+			params := tokenAuditParams(c)
+			params["name"] = request.Name
+			common.ApiErrorT(c, "Invalid parameters")
+			return
+		}
+		addTokenOnce(c, c.GetInt("id"), *request.ClientRequestId, func() *tokenCreateResult {
+			return createToken(c, request)
+		})
+		return
+	}
+	if result := createToken(c, request); result != nil {
+		respondTokenCreated(c, *result)
+	}
+}
+
+// createToken validates and inserts the requested token. It writes the
+// error response and returns nil on failure; on success the caller responds.
+func createToken(c *gin.Context, request tokenRequest) *tokenCreateResult {
 	token := request.Token
 	if len(token.Name) > 50 {
 		common.ApiErrorT(c, "Token name is too long")
-		return
+		return nil
 	}
 	params := tokenAuditParams(c)
 	params["name"] = token.Name
@@ -345,12 +412,12 @@ func AddToken(c *gin.Context) {
 	if !token.UnlimitedQuota {
 		if token.RemainQuota < 0 {
 			common.ApiErrorT(c, "Quota value cannot be negative")
-			return
+			return nil
 		}
 		maxQuotaValue := maxTokenQuota()
 		if token.RemainQuota > maxQuotaValue {
 			common.ApiErrorT(c, "Quota value exceeds valid range, maximum is {{max}}", map[string]any{"max": logger.FormatQuota(maxQuotaValue)})
-			return
+			return nil
 		}
 	}
 	// 检查用户令牌数量是否已达上限
@@ -358,18 +425,18 @@ func AddToken(c *gin.Context) {
 	count, err := model.CountUserTokens(c.GetInt("id"))
 	if err != nil {
 		common.ApiError(c, err)
-		return
+		return nil
 	}
 	if int(count) >= maxTokens {
 		common.ApiErrorT(c, "Maximum number of tokens reached ({{max}})", map[string]any{"max": maxTokens})
-		return
+		return nil
 	}
 	if !requireTokenGroup(c, token.Group) {
-		return
+		return nil
 	}
 	if token.Group == "auto" {
 		if !setTokenAutoGroups(c, &token, request.AutoGroups.Groups) {
-			return
+			return nil
 		}
 	} else {
 		token.CrossGroupRetry = false
@@ -379,7 +446,7 @@ func AddToken(c *gin.Context) {
 	if err != nil {
 		common.ApiErrorT(c, "Failed to generate token")
 		common.SysLog(common.LogText("failed to generate token key: %s", err.Error()))
-		return
+		return nil
 	}
 	cleanToken := model.Token{
 		UserId:             c.GetInt("id"),
@@ -401,19 +468,12 @@ func AddToken(c *gin.Context) {
 	err = cleanToken.Insert()
 	if err != nil {
 		common.ApiError(c, err)
-		return
+		return nil
 	}
 	params["id"] = cleanToken.Id
 	common.SetContextKey(c, constant.ContextKeyTokenAuditSucceeded, true)
 	// Return the new token's id so the console can open it; never the key.
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "",
-		"data": gin.H{
-			"id":   cleanToken.Id,
-			"name": cleanToken.Name,
-		},
-	})
+	return &tokenCreateResult{Id: cleanToken.Id, Name: cleanToken.Name}
 }
 
 func DeleteToken(c *gin.Context) {
@@ -545,28 +605,112 @@ func UpdateToken(c *gin.Context) {
 				changedFields = append(changedFields, field.name)
 			}
 		}
-		var expected *model.TokenColumnExpectation
-		seen := &model.TokenQuotaExpectation{RemainQuota: previous.RemainQuota, UnlimitedQuota: previous.UnlimitedQuota}
+		dropColumns := func(names ...string) {
+			for _, name := range names {
+				delete(columns, name)
+			}
+			changedFields = slices.DeleteFunc(changedFields, func(f string) bool {
+				return slices.Contains(names, f)
+			})
+		}
+		expected := &model.TokenColumnExpectation{}
 		if request.ExpectedRemainQuota != nil && request.ExpectedUnlimitedQuota != nil {
-			seen = &model.TokenQuotaExpectation{RemainQuota: *request.ExpectedRemainQuota, UnlimitedQuota: *request.ExpectedUnlimitedQuota}
+			seen := &model.TokenQuotaExpectation{RemainQuota: *request.ExpectedRemainQuota, UnlimitedQuota: *request.ExpectedUnlimitedQuota}
 			if token.RemainQuota == seen.RemainQuota && token.UnlimitedQuota == seen.UnlimitedQuota {
 				// The editor did not touch the quota: keep whatever the row holds now.
-				delete(columns, "remain_quota")
-				delete(columns, "unlimited_quota")
-				changedFields = slices.DeleteFunc(changedFields, func(f string) bool {
-					return f == "remain_quota" || f == "unlimited_quota"
-				})
+				dropColumns("remain_quota", "unlimited_quota")
 			} else if previous.RemainQuota != seen.RemainQuota || previous.UnlimitedQuota != seen.UnlimitedQuota {
 				respondTokenConflict(c)
 				return
 			}
+			_, remainChanged := columns["remain_quota"]
+			_, unlimitedChanged := columns["unlimited_quota"]
+			if remainChanged || unlimitedChanged {
+				// The new quota replaces the one the editor saw; a spend landing
+				// in between must not be overwritten.
+				expected.Quota = seen
+			}
+		} else {
+			// Without the quota the editor opened with, a spend made while the
+			// form was open cannot be told from an edit: only an unchanged
+			// quota is accepted, and it is left as the row holds it.
+			_, remainChanged := columns["remain_quota"]
+			_, unlimitedChanged := columns["unlimited_quota"]
+			// Two unlimited quotas are the same quota: the remaining amount
+			// is not enforced and keeps moving with spend, so it is kept.
+			bothUnlimited := previous.UnlimitedQuota && cleanToken.UnlimitedQuota
+			if (remainChanged || unlimitedChanged) && !bothUnlimited {
+				respondTokenQuotaExpectedRequired(c)
+				return
+			}
+			dropColumns("remain_quota", "unlimited_quota")
 		}
-		_, remainChanged := columns["remain_quota"]
-		_, unlimitedChanged := columns["unlimited_quota"]
-		if remainChanged || unlimitedChanged {
-			// The new quota replaces the one the editor saw; a spend landing
-			// in between must not be overwritten.
-			expected = &model.TokenColumnExpectation{Quota: seen}
+		if original := request.ExpectedOriginal; original != nil {
+			// Each configuration field the editor reported is compared with
+			// what it opened: unchanged keeps the row's current value,
+			// changed is written only while the row still holds the original.
+			conflict := false
+			apply := func(column string, same, readMatches bool, setExpected func()) {
+				if conflict {
+					return
+				}
+				if same {
+					dropColumns(column)
+					return
+				}
+				if !readMatches {
+					// Changed meanwhile (also when it now holds the
+					// submitted value: the editor never saw that state).
+					conflict = true
+					return
+				}
+				setExpected()
+			}
+			if original.Name != nil {
+				want := *original.Name
+				apply("name", cleanToken.Name == want, previous.Name == want, func() { expected.Name = &want })
+			}
+			if original.ExpiredTime != nil {
+				want := *original.ExpiredTime
+				apply("expired_time", cleanToken.ExpiredTime == want, previous.ExpiredTime == want, func() { expected.ExpiredTime = &want })
+			}
+			if original.ModelLimitsEnabled != nil {
+				want := *original.ModelLimitsEnabled
+				apply("model_limits_enabled", cleanToken.ModelLimitsEnabled == want, previous.ModelLimitsEnabled == want, func() { expected.ModelLimitsEnabled = &want })
+			}
+			if original.ModelLimits != nil {
+				want := *original.ModelLimits
+				apply("model_limits", cleanToken.ModelLimits == want, previous.ModelLimits == want, func() { expected.ModelLimits = &want })
+			}
+			if original.AllowIps.Set {
+				want := original.AllowIps.Value
+				apply("allow_ips", sameOptionalString(cleanToken.AllowIps, want), sameOptionalString(previous.AllowIps, want),
+					func() { expected.AllowIps = &model.TokenAllowIpsExpectation{Value: want} })
+			}
+			if original.Group != nil {
+				want := *original.Group
+				groupSame := cleanToken.Group == want
+				apply("group", groupSame, previous.Group == want, func() { expected.Group = &want })
+				if groupSame && !request.AutoGroups.Set {
+					// The auto order follows the group; a kept group keeps it.
+					dropColumns("auto_groups")
+				}
+			}
+			if original.CrossGroupRetry != nil {
+				want := *original.CrossGroupRetry
+				apply("cross_group_retry", cleanToken.CrossGroupRetry == want, previous.CrossGroupRetry == want, func() { expected.CrossGroupRetry = &want })
+			}
+			if original.AllowUserQuotaQuery != nil && request.AllowUserQuotaQuery != nil {
+				want := *original.AllowUserQuotaQuery
+				apply("allow_user_quota_query", cleanToken.AllowUserQuotaQuery == want, previous.AllowUserQuotaQuery == want, func() { expected.AllowUserQuotaQuery = &want })
+			}
+			if conflict {
+				respondTokenConflict(c)
+				return
+			}
+		}
+		if *expected == (model.TokenColumnExpectation{}) {
+			expected = nil
 		}
 		if !applyTokenColumns(c, &previous, userId, columns, expected) {
 			return
@@ -772,6 +916,16 @@ func respondTokenConflict(c *gin.Context) {
 		"success": false,
 		"code":    "token_conflict",
 		"message": i18n.T(c, i18n.MsgTokenQuotaConflict),
+	})
+}
+
+// respondTokenQuotaExpectedRequired refuses a legacy full edit that changes
+// the quota without saying which quota it opened with.
+func respondTokenQuotaExpectedRequired(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"success": false,
+		"code":    "token_quota_expected_required",
+		"message": i18n.T(c, i18n.MsgTokenQuotaExpectedRequired),
 	})
 }
 

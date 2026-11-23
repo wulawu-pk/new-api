@@ -328,7 +328,9 @@ func RequestEpay(c *gin.Context) {
 	}
 
 	callBackAddress := service.GetCallbackAddress()
-	returnUrl, _ := url.Parse(paymentReturnPath("/usage-logs"))
+	// The gateway appends signed notify fields to return_url; /payment-return
+	// is redirected by Caddy to the wallet with every query parameter dropped.
+	returnUrl, _ := url.Parse(paymentReturnPath("/payment-return"))
 	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
 	tradeNo := fmt.Sprintf("%s%d", common.GetRandomString(6), time.Now().Unix())
 	tradeNo = fmt.Sprintf("USR%dNO%s", id, tradeNo)

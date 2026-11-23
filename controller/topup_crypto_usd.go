@@ -408,7 +408,8 @@ func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
 		return
 	}
 
-	returnUrl := paymentReturnPath("/usage-logs")
+	// See RequestEpay: /payment-return drops the gateway's signed query.
+	returnUrl := paymentReturnPath("/payment-return")
 	notifyUrl := service.GetCallbackAddress() + "/api/user/epay/notify"
 	tradeNo := fmt.Sprintf("USR%dNO%s%d", userId, common.GetRandomString(6), time.Now().Unix())
 	money := strconv.FormatInt(q.Coins, 10)
