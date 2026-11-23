@@ -94,6 +94,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		if newAPIError != nil {
 			service.RecordRequestPolicyTermination(c, newAPIError)
 			logger.LogError(c, common.LogText("relay error: %s", common.LocalLogPreview(newAPIError.Error())))
+			newAPIError = service.PublicUpstreamError(c, newAPIError)
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
 			upstreamURLs := common.UpstreamAddresses(c)
 			if relayFormat != types.RelayFormatOpenAIRealtime && c.Writer.Written() &&
@@ -799,6 +800,16 @@ func presentTaskSubmission(c *gin.Context, outcome *taskSubmissionOutcome) {
 func respondTaskSubmissionError(c *gin.Context, taskErr *taskdto.TaskError) {
 	service.RecordRequestPolicyTermination(c, taskSubmissionAPIError(taskErr))
 	newTaskPluginSubmitDiagnostics(c).presentError(taskErr)
+	if !taskErr.LocalError {
+		// peroai fork: the customer sees a neutral message, not the upstream's.
+		public := service.PublicUpstreamError(c, taskSubmissionAPIError(taskErr))
+		masked := *taskErr
+		masked.Message = public.Error()
+		masked.StatusCode = public.StatusCode
+		masked.Code = string(public.GetErrorCode())
+		masked.Data = nil
+		taskErr = &masked
+	}
 	if middleware.RespondTaskPluginError(c, taskErr) {
 		return
 	}

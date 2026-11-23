@@ -83,9 +83,16 @@ func ProcessChannelError(c *gin.Context, channelError types.ChannelError, err *t
 		if c.Request != nil && c.Request.URL != nil {
 			other.SetPublic("request_path", c.Request.URL.Path)
 		}
-		other.SetPublic("error_type", err.GetErrorType())
-		other.SetPublic("error_code", err.GetErrorCode())
-		other.SetPublic("status_code", err.StatusCode)
+		// peroai fork: the customer reads the neutral error; administrators
+		// keep the upstream's own text in admin_info.
+		public := PublicUpstreamError(c, err)
+		content := public.MaskSensitiveErrorWithStatusCode(upstreamURLs...)
+		if public != err {
+			other.SetAdmin("upstream_error", err.MaskSensitiveErrorWithStatusCode(upstreamURLs...))
+		}
+		other.SetPublic("error_type", public.GetErrorType())
+		other.SetPublic("error_code", public.GetErrorCode())
+		other.SetPublic("status_code", public.StatusCode)
 		AppendRelayLogAdminInfo(c, relayInfo, other)
 		AppendResponseModelLogInfo(relayInfo, other)
 		AppendTaskPluginContextAuditInfo(c, other)
@@ -94,6 +101,6 @@ func ProcessChannelError(c *gin.Context, channelError types.ChannelError, err *t
 			startTime = time.Now()
 		}
 		useTimeSeconds := int(time.Since(startTime).Seconds())
-		model.RecordErrorLog(c, userId, channelError.ChannelId, modelName, tokenName, err.MaskSensitiveErrorWithStatusCode(upstreamURLs...), tokenId, useTimeSeconds, common.GetContextKeyBool(c, constant.ContextKeyIsStream), userGroup, other)
+		model.RecordErrorLog(c, userId, channelError.ChannelId, modelName, tokenName, content, tokenId, useTimeSeconds, common.GetContextKeyBool(c, constant.ContextKeyIsStream), userGroup, other)
 	}
 }

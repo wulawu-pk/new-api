@@ -769,3 +769,33 @@ export function extractUsage() { return {seconds:2}; }
 		})
 	}
 }
+
+func TestVideoFetchByIDHidesTaskPluginPlatform(t *testing.T) {
+	database := setupRelayChannelDB(t)
+	require.NoError(t, database.AutoMigrate(&model.Task{}))
+	task := &model.Task{
+		TaskID: "task_public_video", Platform: "supergpt-video", UserId: 7, ChannelId: 999,
+		Action: constant.TaskActionTextToVideo, Status: model.TaskStatusInProgress, Progress: "10%",
+	}
+	require.NoError(t, database.Create(task).Error)
+
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Set("id", 7)
+	c.Params = gin.Params{{Key: "task_id", Value: task.TaskID}}
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/video/generations/"+task.TaskID, nil)
+
+	body, taskErr := videoFetchByIDRespBodyBuilder(c)
+	require.Nil(t, taskErr)
+	assert.Contains(t, string(body), `"platform":"Video"`)
+	assert.NotContains(t, string(body), "supergpt")
+}
+
+func TestPublicTaskPlatform(t *testing.T) {
+	assert.Equal(t, "Video", PublicTaskPlatform(&model.Task{Platform: "supergpt-video", Action: constant.TaskActionImageToVideo}))
+	assert.Equal(t, "Image", PublicTaskPlatform(&model.Task{Platform: "img-plugin", Action: "image_edit"}))
+	assert.Equal(t, "Task", PublicTaskPlatform(&model.Task{Platform: "doc-plugin", Action: "parse"}))
+	assert.Equal(t, "suno", PublicTaskPlatform(&model.Task{Platform: constant.TaskPlatformSuno, Action: "MUSIC"}))
+	assert.Equal(t, "mj", PublicTaskPlatform(&model.Task{Platform: constant.TaskPlatformMidjourney}))
+	assert.Equal(t, "", PublicTaskPlatform(nil))
+}
