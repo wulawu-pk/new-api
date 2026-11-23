@@ -7670,6 +7670,9 @@
     "Totals not updated": "Totaux non mis à jour",
     "This key was changed after you opened the editor. Refresh and edit it again.": "Cette clé a été modifiée après l’ouverture de l’éditeur. Actualisez puis modifiez-la à nouveau.",
     "Enter the Turnstile site key and secret key before turning Turnstile on.": "Saisissez la clé de site et la clé secrète Turnstile avant d’activer Turnstile.",
-    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Vous êtes de retour sur le site. Votre solde se mettra à jour automatiquement une fois le paiement confirmé."
+    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Vous êtes de retour sur le site. Votre solde se mettra à jour automatiquement une fois le paiement confirmé.",
+    "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "Une erreur interne s'est produite. Réessayez plus tard ou contactez le support avec l'identifiant de requête {{request_id}}",
+    "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Impossible d'effacer la clé de site ou la clé secrète Turnstile tant que la vérification Turnstile est activée. Désactivez d'abord Turnstile.",
+    "Turnstile key configuration status is read-only": "L'état de configuration de la clé Turnstile est en lecture seule"
   }
 }

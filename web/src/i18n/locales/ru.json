@@ -7670,6 +7670,9 @@
     "Totals not updated": "Итоги не обновлены",
     "This key was changed after you opened the editor. Refresh and edit it again.": "Этот ключ изменили после того, как вы открыли редактор. Обновите страницу и отредактируйте его снова.",
     "Enter the Turnstile site key and secret key before turning Turnstile on.": "Перед включением Turnstile укажите ключ сайта и секретный ключ.",
-    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Вы вернулись на сайт. Баланс обновится автоматически после подтверждения оплаты."
+    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Вы вернулись на сайт. Баланс обновится автоматически после подтверждения оплаты.",
+    "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "Произошла внутренняя ошибка. Повторите попытку позже или обратитесь в поддержку, указав ID запроса {{request_id}}",
+    "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Нельзя очистить ключ сайта или секретный ключ Turnstile, пока проверка Turnstile включена. Сначала отключите Turnstile.",
+    "Turnstile key configuration status is read-only": "Состояние настройки ключа Turnstile доступно только для чтения"
   }
 }
