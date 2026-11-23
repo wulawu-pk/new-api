@@ -2,6 +2,9 @@
 # assets of the "preview-ui-v4" pre-release. The server polls that release
 # once a minute and swaps the files behind https://v4.peroai.cc in place.
 # Nothing here can reach the server: there are no server secrets in the repo.
+# 2026-11-24 复审：每个包都有 GitHub artifact attestation（Sigstore 签名的 SLSA
+# 来源证明，签名证书绑定本工作流文件、分支和源提交）。服务器用 cosign 独立验证，
+# 手动上传到 release 的包没有这份证明，不会被部署。
 name: v4 preview
 
 on:
@@ -14,6 +17,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write      # 向 Sigstore Fulcio 申请签名证书用的 OIDC 令牌
+  attestations: write  # 把证明存进仓库的 attestations 接口
 
 concurrency:
   group: v4-preview
@@ -59,10 +64,17 @@ jobs:
           FILE="v4-app-${SHORT}.tgz"
           tar -czf "$FILE" -C web/dist .
           SUM=$(sha256sum "$FILE" | cut -d' ' -f1)
-          printf '{"commit":"%s","file":"%s","sha256":"%s"}\n' \
-            "$GITHUB_SHA" "$FILE" "$SUM" > latest.json
+          printf '{"commit":"%s","file":"%s","sha256":"%s","run_id":"%s"}\n' \
+            "$GITHUB_SHA" "$FILE" "$SUM" "$GITHUB_RUN_ID" > latest.json
           echo "file=$FILE" >> "$GITHUB_OUTPUT"
           ls -l "$FILE"; cat latest.json
+
+      # 在上传之前生成证明：服务器要等 latest.json 换了才来取包，
+      # 那时这个摘要的证明已经存在。
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.pkg.outputs.file }}
 
       - name: Publish
         shell: bash
