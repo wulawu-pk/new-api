@@ -5,7 +5,9 @@ import (
 	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/i18n"
 	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
@@ -49,12 +51,15 @@ func GetPerfMetricsGroupSummary(c *gin.Context) {
 		}
 	}
 
-	activeGroups := append(lo.Keys(ratio_setting.GetGroupRatioCopy()), "auto")
+	// The public status page lists only groups a user can pick, plus auto.
+	// Retired groups keep their GroupRatio for old logs but stay hidden here.
+	activeGroups := append(lo.Keys(setting.GetUserUsableGroupsCopy()), "auto")
 	result, err := perfmetrics.QueryGroupSummaryAll(hours, activeGroups)
 	if err != nil {
+		common.SysError(common.LogText("failed to query perf metrics group summary: %s", err.Error()))
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": err.Error(),
+			"message": i18n.T(c, i18n.MsgPerfMetricsUnavailable),
 		})
 		return
 	}

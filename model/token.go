@@ -319,6 +319,37 @@ func (token *Token) Update() (err error) {
 		"allow_user_quota_query").Updates(token).Error
 }
 
+// TokenQuotaExpectation is the quota state an editor saw when it opened a
+// token. A partial update that changes the quota only applies when the row
+// still holds these values.
+type TokenQuotaExpectation struct {
+	RemainQuota    int
+	UnlimitedQuota bool
+}
+
+// UpdateTokenColumns writes only the given columns of the user's token and
+// returns the number of rows changed. With expected set, the write is
+// conditional on the current quota state, so a concurrent spend or another
+// editor's change makes it a no-op (0 rows).
+func UpdateTokenColumns(id int, userId int, key string, columns map[string]any, expected *TokenQuotaExpectation) (int64, error) {
+	if id == 0 || userId == 0 {
+		return 0, common.NewMessage("Token ID or user ID is empty")
+	}
+	if len(columns) == 0 {
+		return 0, nil
+	}
+	// 写库前失效缓存并设置 fence，防止并发读者把过期快照重新写回缓存。
+	if cacheErr := invalidateTokenCacheForMutation(key); cacheErr != nil {
+		common.SysLog(common.LogText("failed to invalidate token cache before partial update: %s", cacheErr.Error()))
+	}
+	query := DB.Model(&Token{}).Where("id = ? AND user_id = ?", id, userId)
+	if expected != nil {
+		query = query.Where("remain_quota = ? AND unlimited_quota = ?", expected.RemainQuota, expected.UnlimitedQuota)
+	}
+	result := query.Updates(columns)
+	return result.RowsAffected, result.Error
+}
+
 func (token *Token) SelectUpdate() (err error) {
 	if cacheErr := invalidateTokenCacheForMutation(token.Key); cacheErr != nil {
 		common.SysLog(common.LogText("failed to invalidate token cache before status update: %s", cacheErr.Error()))

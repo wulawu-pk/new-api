@@ -398,9 +398,14 @@ func AddToken(c *gin.Context) {
 	}
 	params["id"] = cleanToken.Id
 	common.SetContextKey(c, constant.ContextKeyTokenAuditSucceeded, true)
+	// Return the new token's id so the console can open it; never the key.
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
+		"data": gin.H{
+			"id":   cleanToken.Id,
+			"name": cleanToken.Name,
+		},
 	})
 }
 
@@ -538,6 +543,172 @@ func UpdateToken(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data":    buildMaskedTokenResponse(cleanToken),
+	})
+}
+
+// tokenPatchRequest is the body of PATCH /api/token/:id. Every field is
+// optional: nil means "leave unchanged", so an editor can send only what the
+// user touched and never overwrite spend or limits changed meanwhile.
+type tokenPatchRequest struct {
+	Name                   *string `json:"name"`
+	Group                  *string `json:"group"`
+	ExpiredTime            *int64  `json:"expired_time"`
+	RemainQuota            *int    `json:"remain_quota"`
+	UnlimitedQuota         *bool   `json:"unlimited_quota"`
+	ExpectedRemainQuota    *int    `json:"expected_remain_quota"`
+	ExpectedUnlimitedQuota *bool   `json:"expected_unlimited_quota"`
+}
+
+// PatchToken updates only the fields present in the body. Quota changes are
+// compare-and-set against the quota the editor saw.
+func PatchToken(c *gin.Context) {
+	userId := c.GetInt("id")
+	params := tokenAuditParams(c)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	params["id"] = id
+	request := tokenPatchRequest{}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	quotaChange := request.RemainQuota != nil || request.UnlimitedQuota != nil
+	if quotaChange && (request.ExpectedRemainQuota == nil || request.ExpectedUnlimitedQuota == nil) {
+		common.ApiErrorT(c, "Invalid parameters")
+		return
+	}
+	if request.Name != nil && len(*request.Name) > 50 {
+		common.ApiErrorT(c, "Token name is too long")
+		return
+	}
+
+	token, err := model.GetTokenByIds(id, userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	params["name"] = token.Name
+	previous := *token
+
+	if request.RemainQuota != nil {
+		token.RemainQuota = *request.RemainQuota
+	}
+	if request.UnlimitedQuota != nil {
+		token.UnlimitedQuota = *request.UnlimitedQuota
+	}
+	if quotaChange && !token.UnlimitedQuota {
+		if token.RemainQuota < 0 {
+			common.ApiErrorT(c, "Quota value cannot be negative")
+			return
+		}
+		maxQuotaValue := maxTokenQuota()
+		if token.RemainQuota > maxQuotaValue {
+			common.ApiErrorT(c, "Quota value exceeds valid range, maximum is {{max}}", map[string]any{"max": logger.FormatQuota(maxQuotaValue)})
+			return
+		}
+	}
+	if request.Group != nil {
+		if !requireTokenGroup(c, *request.Group) {
+			return
+		}
+		token.Group = *request.Group
+		if token.Group != "auto" {
+			token.CrossGroupRetry = false
+			_ = token.SetAutoGroups(nil)
+		}
+	}
+	if request.Name != nil {
+		token.Name = *request.Name
+	}
+	if request.ExpiredTime != nil {
+		token.ExpiredTime = *request.ExpiredTime
+	}
+
+	now := common.GetTimestamp()
+	switch token.Status {
+	case common.TokenStatusExpired:
+		if request.ExpiredTime != nil && (token.ExpiredTime == -1 || token.ExpiredTime > now) {
+			token.Status = common.TokenStatusEnabled
+		}
+	case common.TokenStatusExhausted:
+		if quotaChange && (token.UnlimitedQuota || token.RemainQuota > 0) {
+			token.Status = common.TokenStatusEnabled
+		}
+	}
+
+	columns := map[string]any{}
+	changedFields := []string{}
+	for _, field := range []struct {
+		name    string
+		changed bool
+		value   any
+	}{
+		{"name", previous.Name != token.Name, token.Name},
+		{"expired_time", previous.ExpiredTime != token.ExpiredTime, token.ExpiredTime},
+		{"remain_quota", previous.RemainQuota != token.RemainQuota, token.RemainQuota},
+		{"unlimited_quota", previous.UnlimitedQuota != token.UnlimitedQuota, token.UnlimitedQuota},
+		{"group", previous.Group != token.Group, token.Group},
+		{"cross_group_retry", previous.CrossGroupRetry != token.CrossGroupRetry, token.CrossGroupRetry},
+		{"auto_groups", previous.AutoGroups != token.AutoGroups, token.AutoGroups},
+		{"status", previous.Status != token.Status, token.Status},
+	} {
+		if field.changed {
+			columns[field.name] = field.value
+			changedFields = append(changedFields, field.name)
+		}
+	}
+
+	var expected *model.TokenQuotaExpectation
+	if quotaChange {
+		expected = &model.TokenQuotaExpectation{
+			RemainQuota:    *request.ExpectedRemainQuota,
+			UnlimitedQuota: *request.ExpectedUnlimitedQuota,
+		}
+		if previous.RemainQuota != expected.RemainQuota || previous.UnlimitedQuota != expected.UnlimitedQuota {
+			respondTokenConflict(c)
+			return
+		}
+	}
+	if len(columns) > 0 {
+		affected, err := model.UpdateTokenColumns(token.Id, userId, token.Key, columns, expected)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		if affected == 0 {
+			// Some databases (MySQL) report 0 rows when the values were
+			// already in place; only a real mismatch is a conflict.
+			current, err := model.GetTokenByIds(id, userId)
+			if err != nil {
+				common.ApiError(c, err)
+				return
+			}
+			if expected != nil && (current.RemainQuota != expected.RemainQuota || current.UnlimitedQuota != expected.UnlimitedQuota) {
+				respondTokenConflict(c)
+				return
+			}
+		}
+	}
+
+	updated, err := model.GetTokenByIds(id, userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	params["name"] = updated.Name
+	params["changed_fields"] = changedFields
+	common.SetContextKey(c, constant.ContextKeyTokenAuditSucceeded, true)
+	common.ApiSuccess(c, buildMaskedTokenResponse(updated))
+}
+
+func respondTokenConflict(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"success": false,
+		"code":    "token_conflict",
+		"message": i18n.T(c, i18n.MsgTokenQuotaConflict),
 	})
 }
 
