@@ -294,9 +294,25 @@ export function ApiKeysMutateDrawer({
       const basePayload = transformFormDataToPayload(data)
 
       if (isUpdate && currentRow) {
+        // peroai: send the quota this drawer opened with. When the dollar
+        // field was not touched, send the exact stored quota (no dollar
+        // rounding), so the server leaves the quota alone and a rename never
+        // restores spend made while the drawer was open.
+        const quotaUntouched =
+          data.unlimited_quota === currentRow.unlimited_quota &&
+          (currentRow.unlimited_quota ||
+            !form.getFieldState('remain_quota_dollars').isDirty)
         const result = await updateApiKey({
           ...basePayload,
+          ...(quotaUntouched
+            ? {
+                remain_quota: currentRow.remain_quota,
+                unlimited_quota: currentRow.unlimited_quota,
+              }
+            : {}),
           id: currentRow.id,
+          expected_remain_quota: currentRow.remain_quota,
+          expected_unlimited_quota: currentRow.unlimited_quota,
         })
         if (result.success) {
           toast.success(t(SUCCESS_MESSAGES.API_KEY_UPDATED))

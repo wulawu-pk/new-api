@@ -212,3 +212,57 @@ func TestPatchTokenAutoRecoveryRespectsConcurrentDisable(t *testing.T) {
 	assert.Equal(t, common.TokenStatusDisabled, stored.Status)
 	assert.Equal(t, 0, stored.RemainQuota)
 }
+
+// A rename from an editor that opened the token before a spend keeps the
+// spend: the editor reports the quota it saw and did not change it.
+func TestUpdateTokenFullPutKeepsSpendMadeWhileEditorWasOpen(t *testing.T) {
+	setupTokenUpdateCASTest(t)
+	token := seedToken(t, model.DB, 1, "before", "casspendwhileopen1")
+	require.NoError(t, model.DB.Model(token).Updates(map[string]any{"remain_quota": 1000, "unlimited_quota": false}).Error)
+	// spend after the editor opened (it saw 1000)
+	require.NoError(t, model.DB.Model(token).Update("remain_quota", 600).Error)
+
+	response, _ := putTokenForTest(t, "/api/token/", 1, map[string]any{
+		"id": token.Id, "name": "after", "group": "default", "expired_time": -1,
+		"remain_quota": 1000, "unlimited_quota": false,
+		"expected_remain_quota": 1000, "expected_unlimited_quota": false,
+	})
+	require.True(t, response.Success, response.Message)
+	stored := reloadToken(t, token.Id)
+	assert.Equal(t, "after", stored.Name)
+	assert.Equal(t, 600, stored.RemainQuota)
+}
+
+// An editor that changed the quota after a spend it did not see is refused.
+func TestUpdateTokenFullPutQuotaChangeAfterUnseenSpendConflicts(t *testing.T) {
+	setupTokenUpdateCASTest(t)
+	token := seedToken(t, model.DB, 1, "before", "casspendconflict12")
+	require.NoError(t, model.DB.Model(token).Updates(map[string]any{"remain_quota": 1000, "unlimited_quota": false}).Error)
+	require.NoError(t, model.DB.Model(token).Update("remain_quota", 600).Error)
+
+	_, extra := putTokenForTest(t, "/api/token/", 1, map[string]any{
+		"id": token.Id, "name": "after", "group": "default", "expired_time": -1,
+		"remain_quota": 5000, "unlimited_quota": false,
+		"expected_remain_quota": 1000, "expected_unlimited_quota": false,
+	})
+	assert.False(t, extra.Success)
+	assert.Equal(t, "token_conflict", extra.Code)
+	stored := reloadToken(t, token.Id)
+	assert.Equal(t, "before", stored.Name)
+	assert.Equal(t, 600, stored.RemainQuota)
+}
+
+// With the quota the editor saw still in place, a quota change applies.
+func TestUpdateTokenFullPutQuotaChangeWithFreshExpectationApplies(t *testing.T) {
+	setupTokenUpdateCASTest(t)
+	token := seedToken(t, model.DB, 1, "before", "casfreshquota12345")
+	require.NoError(t, model.DB.Model(token).Updates(map[string]any{"remain_quota": 1000, "unlimited_quota": false}).Error)
+
+	response, _ := putTokenForTest(t, "/api/token/", 1, map[string]any{
+		"id": token.Id, "name": "before", "group": "default", "expired_time": -1,
+		"remain_quota": 5000, "unlimited_quota": false,
+		"expected_remain_quota": 1000, "expected_unlimited_quota": false,
+	})
+	require.True(t, response.Success, response.Message)
+	assert.Equal(t, 5000, reloadToken(t, token.Id).RemainQuota)
+}

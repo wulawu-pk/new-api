@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -37,6 +38,12 @@ type tokenRequest struct {
 	AutoGroups tokenAutoGroupsInput `json:"auto_groups"`
 	// 指针区分“未传”和显式 false：新建时未传即开启，更新时未传则保留原值。
 	AllowUserQuotaQuery *bool `json:"allow_user_quota_query"`
+	// peroai: the quota the editor saw when it opened the token (full PUT only).
+	// When the submitted quota equals it, the quota is left alone, so a rename
+	// never restores spend; when it differs, the write is compare-and-set
+	// against it and a concurrent change answers token_conflict.
+	ExpectedRemainQuota    *int  `json:"expected_remain_quota"`
+	ExpectedUnlimitedQuota *bool `json:"expected_unlimited_quota"`
 }
 
 type tokenResponse struct {
@@ -539,15 +546,27 @@ func UpdateToken(c *gin.Context) {
 			}
 		}
 		var expected *model.TokenColumnExpectation
+		seen := &model.TokenQuotaExpectation{RemainQuota: previous.RemainQuota, UnlimitedQuota: previous.UnlimitedQuota}
+		if request.ExpectedRemainQuota != nil && request.ExpectedUnlimitedQuota != nil {
+			seen = &model.TokenQuotaExpectation{RemainQuota: *request.ExpectedRemainQuota, UnlimitedQuota: *request.ExpectedUnlimitedQuota}
+			if token.RemainQuota == seen.RemainQuota && token.UnlimitedQuota == seen.UnlimitedQuota {
+				// The editor did not touch the quota: keep whatever the row holds now.
+				delete(columns, "remain_quota")
+				delete(columns, "unlimited_quota")
+				changedFields = slices.DeleteFunc(changedFields, func(f string) bool {
+					return f == "remain_quota" || f == "unlimited_quota"
+				})
+			} else if previous.RemainQuota != seen.RemainQuota || previous.UnlimitedQuota != seen.UnlimitedQuota {
+				respondTokenConflict(c)
+				return
+			}
+		}
 		_, remainChanged := columns["remain_quota"]
 		_, unlimitedChanged := columns["unlimited_quota"]
 		if remainChanged || unlimitedChanged {
-			// The new quota replaces the one that was read; a spend landing
+			// The new quota replaces the one the editor saw; a spend landing
 			// in between must not be overwritten.
-			expected = &model.TokenColumnExpectation{Quota: &model.TokenQuotaExpectation{
-				RemainQuota:    previous.RemainQuota,
-				UnlimitedQuota: previous.UnlimitedQuota,
-			}}
+			expected = &model.TokenColumnExpectation{Quota: seen}
 		}
 		if !applyTokenColumns(c, &previous, userId, columns, expected) {
 			return
