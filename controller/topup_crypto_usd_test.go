@@ -15,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/Calcium-Ion/go-epay/epay"
 	"github.com/gin-gonic/gin"
@@ -210,6 +211,8 @@ func setupCryptoEpay(t *testing.T, respond func(w http.ResponseWriter)) *cryptoE
 	oldGroup, oldDB, oldLogDB := cryptoUserGroup, model.DB, model.LOG_DB
 	oldMain, oldLog := common.MainDatabaseType(), common.LogDatabaseType()
 	oldRedis := common.RedisEnabled
+	oldServer, oldCallback := system_setting.ServerAddress, operation_setting.CustomCallbackAddress
+	system_setting.ServerAddress, operation_setting.CustomCallbackAddress = "https://api.peroai.cc", ""
 	confirmPaymentComplianceForTest(t)
 	common.RedisEnabled = false
 
@@ -244,6 +247,7 @@ func setupCryptoEpay(t *testing.T, respond func(w http.ResponseWriter)) *cryptoE
 		cryptoUserGroup, model.DB, model.LOG_DB = oldGroup, oldDB, oldLogDB
 		common.SetDatabaseTypes(oldMain, oldLog)
 		common.RedisEnabled = oldRedis
+		system_setting.ServerAddress, operation_setting.CustomCallbackAddress = oldServer, oldCallback
 		if sqlDB, dbErr := db.DB(); dbErr == nil {
 			_ = sqlDB.Close()
 		}
@@ -293,6 +297,9 @@ func TestCryptoEpaySubmitsServerSideAndReturnsCheckout(t *testing.T) {
 	assert.Equal(t, "1", form.Get("money"))
 	assert.Equal(t, "USD", form.Get("fiat"))
 	assert.NotEmpty(t, form.Get("sign"))
+	assert.Equal(t, "https://api.peroai.cc/payment-return", form.Get("return_url"),
+		"the browser comes back through /payment-return, which drops the signed query")
+	assert.Equal(t, "https://api.peroai.cc/api/user/epay/notify", form.Get("notify_url"))
 	topUp := onlyTopUp(t, f.db)
 	assert.Equal(t, form.Get("out_trade_no"), topUp.TradeNo)
 	assert.Equal(t, common.TopUpStatusPending, topUp.Status)
@@ -579,4 +586,32 @@ func TestEpayNotifyChecksLegacyOrderAmount(t *testing.T) {
 	assert.Zero(t, buyerQuota(t, f.db))
 	assert.Equal(t, "success", callEpayNotify(t, signedEpayCallback("LEGACY1", "alipay", "10.00")))
 	assert.Equal(t, 10*500000, buyerQuota(t, f.db))
+}
+
+// A legacy 易支付 order hands the browser signed parameters whose return_url
+// is /payment-return, never a console page that would keep the gateway's
+// signed query in its URL.
+func TestEpayLegacyReturnURLIsPaymentReturn(t *testing.T) {
+	f := setupCryptoEpay(t, func(w http.ResponseWriter) { w.WriteHeader(http.StatusInternalServerError) })
+	t.Setenv("LOG_SQL_DSN", "")
+	require.NoError(t, model.InitLogDB()) // GetUserGroup selects commonGroupCol
+	operation_setting.PayMethods = append(operation_setting.PayMethods, map[string]string{"name": "Alipay", "type": "alipay"})
+
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("id", 7)
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/user/pay", strings.NewReader(`{"amount":10,"payment_method":"alipay"}`))
+	ctx.Request.Header.Set("Content-Type", "application/json")
+	RequestEpay(ctx)
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var resp map[string]any
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &resp))
+
+	require.Equal(t, "success", resp["message"], resp)
+	data, ok := resp["data"].(map[string]any)
+	require.True(t, ok, resp)
+	assert.Equal(t, "https://api.peroai.cc/payment-return", data["return_url"])
+	assert.Equal(t, "https://api.peroai.cc/api/user/epay/notify", data["notify_url"])
+	assert.Len(t, f.received, 0)
 }
