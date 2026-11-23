@@ -7666,6 +7666,13 @@
     "Could not get a price for this amount. Please try again in a moment.": "暫時無法取得這個金額的報價，請稍後再試。",
     "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.": "已建立 {{name}}，但暫時無法讀取它的值。請重試；重試只會重新讀取這個 Key，不會再建立一個。",
     "Load the key again": "重新讀取 Key",
-    "Your balance will update shortly.": "餘額稍後會更新。"
+    "Your balance will update shortly.": "餘額稍後會更新。",
+    "Totals not updated": "彙總未更新",
+    "This key was changed after you opened the editor. Refresh and edit it again.": "這把金鑰在你開啟編輯後被改過，請重新整理後再改。",
+    "Enter the Turnstile site key and secret key before turning Turnstile on.": "請先填寫 Turnstile 的網站金鑰和密鑰，再開啟 Turnstile。",
+    "Back on the site. Your balance updates on its own once the payment is confirmed.": "已回到本站，付款確認後餘額會自動更新。",
+    "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "服務內部出錯，請稍後再試，或附上請求編號 {{request_id}} 聯絡客服",
+    "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Turnstile 驗證已開啟，不能清空站點金鑰或私鑰，請先關閉 Turnstile",
+    "Turnstile key configuration status is read-only": "Turnstile 金鑰設定狀態為唯讀"
   }
 }

@@ -35,16 +35,24 @@ import { extractRedemptionCode } from '../lib/redemption-code'
 /** Shown when the card was activated but the balance could not be read. */
 export const BALANCE_REFRESH_PENDING = 'Your balance will update shortly.'
 
-/** Reads the balance after a redemption; a failure is only a notice. */
-export async function refreshBalanceOrNotify(): Promise<number | null> {
+/**
+ * Reads the balance after a redemption; a failure is only a notice. An
+ * aborted read (a newer redemption started, or the page closed) resolves to
+ * null without the notice.
+ */
+export async function refreshBalanceOrNotify(
+  signal?: AbortSignal
+): Promise<number | null> {
   try {
-    const self = await getSelf()
+    const self = await getSelf({ signal })
+    if (signal?.aborted) return null
     if (self?.success && typeof self.data?.quota === 'number') {
       return self.data.quota
     }
   } catch {
     // fall through to the notice
   }
+  if (signal?.aborted) return null
   toast.info(i18next.t(BALANCE_REFRESH_PENDING))
   return null
 }

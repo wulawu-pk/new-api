@@ -7666,6 +7666,13 @@
     "Could not get a price for this amount. Please try again in a moment.": "Could not get a price for this amount. Please try again in a moment.",
     "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.": "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.",
     "Load the key again": "Load the key again",
-    "Your balance will update shortly.": "Your balance will update shortly."
+    "Your balance will update shortly.": "Your balance will update shortly.",
+    "Totals not updated": "Totals not updated",
+    "This key was changed after you opened the editor. Refresh and edit it again.": "This key was changed after you opened the editor. Refresh and edit it again.",
+    "Enter the Turnstile site key and secret key before turning Turnstile on.": "Enter the Turnstile site key and secret key before turning Turnstile on.",
+    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Back on the site. Your balance updates on its own once the payment is confirmed.",
+    "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "An internal error occurred. Please try again later or contact support with request ID {{request_id}}",
+    "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.",
+    "Turnstile key configuration status is read-only": "Turnstile key configuration status is read-only"
   }
 }

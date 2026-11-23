@@ -180,6 +180,54 @@ describe('console wallet page', () => {
     expect(screen.getByLabelText('Card code')).toBeInTheDocument()
   })
 
+  it('after a payment return says so once, reloads balance and records, and clears pay', async () => {
+    vi.mocked(walletApi.getUserBillingHistory).mockResolvedValue({
+      success: true,
+      data: { items: [], total: 0 },
+    } as never)
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue({
+      success: true,
+      data: { items: [], total: 0, page: 1, page_size: 20 },
+    })
+    const info = vi.spyOn(toast, 'info').mockImplementation(() => 0)
+    const handled = vi.fn()
+    const view = renderConsole(
+      <ConsoleWallet paymentReturn onPaymentReturnHandled={handled} />
+    )
+
+    await screen.findByText(/No top-ups yet/)
+    expect(info).toHaveBeenCalledTimes(1)
+    expect(info).toHaveBeenCalledWith(
+      'Back on the site. Your balance updates on its own once the payment is confirmed.'
+    )
+    expect(handled).toHaveBeenCalledTimes(1)
+    await waitFor(() =>
+      expect(
+        vi.mocked(walletApi.getUserBillingHistory).mock.calls.length
+      ).toBeGreaterThanOrEqual(1)
+    )
+    expect(profileApi.getUserProfile).toHaveBeenCalled()
+    const state = view.queryClient.getQueryState(['console', 'self-user'])
+    expect(state?.dataUpdatedAt).toBeGreaterThan(0)
+    info.mockRestore()
+  })
+
+  it('shows no payment notice on a normal visit', async () => {
+    vi.mocked(walletApi.getUserBillingHistory).mockResolvedValue({
+      success: true,
+      data: { items: [], total: 0 },
+    } as never)
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue({
+      success: true,
+      data: { items: [], total: 0, page: 1, page_size: 20 },
+    })
+    const info = vi.spyOn(toast, 'info').mockImplementation(() => 0)
+    renderConsole(<ConsoleWallet />)
+    await screen.findByText(/No top-ups yet/)
+    expect(info).not.toHaveBeenCalled()
+    info.mockRestore()
+  })
+
   it('lists a redeemed code with its credited amount', async () => {
     vi.mocked(walletApi.getUserBillingHistory).mockResolvedValue({
       success: true,

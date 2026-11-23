@@ -99,6 +99,28 @@ export interface ApiKeyFormData {
   /** peroai: quota the editor saw; on update an unchanged quota is left alone. */
   expected_remain_quota?: number
   expected_unlimited_quota?: boolean
+  /** peroai: one id per create click; repeats return the first key. */
+  client_request_id?: string
+  /**
+   * peroai: the values the editor opened with. The server skips fields the
+   * submission leaves equal to these, and writes a changed field only while
+   * the stored value still equals it; otherwise nothing is written and it
+   * answers `code: "token_conflict"`.
+   */
+  expected_original?: ApiKeyExpectedOriginal
+}
+
+/** Original values of the fields a legacy full edit may change. */
+export interface ApiKeyExpectedOriginal {
+  name: string
+  expired_time: number
+  model_limits_enabled: boolean
+  model_limits: string
+  /** Empty string for none, as the form payload sends it. */
+  allow_ips: string | null
+  group: string
+  cross_group_retry: boolean
+  allow_user_quota_query: boolean
 }
 
 export interface TokenAutoGroupsConfig {

@@ -22,7 +22,7 @@ import { z } from 'zod'
 import { parseQuotaFromDollars, quotaUnitsToDollars } from '@/lib/format'
 
 import { DEFAULT_GROUP } from '../constants'
-import type { ApiKey, ApiKeyFormData } from '../types'
+import type { ApiKey, ApiKeyExpectedOriginal, ApiKeyFormData } from '../types'
 
 // ============================================================================
 // Form Schema
@@ -167,6 +167,27 @@ export function transformFormDataToPayload(
         ? data.auto_groups
         : [],
     cross_group_retry: data.group === 'auto' ? !!data.cross_group_retry : false,
+  }
+}
+
+/**
+ * The original values a legacy full edit sends as `expected_original`. Empty
+ * values are written the way `transformFormDataToPayload` writes them
+ * (`allow_ips` and `model_limits` as '', no group as ''), so a field the
+ * user did not touch compares equal and is not taken for a change.
+ */
+export function expectedOriginalFromApiKey(
+  apiKey: ApiKey
+): ApiKeyExpectedOriginal {
+  return {
+    name: apiKey.name,
+    expired_time: apiKey.expired_time,
+    model_limits_enabled: apiKey.model_limits_enabled,
+    model_limits: apiKey.model_limits || '',
+    allow_ips: apiKey.allow_ips || '',
+    group: apiKey.group || '',
+    cross_group_retry: !!apiKey.cross_group_retry,
+    allow_user_quota_query: !!apiKey.allow_user_quota_query,
   }
 }
 

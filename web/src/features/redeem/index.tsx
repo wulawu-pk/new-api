@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate } from '@tanstack/react-router'
 import { CheckCircle2, Gift, Loader2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { PublicLayout } from '@/components/layout'
@@ -78,24 +78,46 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
   const [code, setCode] = useState(() => initialCode || readPendingRedeemCode())
   const [result, setResult] = useState<RedeemResult | null>(null)
   const { redeeming, redeemCode } = useRedemption()
+  // Only the latest activation may write its balance into the success view:
+  // a slow balance read of an earlier card must not show on the next one.
+  const balanceRead = useRef<AbortController | null>(null)
+  const activation = useRef(0)
 
   // The pending code has been read into the form; drop the stored copy.
   useEffect(() => {
     clearPendingRedeemCode()
+    return () => balanceRead.current?.abort()
   }, [])
 
+  const cancelBalanceRead = () => {
+    activation.current += 1
+    balanceRead.current?.abort()
+    balanceRead.current = null
+  }
+
   const handleActivate = async () => {
+    cancelBalanceRead()
+    const seq = activation.current
     const added = await redeemCode(code, { refreshBalance: false })
-    if (!added) return
+    if (!added || seq !== activation.current) return
     // The card is activated: clear the code and show the success first.
     setCode('')
     clearPendingRedeemCode()
     setResult({ added, balance: null })
     // A failed balance read only shows a notice; the credit already landed.
-    const balance = await refreshBalanceOrNotify()
+    const controller = new AbortController()
+    balanceRead.current = controller
+    const balance = await refreshBalanceOrNotify(controller.signal)
+    if (seq !== activation.current || controller.signal.aborted) return
+    balanceRead.current = null
     if (balance !== null) {
       setResult((current) => (current ? { ...current, balance } : current))
     }
+  }
+
+  const activateAnother = () => {
+    cancelBalanceRead()
+    setResult(null)
   }
 
   const keepCodeForSignIn = () => savePendingRedeemCode(code)
@@ -127,7 +149,7 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
           <Button variant='outline' render={<Link to='/wallet' />}>
             {t('Go to wallet')}
           </Button>
-          <Button variant='ghost' onClick={() => setResult(null)}>
+          <Button variant='ghost' onClick={activateAnother}>
             {t('Activate another card')}
           </Button>
         </div>

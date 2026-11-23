@@ -7666,6 +7666,13 @@
     "Could not get a price for this amount. Please try again in a moment.": "Impossible d’obtenir un prix pour ce montant. Réessayez dans un instant.",
     "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.": "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.",
     "Load the key again": "Load the key again",
-    "Your balance will update shortly.": "Your balance will update shortly."
+    "Your balance will update shortly.": "Your balance will update shortly.",
+    "Totals not updated": "Totaux non mis à jour",
+    "This key was changed after you opened the editor. Refresh and edit it again.": "Cette clé a été modifiée après l’ouverture de l’éditeur. Actualisez puis modifiez-la à nouveau.",
+    "Enter the Turnstile site key and secret key before turning Turnstile on.": "Saisissez la clé de site et la clé secrète Turnstile avant d’activer Turnstile.",
+    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Vous êtes de retour sur le site. Votre solde se mettra à jour automatiquement une fois le paiement confirmé.",
+    "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "Une erreur interne s'est produite. Réessayez plus tard ou contactez le support avec l'identifiant de requête {{request_id}}",
+    "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Impossible d'effacer la clé de site ou la clé secrète Turnstile tant que la vérification Turnstile est activée. Désactivez d'abord Turnstile.",
+    "Turnstile key configuration status is read-only": "L'état de configuration de la clé Turnstile est en lecture seule"
   }
 }

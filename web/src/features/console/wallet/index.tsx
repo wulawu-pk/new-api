@@ -18,8 +18,9 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 import {
   ConsoleTable,
@@ -73,7 +74,18 @@ function HistoryStatus(props: { status: WalletHistoryRow['status'] }) {
   return <span className='text-t-dim text-[12.5px]'>○ {t('Expired')}</span>
 }
 
-export function ConsoleWallet() {
+/** Shown once when the browser comes back from a payment gateway. */
+export const PAYMENT_RETURN_NOTICE =
+  'Back on the site. Your balance updates on its own once the payment is confirmed.'
+
+export function ConsoleWallet(
+  props: {
+    /** The browser just came back from a payment gateway (`?pay=return`). */
+    paymentReturn?: boolean
+    /** Called once the return was handled; removes `pay` from the URL. */
+    onPaymentReturnHandled?: () => void
+  } = {}
+) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const self = useSelfUser()
@@ -107,6 +119,21 @@ export function ConsoleWallet() {
     void queryClient.invalidateQueries({ queryKey: SELF_USER_QUERY_KEY })
     void history.refetch()
   }
+
+  // Back from a payment gateway: say so once, reload the balance and the
+  // records, then drop `pay` from the address so a reload does not repeat it.
+  const { paymentReturn, onPaymentReturnHandled } = props
+  const paymentReturnHandled = useRef(false)
+  useEffect(() => {
+    if (!paymentReturn || paymentReturnHandled.current) return
+    paymentReturnHandled.current = true
+    toast.info(t(PAYMENT_RETURN_NOTICE))
+    void queryClient.invalidateQueries({ queryKey: SELF_USER_QUERY_KEY })
+    void queryClient.invalidateQueries({
+      queryKey: ['console', 'wallet-history'],
+    })
+    onPaymentReturnHandled?.()
+  }, [paymentReturn, onPaymentReturnHandled, queryClient, t])
 
   const methodName = (method: string) =>
     methodLabel(

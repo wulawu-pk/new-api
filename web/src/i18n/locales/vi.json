@@ -7666,6 +7666,13 @@
     "Could not get a price for this amount. Please try again in a moment.": "Không lấy được báo giá cho số tiền này. Vui lòng thử lại sau giây lát.",
     "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.": "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.",
     "Load the key again": "Load the key again",
-    "Your balance will update shortly.": "Your balance will update shortly."
+    "Your balance will update shortly.": "Your balance will update shortly.",
+    "Totals not updated": "Tổng chưa được cập nhật",
+    "This key was changed after you opened the editor. Refresh and edit it again.": "Khóa này đã bị thay đổi sau khi bạn mở trình chỉnh sửa. Hãy làm mới rồi chỉnh sửa lại.",
+    "Enter the Turnstile site key and secret key before turning Turnstile on.": "Hãy nhập khóa trang và khóa bí mật Turnstile trước khi bật Turnstile.",
+    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Bạn đã quay lại trang. Số dư sẽ tự cập nhật khi thanh toán được xác nhận.",
+    "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau hoặc liên hệ hỗ trợ kèm mã yêu cầu {{request_id}}",
+    "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Không thể xóa khóa trang hoặc khóa bí mật Turnstile khi xác minh Turnstile đang bật. Hãy tắt Turnstile trước.",
+    "Turnstile key configuration status is read-only": "Trạng thái cấu hình khóa Turnstile chỉ đọc"
   }
 }

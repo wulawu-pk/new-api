@@ -357,6 +357,41 @@ describe('console logs refresh', () => {
     expect(screen.getByText(/^Updated \d\d:\d\d:\d\d$/)).toBeInTheDocument()
   })
 
+  it('marks the totals as not updated when only the totals fail', async () => {
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue(ONE)
+    renderConsole(<ConsoleLogs />)
+    await screen.findByText('gpt-6-astra')
+    expect(
+      await screen.findByText(/^Updated \d\d:\d\d:\d\d$/)
+    ).toBeInTheDocument()
+    const first = screen.getByText(/^Updated /).textContent
+
+    vi.mocked(logsApi.getUserLogStats).mockResolvedValue({
+      success: false,
+      message: 'stats down',
+    } as never)
+    const user = userEvent.setup()
+    await new Promise((resolve) => setTimeout(resolve, 1100))
+    await user.click(screen.getByRole('button', { name: /Refresh/ }))
+
+    expect(await screen.findByText('Totals not updated')).toBeInTheDocument()
+    // The list reloaded, but "Updated" keeps the last time both loaded.
+    expect(screen.getByText(/^Updated /).textContent).toBe(first)
+    expect(screen.getByText('$0.05')).toBeInTheDocument()
+  })
+
+  it('shows no update time while the totals have never loaded', async () => {
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue(ONE)
+    vi.mocked(logsApi.getUserLogStats).mockResolvedValue({
+      success: false,
+      message: 'stats down',
+    } as never)
+    renderConsole(<ConsoleLogs />)
+    await screen.findByText('gpt-6-astra')
+    expect(await screen.findByText('Totals not updated')).toBeInTheDocument()
+    expect(screen.queryByText(/^Updated /)).not.toBeInTheDocument()
+  })
+
   it('live updates reload every 10 seconds and can be switched off', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     try {

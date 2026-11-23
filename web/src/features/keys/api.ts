@@ -81,7 +81,7 @@ export async function createApiKey(
 // Update an existing API key
 export async function updateApiKey(
   data: ApiKeyFormData & { id: number }
-): Promise<ApiResponse<ApiKey>> {
+): Promise<ApiResponse<ApiKey> & { code?: string }> {
   const res = await api.put('/api/token/', data)
   return res.data
 }
