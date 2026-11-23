@@ -15,6 +15,8 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+
+	"github.com/Calcium-Ion/go-epay/epay"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"github.com/shopspring/decimal"
@@ -205,8 +207,11 @@ func setupCryptoEpay(t *testing.T, respond func(w http.ResponseWriter)) *cryptoE
 	oldTopup, oldDisplay := ps.CryptoUsdTopup, gs.QuotaDisplayType
 	oldPrice, oldQPU, oldMin := operation_setting.Price, common.QuotaPerUnit, operation_setting.MinTopUp
 	oldAddr, oldId, oldKey, oldMethods := operation_setting.PayAddress, operation_setting.EpayId, operation_setting.EpayKey, operation_setting.PayMethods
-	oldGroup, oldDB := cryptoUserGroup, model.DB
+	oldGroup, oldDB, oldLogDB := cryptoUserGroup, model.DB, model.LOG_DB
 	oldMain, oldLog := common.MainDatabaseType(), common.LogDatabaseType()
+	oldRedis := common.RedisEnabled
+	confirmPaymentComplianceForTest(t)
+	common.RedisEnabled = false
 
 	ps.CryptoUsdTopup = true
 	gs.QuotaDisplayType = operation_setting.QuotaDisplayTypeUSD
@@ -218,8 +223,8 @@ func setupCryptoEpay(t *testing.T, respond func(w http.ResponseWriter)) *cryptoE
 
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	require.NoError(t, err)
-	require.NoError(t, db.AutoMigrate(&model.User{}, &model.TopUp{}))
-	model.DB = db
+	require.NoError(t, db.AutoMigrate(&model.User{}, &model.TopUp{}, &model.Log{}))
+	model.DB, model.LOG_DB = db, db
 	common.SetDatabaseTypes(common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
 	require.NoError(t, db.Create(&model.User{Id: 7, Username: "buyer", Status: common.UserStatusEnabled}).Error)
 
@@ -236,8 +241,9 @@ func setupCryptoEpay(t *testing.T, respond func(w http.ResponseWriter)) *cryptoE
 		ps.CryptoUsdTopup, gs.QuotaDisplayType = oldTopup, oldDisplay
 		operation_setting.Price, common.QuotaPerUnit, operation_setting.MinTopUp = oldPrice, oldQPU, oldMin
 		operation_setting.PayAddress, operation_setting.EpayId, operation_setting.EpayKey, operation_setting.PayMethods = oldAddr, oldId, oldKey, oldMethods
-		cryptoUserGroup, model.DB = oldGroup, oldDB
+		cryptoUserGroup, model.DB, model.LOG_DB = oldGroup, oldDB, oldLogDB
 		common.SetDatabaseTypes(oldMain, oldLog)
+		common.RedisEnabled = oldRedis
 		if sqlDB, dbErr := db.DB(); dbErr == nil {
 			_ = sqlDB.Close()
 		}
@@ -371,4 +377,206 @@ func TestCryptoAmountRejectsDisabledMethodBeforeRate(t *testing.T) {
 		assert.Contains(t, recorder.Body.String(), `"message":"error"`, fmt.Sprintf("body %s", body))
 	}
 	assert.Equal(t, int32(0), hits.Load(), "no rate request for a disabled method or a too-small amount")
+}
+
+func TestCryptoEpayGatewayClientErrorFailsOrder(t *testing.T) {
+	f := setupCryptoEpay(t, func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte("bad request"))
+	})
+	resp := callCryptoPay(t, `{"amount":1,"payment_method":"usdt.trc20"}`)
+	assert.Equal(t, "error", resp["message"])
+	assert.Equal(t, "Failed to start payment", resp["data"])
+	assert.Equal(t, common.TopUpStatusFailed, onlyTopUp(t, f.db).Status)
+}
+
+// A gateway answer that never arrives or is a server error may still mean
+// BEpusdt created the order: the local order stays pending and a later paid
+// callback credits it.
+func TestCryptoEpayUnknownGatewayResultKeepsOrderPending(t *testing.T) {
+	cases := []struct {
+		name    string
+		respond func(w http.ResponseWriter)
+	}{
+		{"server error", func(w http.ResponseWriter) {
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = w.Write([]byte("upstream gone"))
+		}},
+		{"timeout", func(w http.ResponseWriter) {
+			time.Sleep(300 * time.Millisecond)
+			w.Header().Set("Location", "https://peroai.cc/pay/checkout/LATE")
+			w.WriteHeader(http.StatusFound)
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			f := setupCryptoEpay(t, tc.respond)
+			oldClient := cryptoEpaySubmitClient
+			cryptoEpaySubmitClient = &http.Client{Timeout: 100 * time.Millisecond, CheckRedirect: oldClient.CheckRedirect}
+			t.Cleanup(func() { cryptoEpaySubmitClient = oldClient })
+
+			resp := callCryptoPay(t, `{"amount":1,"payment_method":"usdt.trc20"}`)
+			assert.Equal(t, "error", resp["message"])
+			assert.Equal(t, "The payment gateway did not respond. Your order has been kept; check your top-up history later or place a new order.", resp["data"])
+			assert.Equal(t, resp["data"], resp["message_key"])
+			assert.Equal(t, common.TopUpStatusPending, resp["order_status"])
+			assert.Nil(t, resp["url"])
+			topUp := onlyTopUp(t, f.db)
+			assert.Equal(t, common.TopUpStatusPending, topUp.Status)
+			assert.Equal(t, topUp.TradeNo, resp["trade_no"])
+
+			body := callEpayNotify(t, signedEpayCallback(topUp.TradeNo, "usdt.trc20", "1"))
+			assert.Equal(t, "success", body)
+			reloaded := onlyTopUp(t, f.db)
+			assert.Equal(t, common.TopUpStatusSuccess, reloaded.Status)
+			assert.Equal(t, 3_335_000, buyerQuota(t, f.db))
+		})
+	}
+}
+
+func TestCryptoEpayRefusesOrdersWithoutInternalSubmitURL(t *testing.T) {
+	for _, value := range []string{"", "   ", "ftp://bepusdt/submit.php"} {
+		t.Run(fmt.Sprintf("%q", value), func(t *testing.T) {
+			f := setupCryptoEpay(t, func(w http.ResponseWriter) {
+				w.Header().Set("Location", "https://peroai.cc/pay/checkout/T1")
+				w.WriteHeader(http.StatusFound)
+			})
+			t.Setenv("EPAY_INTERNAL_SUBMIT_URL", value)
+
+			resp := callCryptoPay(t, `{"amount":1,"payment_method":"usdt.trc20"}`)
+			assert.Equal(t, "error", resp["message"])
+			assert.Equal(t, "Payment is temporarily unavailable", resp["data"])
+			assert.Nil(t, resp["url"])
+			assert.Len(t, f.received, 0)
+			var count int64
+			require.NoError(t, f.db.Model(&model.TopUp{}).Count(&count).Error)
+			assert.Zero(t, count, "no local order")
+		})
+	}
+}
+
+// --- epay callback --------------------------------------------------------
+
+func signedEpayCallback(tradeNo string, paymentType string, money string) url.Values {
+	params := map[string]string{
+		"money":        money,
+		"name":         "TUC1",
+		"out_trade_no": tradeNo,
+		"pid":          operation_setting.EpayId,
+		"trade_no":     "BEP" + tradeNo,
+		"trade_status": epay.StatusTradeSuccess,
+		"type":         paymentType,
+	}
+	signed, err := epay.GenerateParamsWithError(params, operation_setting.EpayKey)
+	if err != nil {
+		panic(err)
+	}
+	values := url.Values{}
+	for k, v := range signed {
+		values.Set(k, v)
+	}
+	return values
+}
+
+func callEpayNotify(t *testing.T, params url.Values) string {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/user/epay/notify?"+params.Encode(), nil)
+	EpayNotify(ctx)
+	return recorder.Body.String()
+}
+
+func buyerQuota(t *testing.T, db *gorm.DB) int {
+	t.Helper()
+	var user model.User
+	require.NoError(t, db.Select("quota").Where("id = ?", 7).First(&user).Error)
+	return user.Quota
+}
+
+// createCryptoOrder places a coin-priced order through RequestEpay against a
+// gateway that accepts it.
+func createCryptoOrder(t *testing.T) (*cryptoEpayFixture, model.TopUp) {
+	t.Helper()
+	f := setupCryptoEpay(t, func(w http.ResponseWriter) {
+		w.Header().Set("Location", "https://peroai.cc/pay/checkout/T1")
+		w.WriteHeader(http.StatusFound)
+	})
+	resp := callCryptoPay(t, `{"amount":1,"payment_method":"usdt.trc20"}`)
+	require.Equal(t, "success", resp["message"])
+	return f, onlyTopUp(t, f.db)
+}
+
+func TestEpayNotifyRejectsAmountMismatch(t *testing.T) {
+	f, topUp := createCryptoOrder(t)
+	for _, money := range []string{"1.01", "2", "0.99"} {
+		assert.Equal(t, "fail", callEpayNotify(t, signedEpayCallback(topUp.TradeNo, "usdt.trc20", money)), money)
+	}
+	assert.Equal(t, common.TopUpStatusPending, onlyTopUp(t, f.db).Status)
+	assert.Zero(t, buyerQuota(t, f.db))
+}
+
+func TestEpayNotifyCreditsOnceForMatchingAmount(t *testing.T) {
+	f, topUp := createCryptoOrder(t)
+	// BEpusdt echoes the money it was sent; "1.00" is the same amount.
+	assert.Equal(t, "success", callEpayNotify(t, signedEpayCallback(topUp.TradeNo, "usdt.trc20", "1")))
+	assert.Equal(t, "success", callEpayNotify(t, signedEpayCallback(topUp.TradeNo, "usdt.trc20", "1.00")))
+	assert.Equal(t, 3_335_000, buyerQuota(t, f.db), "a repeated callback credits nothing more")
+	reloaded := onlyTopUp(t, f.db)
+	assert.Equal(t, common.TopUpStatusSuccess, reloaded.Status)
+	assert.Equal(t, "usdt.trc20", reloaded.PaymentMethod)
+	assert.Empty(t, reloaded.ActualPaymentMethod)
+}
+
+func TestEpayNotifyRecordsChangedPaymentMethod(t *testing.T) {
+	f, topUp := createCryptoOrder(t)
+	operation_setting.PayMethods = []map[string]string{{"type": "usdt.trc20"}, {"type": "usdt.bep20"}}
+
+	assert.Equal(t, "success", callEpayNotify(t, signedEpayCallback(topUp.TradeNo, "usdt.bep20", "1")))
+	reloaded := onlyTopUp(t, f.db)
+	assert.Equal(t, common.TopUpStatusSuccess, reloaded.Status)
+	assert.Equal(t, "usdt.trc20", reloaded.PaymentMethod)
+	assert.Equal(t, "usdt.bep20", reloaded.ActualPaymentMethod)
+	assert.Equal(t, 3_335_000, buyerQuota(t, f.db), "credit_quota locked at order time")
+}
+
+func TestEpayNotifyRejectsMethodThatIsNotEnabled(t *testing.T) {
+	f, topUp := createCryptoOrder(t)
+	assert.Equal(t, "fail", callEpayNotify(t, signedEpayCallback(topUp.TradeNo, "usdc.erc20", "1")))
+	assert.Equal(t, common.TopUpStatusPending, onlyTopUp(t, f.db).Status)
+	assert.Zero(t, buyerQuota(t, f.db))
+}
+
+func TestEpayNotifyRejectsForeignPid(t *testing.T) {
+	f, topUp := createCryptoOrder(t)
+	params := signedEpayCallback(topUp.TradeNo, "usdt.trc20", "1")
+	// Re-sign with another merchant id: the signature is valid, the pid is not ours.
+	raw := map[string]string{}
+	for k := range params {
+		raw[k] = params.Get(k)
+	}
+	raw["pid"] = "2000"
+	delete(raw, "sign")
+	signed, err := epay.GenerateParamsWithError(raw, operation_setting.EpayKey)
+	require.NoError(t, err)
+	foreign := url.Values{}
+	for k, v := range signed {
+		foreign.Set(k, v)
+	}
+	assert.Equal(t, "fail", callEpayNotify(t, foreign))
+	assert.Equal(t, common.TopUpStatusPending, onlyTopUp(t, f.db).Status)
+	assert.Zero(t, buyerQuota(t, f.db))
+}
+
+func TestEpayNotifyChecksLegacyOrderAmount(t *testing.T) {
+	f := setupCryptoEpay(t, func(w http.ResponseWriter) {})
+	operation_setting.PayMethods = []map[string]string{{"type": "alipay"}}
+	topUp := &model.TopUp{UserId: 7, Amount: 10, Money: 10, TradeNo: "LEGACY1", PaymentMethod: "alipay", PaymentProvider: model.PaymentProviderEpay, Status: common.TopUpStatusPending, CreateTime: time.Now().Unix()}
+	require.NoError(t, topUp.Insert())
+
+	assert.Equal(t, "fail", callEpayNotify(t, signedEpayCallback("LEGACY1", "alipay", "1.00")))
+	assert.Zero(t, buyerQuota(t, f.db))
+	assert.Equal(t, "success", callEpayNotify(t, signedEpayCallback("LEGACY1", "alipay", "10.00")))
+	assert.Equal(t, 10*500000, buyerQuota(t, f.db))
 }
