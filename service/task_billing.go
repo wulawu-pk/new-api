@@ -284,7 +284,11 @@ func RefundTaskQuota(ctx context.Context, task *model.Task, reason string) bool 
 	// 4. 记录日志
 	other := taskBillingOther(task)
 	other.SetPublic("task_id", task.TaskID)
-	other.SetPublic("reason", reason)
+	// The raw reason is upstream text; customers get a neutral one.
+	other.SetPublic("reason", PublicTaskFailReason(reason))
+	if strings.TrimSpace(reason) != "" {
+		other.SetAdmin("upstream_reason", reason)
+	}
 	model.RecordTaskBillingLog(model.RecordTaskBillingLogParams{
 		UserId:    task.UserId,
 		LogType:   model.LogTypeRefund,

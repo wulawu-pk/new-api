@@ -335,6 +335,22 @@ type TokenQuotaExpectation struct {
 type TokenColumnExpectation struct {
 	Quota  *TokenQuotaExpectation
 	Status *int
+	// Configuration columns a legacy full edit changed, each with the value
+	// the form opened with. A nil field is not checked.
+	Name                *string
+	ExpiredTime         *int64
+	ModelLimitsEnabled  *bool
+	ModelLimits         *string
+	AllowIps            *TokenAllowIpsExpectation
+	Group               *string
+	CrossGroupRetry     *bool
+	AllowUserQuotaQuery *bool
+}
+
+// TokenAllowIpsExpectation is the allow_ips value an editor saw; a nil Value
+// means the column was NULL.
+type TokenAllowIpsExpectation struct {
+	Value *string
 }
 
 // Matches reports whether the token still holds the expected state.
@@ -348,13 +364,49 @@ func (expected *TokenColumnExpectation) Matches(token *Token) bool {
 	if expected.Status != nil && token.Status != *expected.Status {
 		return false
 	}
+	return expected.ConfigMatches(token)
+}
+
+// ConfigMatches reports whether the token still holds the expected
+// configuration columns (everything except quota and status).
+func (expected *TokenColumnExpectation) ConfigMatches(token *Token) bool {
+	if expected == nil {
+		return true
+	}
+	if expected.Name != nil && token.Name != *expected.Name {
+		return false
+	}
+	if expected.ExpiredTime != nil && token.ExpiredTime != *expected.ExpiredTime {
+		return false
+	}
+	if expected.ModelLimitsEnabled != nil && token.ModelLimitsEnabled != *expected.ModelLimitsEnabled {
+		return false
+	}
+	if expected.ModelLimits != nil && token.ModelLimits != *expected.ModelLimits {
+		return false
+	}
+	if expected.AllowIps != nil {
+		want := expected.AllowIps.Value
+		if (want == nil) != (token.AllowIps == nil) || (want != nil && *want != *token.AllowIps) {
+			return false
+		}
+	}
+	if expected.Group != nil && token.Group != *expected.Group {
+		return false
+	}
+	if expected.CrossGroupRetry != nil && token.CrossGroupRetry != *expected.CrossGroupRetry {
+		return false
+	}
+	if expected.AllowUserQuotaQuery != nil && token.AllowUserQuotaQuery != *expected.AllowUserQuotaQuery {
+		return false
+	}
 	return true
 }
 
 // UpdateTokenColumns writes only the given columns of the user's token and
 // returns the number of rows changed. With expected set, the write is
-// conditional on the expected quota and/or status, so a concurrent change
-// makes it a no-op (0 rows).
+// conditional on the expected quota, status and configuration columns, all in
+// the same UPDATE, so a concurrent change makes it a no-op (0 rows).
 func UpdateTokenColumns(id int, userId int, key string, columns map[string]any, expected *TokenColumnExpectation) (int64, error) {
 	if id == 0 || userId == 0 {
 		return 0, common.NewMessage("Token ID or user ID is empty")
@@ -373,6 +425,34 @@ func UpdateTokenColumns(id int, userId int, key string, columns map[string]any, 
 		}
 		if expected.Status != nil {
 			query = query.Where("status = ?", *expected.Status)
+		}
+		if expected.Name != nil {
+			query = query.Where("name = ?", *expected.Name)
+		}
+		if expected.ExpiredTime != nil {
+			query = query.Where("expired_time = ?", *expected.ExpiredTime)
+		}
+		if expected.ModelLimitsEnabled != nil {
+			query = query.Where("model_limits_enabled = ?", *expected.ModelLimitsEnabled)
+		}
+		if expected.ModelLimits != nil {
+			query = query.Where("model_limits = ?", *expected.ModelLimits)
+		}
+		if expected.AllowIps != nil {
+			if expected.AllowIps.Value == nil {
+				query = query.Where("allow_ips IS NULL")
+			} else {
+				query = query.Where("allow_ips = ?", *expected.AllowIps.Value)
+			}
+		}
+		if expected.Group != nil {
+			query = query.Where(commonGroupCol+" = ?", *expected.Group)
+		}
+		if expected.CrossGroupRetry != nil {
+			query = query.Where("cross_group_retry = ?", *expected.CrossGroupRetry)
+		}
+		if expected.AllowUserQuotaQuery != nil {
+			query = query.Where("allow_user_quota_query = ?", *expected.AllowUserQuotaQuery)
 		}
 	}
 	result := query.Updates(columns)

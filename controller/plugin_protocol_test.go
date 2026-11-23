@@ -1725,7 +1725,7 @@ func TestServeTaskPluginImageProtocolWaitsForAsynchronousTask(t *testing.T) {
 		wantMessage string
 	}{
 		{"success", model.TaskStatusSuccess, http.StatusOK, "", ""},
-		{"failure", model.TaskStatusFailure, http.StatusBadRequest, "image_generation_failed", "DataInspectionFailed"},
+		{"failure", model.TaskStatusFailure, http.StatusBadRequest, "image_generation_failed", service.PublicTaskFailureContentPolicy},
 		{"timeout", "", http.StatusGatewayTimeout, "task_timeout", "still running"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

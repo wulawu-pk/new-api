@@ -361,9 +361,12 @@ func (channel *Channel) Save() error {
 // saveStatusState persists only the fields owned by the channel status flow.
 // Keeping this allowlist here prevents a stale channel snapshot from
 // overwriting credentials, accounting counters, or channel configuration.
-func (channel *Channel) saveStatusState() error {
+// The row is written only while its status is still expectedStatus, the
+// status the caller read; it reports false when another writer changed the
+// status in between, so a manual disable is never replaced by a stale read.
+func (channel *Channel) saveStatusState(tx *gorm.DB, expectedStatus int) (bool, error) {
 	if channel.Id == 0 {
-		return errors.New("channel ID is 0")
+		return false, errors.New("channel ID is 0")
 	}
 	updates := map[string]any{
 		"status":     channel.Status,
@@ -372,7 +375,11 @@ func (channel *Channel) saveStatusState() error {
 	if channel.ChannelInfo.IsMultiKey {
 		updates["channel_info"] = channel.ChannelInfo
 	}
-	return DB.Model(&Channel{}).Where("id = ?", channel.Id).Updates(updates).Error
+	result := tx.Model(&Channel{}).Where("id = ? AND status = ?", channel.Id, expectedStatus).Updates(updates)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
 }
 
 func GetAllChannels(startIdx int, num int, selectAll bool, idSort bool, sortOptions ...ChannelSortOptions) ([]*Channel, error) {
@@ -740,7 +747,37 @@ func hasEnabledMultiKey(keys []string, statusList map[int]int) bool {
 	return false
 }
 
+// errChannelStatusConflict reports that the channel status changed between
+// the read and the conditional write of a status update.
+var errChannelStatusConflict = errors.New("channel status changed concurrently")
+
+// testHookBeforeChannelStatusWrite runs between reading a channel's status and
+// writing the new one. Tests use it to interleave a concurrent change; it is
+// nil in production.
+var testHookBeforeChannelStatusWrite func(channelId int)
+
+// manualChannelStatusAttempts bounds how often an administrator's status change
+// re-reads the channel after a concurrent writer changed it first.
+const manualChannelStatusAttempts = 3
+
+// UpdateChannelStatus applies an automatic status change (failure disable,
+// automatic recovery). It writes only if the stored status still equals the
+// status it read; when another writer, such as an administrator, changed it
+// first, the update is dropped and false is returned without touching the
+// memory cache, the abilities table, or notifications.
 func UpdateChannelStatus(channelId int, usingKey string, status int, reason string) bool {
+	return updateChannelStatus(channelId, usingKey, status, reason, 1)
+}
+
+// UpdateChannelStatusManual applies an administrator's status change. It uses
+// the same conditional write and, on a conflict, re-reads the channel and
+// tries again, so the administrator's decision wins over a concurrent
+// automatic change while still never writing from a stale snapshot.
+func UpdateChannelStatusManual(channelId int, usingKey string, status int, reason string) bool {
+	return updateChannelStatus(channelId, usingKey, status, reason, manualChannelStatusAttempts)
+}
+
+func updateChannelStatus(channelId int, usingKey string, status int, reason string, attempts int) bool {
 	if common.MemoryCacheEnabled {
 		channelStatusLock.Lock()
 		defer channelStatusLock.Unlock()
@@ -753,90 +790,134 @@ func UpdateChannelStatus(channelId int, usingKey string, status int, reason stri
 	pollingLock.Lock()
 	defer pollingLock.Unlock()
 
-	if common.MemoryCacheEnabled {
+	for attempt := 0; attempt < attempts; attempt++ {
+		changed, err := tryUpdateChannelStatus(channelId, usingKey, status, reason, attempt == 0)
+		if errors.Is(err, errChannelStatusConflict) {
+			common.SysLog(common.LogText("channel status changed concurrently, update skipped: channel_id=%d, status=%d, attempt=%d", channelId, status, attempt+1))
+			continue
+		}
+		return changed
+	}
+	return false
+}
+
+// tryUpdateChannelStatus reads the channel, computes its new status state and
+// writes it conditionally. It returns errChannelStatusConflict when the stored
+// status changed after the read. The memory cache is touched only after the
+// database write committed.
+func tryUpdateChannelStatus(channelId int, usingKey string, status int, reason string, useCache bool) (bool, error) {
+	if common.MemoryCacheEnabled && useCache {
 		channelCache, _ := CacheGetChannel(channelId)
 		if channelCache == nil {
-			return false
+			return false, nil
 		}
 		// A request failure must not replace an admin's manual disable;
 		// otherwise automatic recovery could re-enable the channel later.
 		if status == common.ChannelStatusAutoDisabled && channelCache.Status == common.ChannelStatusManuallyDisabled {
-			return false
+			return false, nil
 		}
-		if channelCache.ChannelInfo.IsMultiKey {
-			beforeStatus := channelCache.Status
-			// 如果是多Key模式，更新缓存中的状态
-			handlerMultiKeyUpdate(channelCache, usingKey, status, reason)
-			if beforeStatus != channelCache.Status {
-				CacheUpdateChannelStatus(channelId, channelCache.Status)
-			}
-			//CacheUpdateChannel(channelCache)
-			//return true
-		} else {
-			// 如果缓存渠道存在，且状态已是目标状态，直接返回
-			if channelCache.Status == status {
-				return false
-			}
-			CacheUpdateChannelStatus(channelId, status)
+		// 如果缓存渠道存在，且状态已是目标状态，直接返回
+		if !channelCache.ChannelInfo.IsMultiKey && channelCache.Status == status {
+			return false, nil
 		}
 	}
 
-	shouldUpdateAbilities := false
-	defer func() {
-		if shouldUpdateAbilities {
-			err := UpdateAbilityStatus(channelId, status == common.ChannelStatusEnabled)
-			if err != nil {
-				common.SysLog(common.LogText("failed to update ability status: channel_id=%d, error=%v", channelId, err))
-			}
-		}
-	}()
 	channel, err := GetChannelById(channelId, true)
 	if err != nil {
-		return false
-	} else {
-		// Check the stored row too, since this node's cache may be stale.
-		if status == common.ChannelStatusAutoDisabled && channel.Status == common.ChannelStatusManuallyDisabled {
-			return false
-		}
-		// A manual channel operation must replace the exhaustion reason even
-		// when the status value is already manually disabled.
-		overridesKeyExhaustion := channel.ChannelInfo.IsMultiKey && usingKey == "" &&
-			status == common.ChannelStatusManuallyDisabled && reason != ChannelStatusReasonAllKeysDisabled &&
-			channel.GetOtherInfo()["status_reason"] == ChannelStatusReasonAllKeysDisabled
-		if channel.Status == status && !overridesKeyExhaustion {
-			return false
-		}
+		return false, nil
+	}
+	// Check the stored row too, since this node's cache may be stale.
+	if status == common.ChannelStatusAutoDisabled && channel.Status == common.ChannelStatusManuallyDisabled {
+		return false, nil
+	}
+	// A manual channel operation must replace the exhaustion reason even
+	// when the status value is already manually disabled.
+	overridesKeyExhaustion := channel.ChannelInfo.IsMultiKey && usingKey == "" &&
+		status == common.ChannelStatusManuallyDisabled && reason != ChannelStatusReasonAllKeysDisabled &&
+		channel.GetOtherInfo()["status_reason"] == ChannelStatusReasonAllKeysDisabled
+	if channel.Status == status && !overridesKeyExhaustion {
+		return false, nil
+	}
 
-		if channel.ChannelInfo.IsMultiKey {
-			beforeStatus := channel.Status
-			handlerMultiKeyUpdate(channel, usingKey, status, reason)
-			if beforeStatus != channel.Status {
-				shouldUpdateAbilities = true
-			}
-		} else {
-			info := channel.GetOtherInfo()
-			info["status_reason"] = reason
-			info["status_time"] = common.GetTimestamp()
-			channel.SetOtherInfo(info)
-			channel.Status = status
+	previousStatus := channel.Status
+	shouldUpdateAbilities := false
+	if channel.ChannelInfo.IsMultiKey {
+		handlerMultiKeyUpdate(channel, usingKey, status, reason)
+		if previousStatus != channel.Status {
 			shouldUpdateAbilities = true
 		}
-		err = channel.saveStatusState()
-		if err != nil {
-			common.SysLog(common.LogText("failed to update channel status: channel_id=%d, status=%d, error=%v", channel.Id, status, err))
-			return false
-		}
+	} else {
+		info := channel.GetOtherInfo()
+		info["status_reason"] = reason
+		info["status_time"] = common.GetTimestamp()
+		channel.SetOtherInfo(info)
+		channel.Status = status
+		shouldUpdateAbilities = true
 	}
-	return true
+
+	if testHookBeforeChannelStatusWrite != nil {
+		testHookBeforeChannelStatusWrite(channelId)
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		saved, err := channel.saveStatusState(tx, previousStatus)
+		if err != nil {
+			return err
+		}
+		if !saved {
+			return errChannelStatusConflict
+		}
+		if shouldUpdateAbilities {
+			return tx.Model(&Ability{}).Where("channel_id = ?", channelId).Select("enabled").
+				Update("enabled", channel.Status == common.ChannelStatusEnabled).Error
+		}
+		return nil
+	})
+	if errors.Is(err, errChannelStatusConflict) {
+		return false, err
+	}
+	if err != nil {
+		common.SysLog(common.LogText("failed to update channel status: channel_id=%d, status=%d, error=%v", channel.Id, status, err))
+		return false, nil
+	}
+	cacheApplyChannelStatusState(channel)
+	return true, nil
 }
 
-func EnableChannelByTag(tag string) error {
-	err := DB.Model(&Channel{}).Where("tag = ?", tag).Update("status", common.ChannelStatusEnabled).Error
+// setChannelStatusByTag writes an administrator's tag-wide status change. The
+// write is unconditional (the administrator's decision wins); because it
+// changes the stored status, any automatic update that read the old status
+// fails its conditional write. The memory cache is updated under
+// channelStatusLock after the commit, so an automatic update that committed
+// just before cannot leave its status in the cache afterwards.
+func setChannelStatusByTag(tag string, status int) error {
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&Channel{}).Where("tag = ?", tag).Update("status", status).Error; err != nil {
+			return err
+		}
+		return tx.Model(&Ability{}).Where("tag = ?", tag).Select("enabled").
+			Update("enabled", status == common.ChannelStatusEnabled).Error
+	})
 	if err != nil {
 		return err
 	}
-	err = UpdateAbilityStatusByTag(tag, true)
-	return err
+	if !common.MemoryCacheEnabled {
+		return nil
+	}
+	var ids []int
+	if err := DB.Model(&Channel{}).Where("tag = ?", tag).Pluck("id", &ids).Error; err != nil {
+		return err
+	}
+	channelStatusLock.Lock()
+	defer channelStatusLock.Unlock()
+	for _, id := range ids {
+		CacheUpdateChannelStatus(id, status)
+	}
+	return nil
+}
+
+func EnableChannelByTag(tag string) error {
+	return setChannelStatusByTag(tag, common.ChannelStatusEnabled)
 }
 
 func DisableChannelByTag(tag string) error {
@@ -848,17 +929,12 @@ func DisableChannelByTag(tag string) error {
 	}
 	for _, channel := range channels {
 		if channel.ChannelInfo.IsMultiKey && channel.GetOtherInfo()["status_reason"] == ChannelStatusReasonAllKeysDisabled {
-			if !UpdateChannelStatus(channel.Id, "", common.ChannelStatusManuallyDisabled, "manual tag operation") {
+			if !UpdateChannelStatusManual(channel.Id, "", common.ChannelStatusManuallyDisabled, "manual tag operation") {
 				return fmt.Errorf("failed to disable channel #%d by tag", channel.Id)
 			}
 		}
 	}
-	err := DB.Model(&Channel{}).Where("tag = ?", tag).Update("status", common.ChannelStatusManuallyDisabled).Error
-	if err != nil {
-		return err
-	}
-	err = UpdateAbilityStatusByTag(tag, false)
-	return err
+	return setChannelStatusByTag(tag, common.ChannelStatusManuallyDisabled)
 }
 
 func EditChannelByTag(tag string, newTag *string, modelMapping *string, models *string, group *string, priority *int64, weight *uint, paramOverride *string, headerOverride *string) error {

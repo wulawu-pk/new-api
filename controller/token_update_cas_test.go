@@ -133,9 +133,12 @@ func TestUpdateTokenFullStaleQuotaConflicts(t *testing.T) {
 
 	// Through the handler, a body whose quota differs from the row is
 	// written conditionally and succeeds when nothing changed in between.
+	// (A body without the expected quota may no longer change it; see
+	// TestUpdateTokenFullPutWithoutExpectedQuota.)
 	response, _ := putTokenForTest(t, "/api/token/", 1, map[string]any{
 		"id": token.Id, "name": "legacy", "expired_time": -1, "remain_quota": 1000,
 		"unlimited_quota": false, "group": "default",
+		"expected_remain_quota": 300, "expected_unlimited_quota": false,
 	})
 	require.True(t, response.Success, response.Message)
 	assert.Equal(t, 1000, reloadToken(t, token.Id).RemainQuota)

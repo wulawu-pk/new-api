@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math/rand"
 	"sort"
 	"strings"
@@ -271,6 +272,26 @@ func CacheUpdateChannelStatus(id int, status int) {
 			}
 		}
 	}
+}
+
+// cacheApplyChannelStatusState copies a committed status change into the
+// memory cache. The cached multi-key polling cursor is kept, because with the
+// cache enabled the cache, not the database, holds its current value.
+func cacheApplyChannelStatusState(stored *Channel) {
+	if !common.MemoryCacheEnabled || stored == nil {
+		return
+	}
+	channelSyncLock.Lock()
+	if cached, ok := channelsIDM[stored.Id]; ok {
+		cached.OtherInfo = stored.OtherInfo
+		if stored.ChannelInfo.IsMultiKey {
+			cached.ChannelInfo.MultiKeyStatusList = maps.Clone(stored.ChannelInfo.MultiKeyStatusList)
+			cached.ChannelInfo.MultiKeyDisabledReason = maps.Clone(stored.ChannelInfo.MultiKeyDisabledReason)
+			cached.ChannelInfo.MultiKeyDisabledTime = maps.Clone(stored.ChannelInfo.MultiKeyDisabledTime)
+		}
+	}
+	channelSyncLock.Unlock()
+	CacheUpdateChannelStatus(stored.Id, stored.Status)
 }
 
 func CacheUpdateChannel(channel *Channel) {

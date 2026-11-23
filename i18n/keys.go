@@ -13,6 +13,10 @@ const (
 	MsgTokenNotProvided       = "token.not_provided"
 	MsgTokenStatusUnavailable = "token.status_unavailable"
 	MsgTokenQuotaConflict     = "token.quota_conflict"
+	// peroai: legacy full edit changed the quota without the original values.
+	MsgTokenQuotaExpectedRequired = "token.quota_expected_required"
+	// peroai: a create with the same client_request_id is still running.
+	MsgTokenCreateInProgress = "token.create_in_progress"
 
 	MsgPerfMetricsUnavailable = "perf_metrics.unavailable"
 

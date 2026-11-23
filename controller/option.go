@@ -85,7 +85,7 @@ func GetOptions(c *gin.Context) {
 	optionValues := make(map[string]string)
 	common.OptionMapRWMutex.Lock()
 	for k, v := range common.OptionMap {
-		if k == "theme.frontend" || k == "billing_setting.billing_mode" || k == "billing_setting.billing_expr" || k == "ResendKeyConfigured" {
+		if k == "theme.frontend" || k == "billing_setting.billing_mode" || k == "billing_setting.billing_expr" || k == "ResendKeyConfigured" || k == "TurnstileSecretKeyConfigured" {
 			continue
 		}
 		value := common.Interface2String(v)
@@ -107,6 +107,10 @@ func GetOptions(c *gin.Context) {
 	}
 	options = append(options, &model.Option{
 		Key: "ResendKeyConfigured", Value: strconv.FormatBool(strings.TrimSpace(common.OptionMap["ResendApiKey"]) != ""),
+	})
+	// peroai: the admin form cannot see the Turnstile secret; tell it whether one is saved.
+	options = append(options, &model.Option{
+		Key: "TurnstileSecretKeyConfigured", Value: strconv.FormatBool(strings.TrimSpace(common.OptionMap["TurnstileSecretKey"]) != ""),
 	})
 	common.OptionMapRWMutex.Unlock()
 	// Display the same effective expressions used by pricing and settlement,
@@ -249,8 +253,17 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	case "TurnstileCheckEnabled":
-		if option.Value == "true" && common.TurnstileSiteKey == "" {
+		// Verification sends TurnstileSecretKey to Cloudflare, and the login
+		// page needs TurnstileSiteKey, so both must be set before enabling.
+		if option.Value == "true" && (strings.TrimSpace(common.TurnstileSiteKey) == "" || strings.TrimSpace(common.TurnstileSecretKey) == "") {
 			common.ApiErrorT(c, "Cannot enable Turnstile verification. Enter the Turnstile settings first.")
+			return
+		}
+	case "TurnstileSiteKey", "TurnstileSecretKey":
+		// GetOptions hides both keys and the console sends only fields the
+		// administrator changed, so an empty value here really clears the key.
+		if common.TurnstileCheckEnabled && strings.TrimSpace(option.Value.(string)) == "" {
+			common.ApiErrorT(c, "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.")
 			return
 		}
 	case "TelegramOAuthEnabled":

@@ -19,7 +19,7 @@ func TestPaymentReturnPathUsesDefaultDashboardRoutes(t *testing.T) {
 	)
 	assert.Equal(
 		t,
-		"https://dashboard.example.com/usage-logs",
-		paymentReturnPath("/usage-logs"),
+		"https://dashboard.example.com/payment-return",
+		paymentReturnPath("/payment-return"),
 	)
 }
