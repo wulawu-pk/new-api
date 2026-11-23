@@ -10,9 +10,9 @@ package controller
 // credits N x (live CNY per coin) / Price quota dollars, fixed when the order
 // is created. That keeps crypto in line with the 卡密 rate of ¥1 = $1.
 //
-// The signed gateway request never leaves the server when
-// EPAY_INTERNAL_SUBMIT_URL is set: new-api posts it to BEpusdt itself and
-// hands the browser only the checkout URL. BEpusdt starts the 30-minute
+// The signed gateway request never leaves the server: new-api posts it to
+// BEpusdt at EPAY_INTERNAL_SUBMIT_URL itself and hands the browser only the
+// checkout URL. Without that address no coin-priced order is created. BEpusdt starts the 30-minute
 // payment window when it receives the request, so the locked credit and the
 // payment window start together and a customer cannot hold signed parameters
 // back until the rate moves in their favour.
@@ -268,7 +268,32 @@ var cryptoEpaySubmitClient = &http.Client{
 
 const cryptoCheckoutPathPrefix = "/pay/checkout/"
 
-var cryptoBrowserSubmitWarning sync.Once
+// cryptoSubmitOutcome tells whether BEpusdt may hold an order new-api did not
+// get a checkout URL for.
+type cryptoSubmitOutcome int
+
+const (
+	// cryptoSubmitRejected: BEpusdt answered normally and did not accept the
+	// order (HTTP 200 with an error text, 4xx, or a redirect that is not a
+	// checkout page on PayAddress). Nobody can pay it.
+	cryptoSubmitRejected cryptoSubmitOutcome = iota
+	// cryptoSubmitUnknown: no usable answer (connection error, timeout, 5xx,
+	// unreadable response). BEpusdt may have created the order, so the local
+	// order stays pending and a later paid callback still credits it.
+	cryptoSubmitUnknown
+)
+
+// cryptoSubmitError carries only an HTTP status and a short category, never
+// the gateway's own text, so it is safe to log.
+type cryptoSubmitError struct {
+	outcome  cryptoSubmitOutcome
+	status   int
+	category string
+}
+
+func (e *cryptoSubmitError) Error() string {
+	return fmt.Sprintf("gateway submit %s status=%d", e.category, e.status)
+}
 
 // cryptoInternalSubmitURL is BEpusdt's submit.php as new-api reaches it over
 // the internal network, e.g. http://bepusdt:8080/submit.php.
@@ -278,7 +303,7 @@ func cryptoInternalSubmitURL() string {
 
 // submitCryptoEpayOrder posts the signed order to BEpusdt and returns the
 // checkout URL from its 302. BEpusdt answers a rejected order with HTTP 200
-// and an error text.
+// and an error text. Errors are *cryptoSubmitError.
 func submitCryptoEpayOrder(ctx context.Context, submitURL string, params map[string]string) (string, error) {
 	form := url.Values{}
 	for k, v := range params {
@@ -286,21 +311,34 @@ func submitCryptoEpayOrder(ctx context.Context, submitURL string, params map[str
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, submitURL, strings.NewReader(form.Encode()))
 	if err != nil {
-		return "", err
+		// Nothing was sent.
+		return "", &cryptoSubmitError{outcome: cryptoSubmitRejected, category: "bad_request"}
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := cryptoEpaySubmitClient.Do(req)
 	if err != nil {
-		return "", err
+		category := "network_error"
+		var netErr interface{ Timeout() bool }
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			category = "timeout"
+		}
+		return "", &cryptoSubmitError{outcome: cryptoSubmitUnknown, category: category}
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<10))
+	if resp.StatusCode >= http.StatusInternalServerError {
+		return "", &cryptoSubmitError{outcome: cryptoSubmitUnknown, status: resp.StatusCode, category: "server_error"}
+	}
 	if resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusSeeOther {
-		return "", fmt.Errorf("gateway status %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		// The body is read only to tell a complete answer from a broken one;
+		// its text is not kept.
+		if _, err := io.Copy(io.Discard, io.LimitReader(resp.Body, 2<<10)); err != nil {
+			return "", &cryptoSubmitError{outcome: cryptoSubmitUnknown, status: resp.StatusCode, category: "read_error"}
+		}
+		return "", &cryptoSubmitError{outcome: cryptoSubmitRejected, status: resp.StatusCode, category: "refused"}
 	}
 	location := resp.Header.Get("Location")
 	if err := validateCryptoCheckoutURL(location); err != nil {
-		return "", err
+		return "", &cryptoSubmitError{outcome: cryptoSubmitRejected, status: resp.StatusCode, category: "bad_checkout_location"}
 	}
 	return location, nil
 }
@@ -329,6 +367,19 @@ func validateCryptoCheckoutURL(raw string) error {
 // requestCryptoUsdEpay creates a coin-priced BEpusdt order. The caller has
 // already checked the minimum and the method.
 func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
+	// Without the internal address the signed order would have to go through
+	// the browser, which can hold it back until the rate moves. Refuse.
+	internalSubmitURL := cryptoInternalSubmitURL()
+	if internalSubmitURL == "" {
+		logger.LogError(c.Request.Context(), "EPAY_INTERNAL_SUBMIT_URL is not set: coin-priced crypto orders are refused")
+		paymentError(c, common.NewMessage("Payment is temporarily unavailable"))
+		return
+	}
+	if u, parseErr := url.Parse(internalSubmitURL); parseErr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		logger.LogError(c.Request.Context(), "EPAY_INTERNAL_SUBMIT_URL is not an http(s) URL: coin-priced crypto orders are refused")
+		paymentError(c, common.NewMessage("Payment is temporarily unavailable"))
+		return
+	}
 	group, err := cryptoUserGroup(userId)
 	if err != nil {
 		paymentError(c, common.NewMessage("Failed to get the user group"))
@@ -383,27 +434,11 @@ func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
 		paymentError(c, common.NewMessage("Failed to start payment"))
 		return
 	}
-	internalSubmitURL := cryptoInternalSubmitURL()
-	submitUrl := internalSubmitURL
-	if submitUrl == "" {
-		cryptoBrowserSubmitWarning.Do(func() {
-			logger.LogWarn(c.Request.Context(), "EPAY_INTERNAL_SUBMIT_URL is not set: coin-priced crypto orders hand signed gateway parameters to the browser, which can submit them late at an old rate")
-		})
-		submitUrl, err = url.JoinPath(operation_setting.PayAddress, epay.PurchaseUrl)
-		if err != nil {
-			paymentError(c, common.NewMessage("Failed to start payment"))
-			return
-		}
-	} else if u, parseErr := url.Parse(submitUrl); parseErr != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		logger.LogError(c.Request.Context(), "EPAY_INTERNAL_SUBMIT_URL is not an http(s) URL")
-		paymentError(c, common.NewMessage("Failed to start payment"))
-		return
-	}
-
 	// The local order is written before BEpusdt hears of it, so a gateway
 	// callback can always find it. If the gateway then refuses the order,
 	// the local row is marked failed; the browser never saw the signed
-	// parameters, so nobody can pay it.
+	// parameters, so nobody can pay it. If the outcome is unknown, the row
+	// stays pending so a paid callback can still credit it.
 	topUp := &model.TopUp{
 		UserId:          userId,
 		Amount:          int64(q.CreditQuota) / int64(common.QuotaPerUnit),
@@ -422,19 +457,20 @@ func requestCryptoUsdEpay(c *gin.Context, userId int, req EpayRequest) {
 	}
 	logger.LogInfo(c.Request.Context(), common.LogText("Epay crypto top-up order created user_id=%d trade_no=%s payment_method=%s coins=%d cny_rate=%s credit_quota=%d", userId, tradeNo, req.PaymentMethod, q.Coins, q.Rate.String(), q.CreditQuota))
 
-	if internalSubmitURL == "" {
-		resp := cryptoQuoteResponse(q)
-		resp["data"] = params
-		resp["url"] = submitUrl
-		c.JSON(http.StatusOK, resp)
-		return
-	}
-
 	// Detached from the browser request: an aborted page must not leave
 	// BEpusdt with an order that new-api then marks failed halfway.
 	checkoutURL, err := submitCryptoEpayOrder(context.WithoutCancel(c.Request.Context()), internalSubmitURL, params)
 	if err != nil {
-		logger.LogError(c.Request.Context(), common.LogText("Epay crypto top-up gateway refused the order user_id=%d trade_no=%s error=%q", userId, tradeNo, err.Error()))
+		submitErr := &cryptoSubmitError{outcome: cryptoSubmitUnknown, category: "unknown"}
+		errors.As(err, &submitErr)
+		if submitErr.outcome == cryptoSubmitUnknown {
+			logger.LogWarn(c.Request.Context(), common.LogText("Epay crypto top-up gateway result unknown, order kept pending user_id=%d trade_no=%s status=%d category=%s", userId, tradeNo, submitErr.status, submitErr.category))
+			resp := gin.H{"message": "error", "data": "The payment gateway did not respond. Your order has been kept; check your top-up history later or place a new order.", "order_status": common.TopUpStatusPending, "trade_no": tradeNo}
+			maps.Copy(resp, common.NewMessage("The payment gateway did not respond. Your order has been kept; check your top-up history later or place a new order.").Fields())
+			c.JSON(http.StatusOK, resp)
+			return
+		}
+		logger.LogError(c.Request.Context(), common.LogText("Epay crypto top-up gateway refused the order user_id=%d trade_no=%s status=%d category=%s", userId, tradeNo, submitErr.status, submitErr.category))
 		if markErr := model.UpdatePendingTopUpStatus(tradeNo, model.PaymentProviderEpay, common.TopUpStatusFailed); markErr != nil {
 			logger.LogError(c.Request.Context(), common.LogText("Epay crypto top-up failed to mark order failed trade_no=%s error=%q", tradeNo, markErr.Error()))
 		}
