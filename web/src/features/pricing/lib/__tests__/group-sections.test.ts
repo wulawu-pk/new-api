@@ -187,6 +187,14 @@ describe('credit branch per group', () => {
     expect(stripProviderCreditBranch('tier("token", p * 2)')).toBeNull()
   })
 
+  it('strips the provider-neutral credit branch', () => {
+    expect(
+      stripProviderCreditBranch(
+        'u("credits") != nil ? tier("credit", u("credits") * 0.16666666666666666 * 1000000) : tier("token", p * 3 + c * 15)'
+      )
+    ).toBe('tier("token", p * 3 + c * 15)')
+  })
+
   it('quotes credits only in credit-billed groups', () => {
     const shared = model('claude-opus-5-5', ['claude-kiro', 'claude-ccmax'], {
       billing_mode: 'tiered_expr',
