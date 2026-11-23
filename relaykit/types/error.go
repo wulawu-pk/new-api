@@ -96,6 +96,21 @@ type NewAPIError struct {
 	errorCode      ErrorCode
 	StatusCode     int
 	Metadata       json.RawMessage
+	// public marks an error already rewritten for customers (peroai fork),
+	// so the customer-facing exits do not rewrite it twice.
+	public bool
+}
+
+// MarkPublic records that the error text is safe to show to customers.
+func (e *NewAPIError) MarkPublic() {
+	if e != nil {
+		e.public = true
+	}
+}
+
+// IsPublic reports whether MarkPublic was called.
+func (e *NewAPIError) IsPublic() bool {
+	return e != nil && e.public
 }
 
 // Unwrap enables errors.Is / errors.As to work with NewAPIError by exposing the underlying error.
