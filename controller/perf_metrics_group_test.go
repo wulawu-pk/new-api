@@ -21,6 +21,10 @@ func setupPerfMetricsGroupTest(t *testing.T) {
 	t.Helper()
 	require.NoError(t, i18n.Init())
 	db := openTokenControllerTestDB(t)
+	// InitLogDB sets the quoted column names (`group`) the status query uses;
+	// without it this test only passes after another test has set them.
+	t.Setenv("LOG_SQL_DSN", "")
+	require.NoError(t, model.InitLogDB())
 	require.NoError(t, db.AutoMigrate(&model.PerfMetric{}))
 	previousGroups := setting.UserUsableGroups2JSONString()
 	previousRatios := ratio_setting.GroupRatio2JSONString()
