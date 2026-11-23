@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import {
@@ -79,7 +80,7 @@ export function TaskPlugins() {
       <SectionPageLayout fixedContent>
         <SectionPageLayout.Title>{t('Task Plugins')}</SectionPageLayout.Title>
         <SectionPageLayout.Actions>
-          <div className='flex items-center gap-2'>
+          <div className='bg-muted flex h-9 items-center gap-2 rounded-full pr-1 pl-3'>
             <Switch
               id='task-plugin-enabled-switch'
               checked={enabledQuery.data ?? false}
@@ -101,6 +102,7 @@ export function TaskPlugins() {
                   <Button
                     variant='ghost'
                     size='icon-sm'
+                    className='rounded-full'
                     aria-label={t('Factory and custom plugin behavior')}
                   />
                 }
@@ -128,7 +130,10 @@ export function TaskPlugins() {
             </Popover>
           </div>
           {tab === 'installed' && (
-            <Button onClick={() => openUpload()}>
+            <Button
+              className={CONSOLE_PRIMARY_BUTTON}
+              onClick={() => openUpload()}
+            >
               <Upload />
               {t('Upload plugin')}
             </Button>
@@ -140,7 +145,7 @@ export function TaskPlugins() {
             onValueChange={setTab}
             className='flex h-full min-h-0 flex-col gap-3'
           >
-            <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
+            <TabsList variant='pill' className='max-w-full self-start'>
               <TabsTrigger value='installed'>{t('Installed')}</TabsTrigger>
               <TabsTrigger value='marketplace'>{t('Marketplace')}</TabsTrigger>
             </TabsList>

@@ -42,7 +42,10 @@ function SubscriptionsContent() {
         </SectionPageLayout.Title>
         <SectionPageLayout.Actions>
           <div className='flex items-center gap-2'>
-            <Alert variant='default' className='hidden px-3 py-2 sm:flex'>
+            <Alert
+              variant='default'
+              className='hidden items-center rounded-full px-3.5 py-1.5 sm:flex'
+            >
               <Info className='h-4 w-4' />
               <AlertDescription className='text-xs'>
                 {t(
@@ -56,7 +59,7 @@ function SubscriptionsContent() {
         <SectionPageLayout.Content>
           <div className='flex h-full min-h-0 flex-col gap-4'>
             {!complianceConfirmed ? (
-              <Alert variant='destructive' className='shrink-0'>
+              <Alert variant='destructive' className='shrink-0 rounded-2xl'>
                 <AlertDescription>
                   {t(
                     'Subscription plan creation and changes are locked until the administrator confirms compliance terms in Payment Gateway settings.'

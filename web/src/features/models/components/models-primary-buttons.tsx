@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useCanEditModelPricing } from '@/features/model-pricing/api'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 
 import { useModels } from './models-provider'
 
@@ -56,7 +57,12 @@ export function ModelsPrimaryButtons() {
 
   return (
     <div className='flex flex-wrap items-center gap-2'>
-      <Button onClick={handleSync} variant='outline' size='sm'>
+      <Button
+        onClick={handleSync}
+        variant='outline'
+        size='sm'
+        className='rounded-full px-3.5'
+      >
         {t('Sync metadata')}
       </Button>
       {canPrice && (
@@ -64,12 +70,17 @@ export function ModelsPrimaryButtons() {
           onClick={() => setOpen('price-sync')}
           variant='outline'
           size='sm'
+          className='rounded-full px-3.5'
         >
           {t('Sync pricing')}
         </Button>
       )}
       {/* Create Model */}
-      <Button onClick={handleCreateModel} size='sm'>
+      <Button
+        onClick={handleCreateModel}
+        size='sm'
+        className={CONSOLE_PRIMARY_BUTTON}
+      >
         <Plus className='h-4 w-4' />
         {t('Add Model')}
       </Button>
@@ -78,7 +89,12 @@ export function ModelsPrimaryButtons() {
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
-            <Button variant='outline' size='sm' aria-label={t('Open menu')} />
+            <Button
+              variant='outline'
+              size='icon-sm'
+              className='rounded-full'
+              aria-label={t('Open menu')}
+            />
           }
         >
           <MoreHorizontal className='h-4 w-4' />

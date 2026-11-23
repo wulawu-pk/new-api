@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { deleteInvalidRedemptions } from '../api'
@@ -63,12 +64,17 @@ export function RedemptionsPrimaryButtons() {
         <Button
           size='sm'
           variant='outline'
+          className='rounded-full px-3.5'
           onClick={() => setShowDeleteInvalidConfirm(true)}
         >
           <Trash2 className='text-destructive h-4 w-4' />
           {t('Delete Invalid')}
         </Button>
-        <Button size='sm' onClick={() => setOpen('create')}>
+        <Button
+          size='sm'
+          className={CONSOLE_PRIMARY_BUTTON}
+          onClick={() => setOpen('create')}
+        >
           <Plus className='h-4 w-4' />
           {t('Create Code')}
         </Button>

@@ -20,6 +20,7 @@ import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 
 import { useUsers } from './users-provider'
 
@@ -34,7 +35,11 @@ export function UsersPrimaryButtons() {
 
   return (
     <div className='flex gap-2'>
-      <Button size='sm' onClick={handleCreate}>
+      <Button
+        size='sm'
+        className={CONSOLE_PRIMARY_BUTTON}
+        onClick={handleCreate}
+      >
         <Plus className='h-4 w-4' />
         {t('Add User')}
       </Button>

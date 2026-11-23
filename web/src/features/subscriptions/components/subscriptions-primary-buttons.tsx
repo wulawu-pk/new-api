@@ -20,6 +20,7 @@ import { Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 
 import { useSubscriptions } from './subscriptions-provider'
 
@@ -30,6 +31,7 @@ export function SubscriptionsPrimaryButtons() {
     <div className='flex gap-2'>
       <Button
         size='sm'
+        className={CONSOLE_PRIMARY_BUTTON}
         onClick={() => setOpen('create')}
         disabled={!complianceConfirmed}
       >

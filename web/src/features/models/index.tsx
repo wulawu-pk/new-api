@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { SectionPageLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import { listDeployments } from './api'
@@ -98,6 +99,7 @@ function ModelsContent() {
     actions = (
       <Button
         size='sm'
+        className={CONSOLE_PRIMARY_BUTTON}
         onClick={() => {
           setCurrentVendor(null)
           setOpen('create-vendor')
@@ -110,7 +112,11 @@ function ModelsContent() {
     content = <VendorsTable />
   } else if (activeSection === 'deployments') {
     actions = (
-      <Button onClick={() => setCreateDeploymentOpen(true)} size='sm'>
+      <Button
+        onClick={() => setCreateDeploymentOpen(true)}
+        size='sm'
+        className={CONSOLE_PRIMARY_BUTTON}
+      >
         <Plus className='size-4' />
         {t('Create deployment')}
       </Button>
@@ -129,7 +135,7 @@ function ModelsContent() {
         <SectionPageLayout.Content>
           <div className='flex h-full min-h-0 flex-col gap-4'>
             <Tabs value={activeSection} onValueChange={handleSectionChange}>
-              <TabsList className='max-w-full flex-wrap justify-start group-data-horizontal/tabs:h-auto'>
+              <TabsList variant='pill' className='max-w-full self-start'>
                 {MODELS_SECTION_IDS.map((section) => (
                   <TabsTrigger key={section} value={section}>
                     {t(SECTION_META[section].tabKey)}
