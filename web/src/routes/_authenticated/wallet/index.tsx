@@ -23,11 +23,30 @@ import { ConsoleWallet } from '@/features/console/wallet'
 
 // peroai v3: /wallet is the console wallet (window 4). `show_history` is
 // still accepted from payment return links; the history is always shown.
+// `pay=return` is where the gateway sends the browser back after paying
+// (/payment-return 302s here, dropping every gateway parameter).
 const walletSearchSchema = z.object({
   show_history: z.boolean().optional(),
+  pay: z.enum(['return']).optional().catch(undefined),
 })
 
 export const Route = createFileRoute('/_authenticated/wallet/')({
-  component: ConsoleWallet,
+  component: WalletPage,
   validateSearch: walletSearchSchema,
 })
+
+function WalletPage() {
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  return (
+    <ConsoleWallet
+      paymentReturn={search.pay === 'return'}
+      onPaymentReturnHandled={() =>
+        void navigate({
+          search: (prev) => ({ ...prev, pay: undefined }),
+          replace: true,
+        })
+      }
+    />
+  )
+}

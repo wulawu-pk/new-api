@@ -20,6 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import * as z from 'zod'
 
 import {
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { useStatus } from '@/hooks/use-status'
 
 import {
   SettingsForm,
@@ -42,6 +44,11 @@ import {
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useUpdateOption } from '../hooks/use-update-option'
+import {
+  TURNSTILE_KEYS_REQUIRED,
+  turnstileKeysReady,
+  type BotProtectionFormValues,
+} from './lib/turnstile-keys'
 
 const botProtectionSchema = z.object({
   TurnstileCheckEnabled: z.boolean(),
@@ -49,17 +56,23 @@ const botProtectionSchema = z.object({
   TurnstileSecretKey: z.string().optional(),
 })
 
-type BotProtectionFormValues = z.infer<typeof botProtectionSchema>
-
 type BotProtectionSectionProps = {
   defaultValues: BotProtectionFormValues
+  /**
+   * Whether a secret key is stored. The options API never returns secret
+   * values, so without this flag a stored secret cannot be seen and turning
+   * Turnstile on asks for the secret again.
+   */
+  secretKeyConfigured?: boolean
 }
 
 export function BotProtectionSection({
   defaultValues,
+  secretKeyConfigured,
 }: BotProtectionSectionProps) {
   const { t } = useTranslation()
   const updateOption = useUpdateOption()
+  const { status } = useStatus()
 
   const form = useForm<BotProtectionFormValues>({
     resolver: zodResolver(botProtectionSchema),
@@ -85,8 +98,26 @@ export function BotProtectionSection({
         ]
       : updates
 
+    if (
+      turnstileEnableUpdate &&
+      !turnstileKeysReady(data, {
+        siteKey: status?.turnstile_site_key,
+        secretKeyConfigured,
+      })
+    ) {
+      toast.error(t(TURNSTILE_KEYS_REQUIRED))
+      return
+    }
+
     for (const [key, value] of orderedUpdates) {
-      await updateOption.mutateAsync({ key, value: value ?? '' })
+      try {
+        await updateOption.mutateAsync({ key, value: value ?? '' })
+      } catch {
+        // The mutation already showed the server's message. Stop here: the
+        // remaining options (Turnstile itself last) must not be saved after
+        // a failed key, and the save is not reported as done.
+        return
+      }
     }
   }
 

@@ -74,12 +74,7 @@ import {
 } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
-import {
-  createApiKey,
-  updateApiKey,
-  getApiKey,
-  getTokenAutoGroups,
-} from '../api'
+import { updateApiKey, getApiKey, getTokenAutoGroups } from '../api'
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
 import {
   getApiKeyFormSchema,
@@ -87,6 +82,8 @@ import {
   getApiKeyFormDefaultValues,
   transformFormDataToPayload,
   transformApiKeyToFormDefaults,
+  createApiKeyOnce,
+  expectedOriginalFromApiKey,
 } from '../lib'
 import type { ApiKey } from '../types'
 import {
@@ -95,6 +92,10 @@ import {
 } from './api-key-group-combobox'
 import { useApiKeys } from './api-keys-provider'
 import { AutoGroupOrderEditor } from './auto-group-order-editor'
+
+/** Shown when the server refused a legacy edit with `token_conflict`. */
+export const KEY_CHANGED_SINCE_OPENED =
+  'This key was changed after you opened the editor. Refresh and edit it again.'
 
 type ApiKeyMutateDrawerProps = {
   open: boolean
@@ -313,9 +314,21 @@ export function ApiKeysMutateDrawer({
           id: currentRow.id,
           expected_remain_quota: currentRow.remain_quota,
           expected_unlimited_quota: currentRow.unlimited_quota,
+          // The values the form was filled with (the detail read on open;
+          // the list row before it loads). The server writes nothing when
+          // one of the changed fields was changed by someone else meanwhile.
+          expected_original: expectedOriginalFromApiKey(
+            apiKeyData?.data?.id === currentRow.id
+              ? apiKeyData.data
+              : currentRow
+          ),
         })
         if (result.success) {
           toast.success(t(SUCCESS_MESSAGES.API_KEY_UPDATED))
+          onOpenChange(false)
+          triggerRefresh()
+        } else if (result.code === 'token_conflict') {
+          toast.warning(t(KEY_CHANGED_SINCE_OPENED))
           onOpenChange(false)
           triggerRefresh()
         } else {
@@ -327,7 +340,9 @@ export function ApiKeysMutateDrawer({
         let successCount = 0
 
         for (let i = 0; i < count; i++) {
-          const result = await createApiKey({
+          // Each key of the batch is its own create request with its own
+          // client_request_id; only network-failure retries reuse it.
+          const result = await createApiKeyOnce({
             ...basePayload,
             name:
               i === 0 && data.name

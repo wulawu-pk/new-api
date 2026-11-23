@@ -16,9 +16,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { AxiosError } from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import * as keysApi from '@/features/keys/api'
+import {
+  CLIENT_REQUEST_ID_PATTERN,
+  newClientRequestId,
+} from '@/features/keys/lib/idempotent-create'
 import type { ApiKey } from '@/features/keys/types'
 
 import { buildCreateKeyPayload } from '../lib/create-key'
@@ -97,7 +102,10 @@ describe('ensureGroupKey', () => {
     const result = await ensureGroupKey(PAYLOAD, 'failed')
 
     expect(result).toEqual({ created: true, name: 'claude-code' })
-    expect(keysApi.createApiKey).toHaveBeenCalledWith(PAYLOAD)
+    expect(keysApi.createApiKey).toHaveBeenCalledWith({
+      ...PAYLOAD,
+      client_request_id: expect.stringMatching(CLIENT_REQUEST_ID_PATTERN),
+    })
     // Only the name is needed: the full key is never read here, and the
     // list is read once (to look for an existing key), not to find the id.
     expect(keysApi.fetchTokenKey).not.toHaveBeenCalled()
@@ -200,5 +208,85 @@ describe('createKeyAndFetch', () => {
     expect(error).toMatchObject({ id: 12, keyName: 'claude-code' })
     expect(onCreated).toHaveBeenCalledWith({ id: 12, name: 'claude-code' })
     expect(keysApi.createApiKey).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('idempotent key creation', () => {
+  const offline = () =>
+    new AxiosError('Network Error', 'ERR_NETWORK', { headers: {} } as never)
+
+  it('makes ids the server accepts, a new one each time', () => {
+    const ids = new Set(Array.from({ length: 20 }, newClientRequestId))
+    expect(ids.size).toBe(20)
+    for (const id of ids) expect(id).toMatch(CLIENT_REQUEST_ID_PATTERN)
+  })
+
+  it('retries a create whose answer was lost with the same client_request_id', async () => {
+    // The server created the key, but the answer never arrived.
+    vi.mocked(keysApi.createApiKey)
+      .mockRejectedValueOnce(offline())
+      .mockResolvedValueOnce({
+        success: true,
+        data: { id: 12, name: 'claude-code' },
+      })
+    vi.mocked(keysApi.fetchTokenKey).mockResolvedValue({
+      success: true,
+      data: { key: 'abc' },
+    })
+
+    const created = await createKeyAndFetch(PAYLOAD, 'failed', undefined, {
+      retryDelayMs: 0,
+    })
+
+    expect(created).toEqual({ id: 12, name: 'claude-code', key: 'sk-abc' })
+    const calls = vi.mocked(keysApi.createApiKey).mock.calls
+    expect(calls).toHaveLength(2)
+    const first = calls[0][0].client_request_id
+    expect(first).toMatch(CLIENT_REQUEST_ID_PATTERN)
+    expect(calls[1][0].client_request_id).toBe(first)
+  })
+
+  it('uses a new id for the next create click', async () => {
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({
+      success: true,
+      data: { id: 12, name: 'claude-code' },
+    })
+    vi.mocked(keysApi.fetchTokenKey).mockResolvedValue({
+      success: true,
+      data: { key: 'abc' },
+    })
+
+    await createKeyAndFetch(PAYLOAD, 'failed')
+    await createKeyAndFetch(PAYLOAD, 'failed')
+
+    const [first, second] = vi
+      .mocked(keysApi.createApiKey)
+      .mock.calls.map(([body]) => body.client_request_id)
+    expect(first).not.toBe(second)
+  })
+
+  it('does not retry a request the server answered', async () => {
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({
+      success: false,
+      message: 'group not allowed',
+    })
+
+    await expect(
+      createKeyAndFetch(PAYLOAD, 'failed', undefined, { retryDelayMs: 0 })
+    ).rejects.toThrow()
+    expect(keysApi.createApiKey).toHaveBeenCalledTimes(1)
+  })
+
+  it('gives up after three tries without an answer', async () => {
+    vi.mocked(keysApi.createApiKey).mockRejectedValue(offline())
+
+    await expect(
+      createKeyAndFetch(PAYLOAD, 'failed', undefined, { retryDelayMs: 0 })
+    ).rejects.toThrow('Network Error')
+    const ids = vi
+      .mocked(keysApi.createApiKey)
+      .mock.calls.map(([body]) => body.client_request_id)
+    expect(ids).toHaveLength(3)
+    expect(new Set(ids).size).toBe(1)
   })
 })

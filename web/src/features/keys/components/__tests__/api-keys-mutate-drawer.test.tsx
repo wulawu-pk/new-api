@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { toast } from 'sonner'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import type { ApiKey } from '../../types'
@@ -422,5 +423,159 @@ describe('API keys mutate drawer user quota query switch', () => {
     fireEvent.click(findButton('Save changes', true))
     await waitFor(() => expect(createdPayloads).toHaveLength(1))
     expect(createdPayloads[0]?.allow_user_quota_query).toBe(false)
+  })
+})
+
+describe('API keys mutate drawer idempotent batch create', () => {
+  test('sends a different client_request_id for every key of a batch', async () => {
+    const createdPayloads: Array<Record<string, unknown>> = []
+    installApiFixtures(createdPayloads)
+    await renderCreateDrawer()
+
+    changeInput(getControlByLabel('Name'), 'batch')
+    changeInput(getControlByLabel('Quantity'), '3')
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(createdPayloads).toHaveLength(3))
+
+    const ids = createdPayloads.map((payload) => payload.client_request_id)
+    for (const id of ids) expect(id).toMatch(/^[A-Za-z0-9_-]{8,64}$/)
+    expect(new Set(ids).size).toBe(3)
+  })
+})
+
+describe('API keys mutate drawer legacy edit originals', () => {
+  const ROW: ApiKey = {
+    id: 5,
+    name: 'laptop',
+    key: '',
+    status: 1,
+    remain_quota: 250000,
+    used_quota: 0,
+    unlimited_quota: false,
+    expired_time: 2000000000,
+    created_time: 1,
+    accessed_time: 0,
+    group: 'vip',
+    auto_groups: [],
+    cross_group_retry: false,
+    model_limits_enabled: true,
+    model_limits: 'gpt-6,claude-5',
+    allow_ips: '',
+    allow_user_quota_query: true,
+  }
+
+  async function renderEdit(
+    row: ApiKey,
+    putResponse: Record<string, unknown> = { success: true }
+  ) {
+    installApiFixtures([])
+    const getFixture = apiClient.get
+    vi.spyOn(apiClient, 'get').mockImplementation((url) =>
+      url === `/api/token/${row.id}`
+        ? Promise.resolve({ data: { success: true, data: row } })
+        : getFixture(url)
+    )
+    const put = vi.spyOn(api, 'put').mockResolvedValue({ data: putResponse })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    renderedDrawer = { queryClient }
+    const close = vi.fn()
+    render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ApiKeysProvider>
+            <ApiKeysMutateDrawer open currentRow={row} onOpenChange={close} />
+          </ApiKeysProvider>
+        </I18nextProvider>
+      </QueryClientProvider>
+    )
+    await waitFor(() => expect(findButton('Save changes', true)).toBeEnabled())
+    return { put, close }
+  }
+
+  test('sends the opened values as expected_original, equal to an untouched payload', async () => {
+    const { put } = await renderEdit(ROW)
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(put).toHaveBeenCalled())
+
+    const body = put.mock.calls[0][1] as Record<string, unknown>
+    expect(body.expected_original).toEqual({
+      name: 'laptop',
+      expired_time: 2000000000,
+      model_limits_enabled: true,
+      model_limits: 'gpt-6,claude-5',
+      allow_ips: '',
+      group: 'vip',
+      cross_group_retry: false,
+      allow_user_quota_query: true,
+    })
+    // Nothing was edited: every original equals the submitted value, so the
+    // server reads no field as changed.
+    const original = body.expected_original as Record<string, unknown>
+    for (const [field, value] of Object.entries(original)) {
+      expect([field, body[field]]).toEqual([field, value])
+    }
+    expect(body).toMatchObject({
+      id: 5,
+      expected_remain_quota: 250000,
+      expected_unlimited_quota: false,
+    })
+  })
+
+  test('writes a missing IP list and group the way the payload does', async () => {
+    const { put } = await renderEdit({
+      ...ROW,
+      id: 6,
+      allow_ips: null,
+      model_limits: null,
+      model_limits_enabled: false,
+    } as never)
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(put).toHaveBeenCalled())
+
+    const body = put.mock.calls[0][1] as Record<string, unknown>
+    const original = body.expected_original as Record<string, unknown>
+    expect(original).toMatchObject({
+      allow_ips: '',
+      model_limits: '',
+      model_limits_enabled: false,
+    })
+    expect(body.allow_ips).toBe(original.allow_ips)
+    expect(body.model_limits).toBe(original.model_limits)
+    expect(body.model_limits_enabled).toBe(original.model_limits_enabled)
+  })
+
+  test('a changed name still carries the original name', async () => {
+    const { put } = await renderEdit(ROW)
+    changeInput(getControlByLabel('Name'), 'renamed')
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(put).toHaveBeenCalled())
+
+    const body = put.mock.calls[0][1] as Record<string, unknown>
+    expect(body.name).toBe('renamed')
+    expect(body.expected_original).toMatchObject({ name: 'laptop' })
+  })
+
+  test('says the key changed meanwhile and closes on token_conflict', async () => {
+    const warning = vi.spyOn(toast, 'warning').mockImplementation(() => 0)
+    const error = vi.spyOn(toast, 'error').mockImplementation(() => 0)
+    const success = vi.spyOn(toast, 'success').mockImplementation(() => 0)
+    const { put, close } = await renderEdit(ROW, {
+      success: false,
+      code: 'token_conflict',
+      message: 'conflict',
+    })
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(put).toHaveBeenCalled())
+
+    await waitFor(() =>
+      expect(warning).toHaveBeenCalledWith(
+        'This key was changed after you opened the editor. Refresh and edit it again.'
+      )
+    )
+    expect(close).toHaveBeenCalledWith(false)
+    expect(error).not.toHaveBeenCalled()
+    expect(success).not.toHaveBeenCalled()
   })
 })

@@ -7666,6 +7666,10 @@
     "Could not get a price for this amount. Please try again in a moment.": "Не удалось получить цену для этой суммы. Попробуйте ещё раз чуть позже.",
     "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.": "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.",
     "Load the key again": "Load the key again",
-    "Your balance will update shortly.": "Your balance will update shortly."
+    "Your balance will update shortly.": "Your balance will update shortly.",
+    "Totals not updated": "Итоги не обновлены",
+    "This key was changed after you opened the editor. Refresh and edit it again.": "Этот ключ изменили после того, как вы открыли редактор. Обновите страницу и отредактируйте его снова.",
+    "Enter the Turnstile site key and secret key before turning Turnstile on.": "Перед включением Turnstile укажите ключ сайта и секретный ключ.",
+    "Back on the site. Your balance updates on its own once the payment is confirmed.": "Вы вернулись на сайт. Баланс обновится автоматически после подтверждения оплаты."
   }
 }

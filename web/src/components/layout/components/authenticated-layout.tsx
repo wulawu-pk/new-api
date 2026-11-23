@@ -39,6 +39,12 @@ type AuthenticatedLayoutProps = {
 
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const signedIn = useAuthStore((s) => !!s.auth.user)
+  // Unmount pages on sign-out, in both layouts. Otherwise their queries keep
+  // polling without credentials and toast "Session expired!". Every route
+  // under `_authenticated` needs a session (its beforeLoad redirects); the
+  // public pages (pricing, status, legal) render their own shell outside it.
+  if (!signedIn) return null
   // peroai v3: user pages render in the terminal console shell; admin pages
   // keep the sidebar layout (re-coloured by the peroai preset).
   if (isConsolePath(pathname)) {
@@ -49,9 +55,6 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
 
 function SidebarLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
-  const signedIn = useAuthStore((s) => !!s.auth.user)
-  // Unmount pages on sign-out, otherwise their queries refetch and toast "Session expired!" / "invalid access token"
-  if (!signedIn) return null
 
   return (
     <LayoutProvider>

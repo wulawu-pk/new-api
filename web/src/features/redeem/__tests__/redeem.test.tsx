@@ -288,6 +288,54 @@ describe('redeem page', () => {
     expect(post).not.toHaveBeenCalled()
   })
 
+  it('shows only the latest activation’s balance when an earlier read arrives late', async () => {
+    useAuthStore.getState().auth.setUser({ id: 7, username: 'buyer', role: 1 })
+    const OTHER = 'fedcba9876543210fedcba9876543210'
+    vi.spyOn(api, 'post').mockResolvedValue({
+      data: { success: true, data: 5000000 },
+    })
+    const reads: Array<{
+      resolve: (quota: number) => void
+      signal?: AbortSignal
+    }> = []
+    vi.spyOn(api, 'get').mockImplementation(
+      ((_url: string, config?: { signal?: AbortSignal }) =>
+        new Promise((resolve) => {
+          reads.push({
+            signal: config?.signal,
+            resolve: (quota) =>
+              resolve({ data: { success: true, data: { id: 7, quota } } }),
+          })
+        })) as never
+    )
+    const info = vi.spyOn(toast, 'info').mockImplementation(() => 0)
+    const user = userEvent.setup()
+    renderRedeem(CODE)
+
+    await user.click(await screen.findByRole('button', { name: 'Activate' }))
+    expect(await screen.findByText('Activated')).toBeVisible()
+    await vi.waitFor(() => expect(reads).toHaveLength(1))
+
+    await user.click(
+      screen.getByRole('button', { name: 'Activate another card' })
+    )
+    // Leaving the first success view cancels its balance read.
+    expect(reads[0].signal?.aborted).toBe(true)
+    await user.type(screen.getByLabelText('Card code'), OTHER)
+    await user.click(screen.getByRole('button', { name: 'Activate' }))
+    expect(await screen.findByText('Activated')).toBeVisible()
+    await vi.waitFor(() => expect(reads).toHaveLength(2))
+
+    reads[1].resolve(20000000)
+    expect(await screen.findByText(/Current balance: \$40/)).toBeVisible()
+    // The first card's read answers last; it must not replace the balance.
+    reads[0].resolve(7500000)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(screen.getByRole('status')).toHaveTextContent('Current balance: $40')
+    expect(screen.getByRole('status')).not.toHaveTextContent('$15')
+    expect(info).not.toHaveBeenCalled()
+  })
+
   it('shows the activation when the balance cannot be read afterwards', async () => {
     useAuthStore.getState().auth.setUser({ id: 7, username: 'buyer', role: 1 })
     vi.spyOn(api, 'post').mockResolvedValue({

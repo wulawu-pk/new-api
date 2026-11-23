@@ -16,7 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createApiKey, fetchTokenKey, getApiKeys } from '@/features/keys/api'
+import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
+import {
+  createApiKeyOnce,
+  type IdempotentCreateOptions,
+} from '@/features/keys/lib/idempotent-create'
 import type { ApiKeyFormData } from '@/features/keys/types'
 import { createServerError } from '@/lib/server-error-message'
 
@@ -30,13 +34,16 @@ export function withSkPrefix(key: string): string {
 /**
  * Creates a key and returns the id and name POST /api/token/ answers with.
  * A response without an id (an older server) is an error: picking the key
- * out of the list by name could hand back a different key.
+ * out of the list by name could hand back a different key. One call is one
+ * create click: a network failure is retried with the same
+ * `client_request_id`, so a request that reached the server is not doubled.
  */
 export async function createKey(
   payload: ApiKeyFormData,
-  fallbackError: string
+  fallbackError: string,
+  options?: IdempotentCreateOptions
 ): Promise<{ id: number; name: string }> {
-  const created = await createApiKey(payload)
+  const created = await createApiKeyOnce(payload, options)
   if (!created.success) throw createServerError(created, fallbackError)
   const id = created.data?.id
   if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) {
@@ -81,9 +88,10 @@ export async function revealKey(
 export async function createKeyAndFetch(
   payload: ApiKeyFormData,
   fallbackError: string,
-  onCreated?: (made: { id: number; name: string }) => void
+  onCreated?: (made: { id: number; name: string }) => void,
+  options?: IdempotentCreateOptions
 ): Promise<CreatedKey> {
-  const made = await createKey(payload, fallbackError)
+  const made = await createKey(payload, fallbackError, options)
   onCreated?.(made)
   try {
     return { ...made, key: await revealKey(made.id, fallbackError) }

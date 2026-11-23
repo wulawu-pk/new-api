@@ -41,9 +41,13 @@ export type { ApiRequestConfig } from '@/lib/http-client'
 // User APIs
 // ============================================================================
 
-export async function getSelf() {
+export async function getSelf(options: { signal?: AbortSignal } = {}) {
   const res = await api.get('/api/user/self', {
     skipErrorHandler: true,
+    // A cancellable read must not share another caller's in-flight request.
+    ...(options.signal
+      ? { signal: options.signal, disableDuplicate: true }
+      : {}),
   })
   return res.data
 }

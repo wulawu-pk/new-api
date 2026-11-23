@@ -165,10 +165,16 @@ export function ConsoleLogs() {
     setFilters((current) => ({ ...current, page: current.page + step }))
   }
 
+  // The list and the totals refresh together. "Updated" is the last time
+  // both loaded, so a failed totals request never passes for the list's time.
   const refresh = () => {
-    void logs.refetch()
-    void stats.refetch()
+    void Promise.all([logs.refetch(), stats.refetch()])
   }
+  const updatedAt =
+    logs.dataUpdatedAt > 0 && stats.dataUpdatedAt > 0
+      ? Math.min(logs.dataUpdatedAt, stats.dataUpdatedAt)
+      : 0
+  const statsStale = stats.isError
 
   const changeLive = (next: boolean) => {
     setLive(next)
@@ -201,8 +207,8 @@ export function ConsoleLogs() {
             live={live}
             onLiveChange={changeLive}
             livePaused={filters.page !== 1}
-            fetching={logs.isFetching}
-            updatedAt={logs.dataUpdatedAt}
+            fetching={logs.isFetching || stats.isFetching}
+            updatedAt={updatedAt}
             onRefresh={refresh}
           />
         }
@@ -297,7 +303,15 @@ export function ConsoleLogs() {
                   {formatQuota(stats.data.quota)}
                 </b>
               ) : (
-                <SkeletonText />
+                !statsStale && <SkeletonText />
+              )}
+              {statsStale && (
+                <span
+                  className='text-t-warn ml-1.5 text-[12.5px]'
+                  title={errorReason(stats.error)}
+                >
+                  {t('Totals not updated')}
+                </span>
               )}
             </>
           )}
