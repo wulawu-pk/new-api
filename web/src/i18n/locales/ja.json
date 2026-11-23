@@ -7650,6 +7650,8 @@
     "Saving…": "Saving…",
     "Saved": "Saved",
     "Streamed": "Streamed",
-    "Not streamed": "Not streamed"
+    "Not streamed": "Not streamed",
+    "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "編集中にこのキーの残り額度が変わりました。最新の値に更新したので、確認してからもう一度保存してください。",
+    "Could not get a price for this amount. Please try again in a moment.": "この金額の見積もりを取得できませんでした。しばらくしてからもう一度お試しください。"
   }
 }

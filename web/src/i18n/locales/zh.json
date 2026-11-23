@@ -7650,6 +7650,8 @@
     "Saving…": "保存中…",
     "Saved": "已保存",
     "Streamed": "流式",
-    "Not streamed": "非流式"
+    "Not streamed": "非流式",
+    "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "这个 Key 的额度在你编辑期间有变化，已刷新为最新值，请重新确认后再保存。",
+    "Could not get a price for this amount. Please try again in a moment.": "暂时无法获取这个金额的报价，请稍后再试。"
   }
 }

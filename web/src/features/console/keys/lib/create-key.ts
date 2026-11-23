@@ -99,38 +99,60 @@ export function editKeyValues(key: ApiKey): CreateKeyValues {
   }
 }
 
+/** PATCH /api/token/:id body: only the fields the dialog changed. */
+export type KeyPatch = {
+  name?: string
+  group?: string
+  expired_time?: number
+  remain_quota?: number
+  unlimited_quota?: boolean
+  /** Quota the dialog was opened with; required with a quota change. */
+  expected_remain_quota?: number
+  expected_unlimited_quota?: boolean
+}
+
 /**
- * Builds the PUT /api/token/ payload. The endpoint overwrites every field, so
- * settings this form does not show (model limits, IP allow-list, auto groups,
- * quota query) are carried over from the key unchanged.
+ * Builds the PATCH /api/token/:id body from what differs from the key as it
+ * was when the dialog opened, or null when nothing changed. A quota change
+ * carries the quota the dialog showed (`expected_*`), so the server refuses
+ * it if the key spent quota in the meantime instead of overwriting that.
  */
-export function buildUpdateKeyPayload(
+export function buildKeyPatch(
   key: ApiKey,
   values: CreateKeyValues,
   nowSeconds: number = Math.floor(Date.now() / 1000)
-): ApiKeyFormData & { id: number } {
-  const unlimited = values.limit.trim() === ''
-  // An untouched quota field sends the exact quota, not the rounded figure.
-  let remainQuota = 0
-  if (values.limit.trim() === editKeyValues(key).limit) {
-    remainQuota = key.remain_quota
-  } else if (!unlimited) {
-    remainQuota = parseQuotaFromDollars(Number(values.limit))
+): KeyPatch | null {
+  const patch: KeyPatch = {}
+  const name = values.name.trim()
+  if (name !== key.name) patch.name = name
+  if (values.group !== (key.group || '')) patch.group = values.group
+
+  const expiredTime = expiredTimeFor(
+    values.expiry,
+    nowSeconds,
+    key.expired_time
+  )
+  if (expiredTime !== key.expired_time) patch.expired_time = expiredTime
+
+  const limit = values.limit.trim()
+  const shown = editKeyValues(key).limit
+  const unlimited = limit === ''
+  // `12.50` for a field showing `12.5` is no change either.
+  const quotaUnchanged = unlimited
+    ? key.unlimited_quota
+    : !key.unlimited_quota && Number(limit) === Number(shown)
+  if (!quotaUnchanged) {
+    if (unlimited) {
+      patch.unlimited_quota = true
+    } else {
+      patch.remain_quota = parseQuotaFromDollars(Number(limit))
+      if (key.unlimited_quota) patch.unlimited_quota = false
+    }
+    patch.expected_remain_quota = key.remain_quota
+    patch.expected_unlimited_quota = key.unlimited_quota
   }
-  return {
-    id: key.id,
-    name: values.name.trim(),
-    remain_quota: remainQuota,
-    unlimited_quota: unlimited,
-    expired_time: expiredTimeFor(values.expiry, nowSeconds, key.expired_time),
-    model_limits_enabled: key.model_limits_enabled,
-    model_limits: key.model_limits ?? '',
-    allow_ips: key.allow_ips ?? '',
-    allow_user_quota_query: key.allow_user_quota_query,
-    group: values.group,
-    auto_groups: key.auto_groups ?? [],
-    cross_group_retry: key.cross_group_retry,
-  }
+
+  return Object.keys(patch).length > 0 ? patch : null
 }
 
 /** `sk-…03Sb` from a masked key such as `pMH8**********03Sb`. */

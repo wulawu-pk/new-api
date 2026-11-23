@@ -7650,6 +7650,8 @@
     "Saving…": "Saving…",
     "Saved": "Saved",
     "Streamed": "Streamed",
-    "Not streamed": "Not streamed"
+    "Not streamed": "Not streamed",
+    "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "Le quota de cette clé a changé pendant votre modification. Le formulaire affiche les valeurs actuelles ; vérifiez-les puis enregistrez à nouveau.",
+    "Could not get a price for this amount. Please try again in a moment.": "Impossible d’obtenir un prix pour ce montant. Réessayez dans un instant."
   }
 }

@@ -16,18 +16,26 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as profileApi from '@/features/profile/api'
 import * as logsApi from '@/features/usage-logs/api'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
 import * as walletApi from '@/features/wallet/api'
-import type { TopupRecord } from '@/features/wallet/types'
+import { requestPaymentQuote } from '@/features/wallet/hooks/use-payment'
+import type {
+  AmountResponse,
+  TopupInfo,
+  TopupRecord,
+} from '@/features/wallet/types'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { ConsoleWallet } from '..'
 import { renderConsole } from '../../__tests__/render-console'
+import { OnlineTopupPane } from '../components/online-topup-pane'
 import { mergeHistory, methodLabel, redeemRowFromLog } from '../lib/history'
 import { cryptoCoins, networksOf, regularMethods } from '../lib/pay-methods'
 
@@ -37,6 +45,8 @@ vi.mock('@/features/wallet/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/wallet/api')>()),
   getTopupInfo: vi.fn(),
   getUserBillingHistory: vi.fn(),
+  calculateAmount: vi.fn(),
+  requestPayment: vi.fn(),
 }))
 
 const REDEEM_LOG = {
@@ -186,5 +196,122 @@ describe('console wallet page', () => {
     renderConsole(<ConsoleWallet />)
 
     expect(await screen.findByText('/api/user/topup/self')).toBeInTheDocument()
+  })
+})
+
+const CRYPTO_TOPUP: TopupInfo = {
+  enable_online_topup: true,
+  enable_stripe_topup: false,
+  crypto_usd_topup: true,
+  pay_methods: [{ name: 'USDT·TRC20', type: 'usdt.trc20' }],
+  min_topup: 1,
+  stripe_min_topup: 1,
+  amount_options: [],
+  discount: {},
+} as never
+
+const FULL_QUOTE: AmountResponse = {
+  success: true,
+  data: '5',
+  currency: 'USDT',
+  rate: '7.10',
+  credit_quota: 17_750_000,
+}
+
+const regularOnly = (response: AmountResponse) => ({
+  regular: async () => response,
+  stripe: async () => ({ success: true, data: '0' }),
+  waffo: async () => ({ success: true, data: '0' }),
+  waffoPancake: async () => ({ success: true, data: '0' }),
+})
+
+describe('coin quote validation', () => {
+  it('accepts a quote with coins, coin, rate and credited quota', async () => {
+    expect(
+      await requestPaymentQuote(5, 'usdt.trc20', regularOnly(FULL_QUOTE))
+    ).toEqual({
+      amount: 5,
+      currency: 'USDT',
+      rate: 7.1,
+      creditQuota: 17_750_000,
+    })
+  })
+
+  it.each([
+    ['currency', { ...FULL_QUOTE, currency: undefined }],
+    ['rate', { ...FULL_QUOTE, rate: undefined }],
+    ['credit_quota', { ...FULL_QUOTE, credit_quota: undefined }],
+    ['a non-numeric rate', { ...FULL_QUOTE, rate: 'abc' }],
+    ['a zero rate', { ...FULL_QUOTE, rate: '0' }],
+    ['a negative credit', { ...FULL_QUOTE, credit_quota: -1 }],
+    ['a fractional credit', { ...FULL_QUOTE, credit_quota: 1.5 }],
+    ['a non-numeric coin amount', { ...FULL_QUOTE, data: 'NaN' }],
+  ])('refuses a coin quote with missing or invalid %s', async (_, response) => {
+    const quote = await requestPaymentQuote(
+      5,
+      'usdt.trc20',
+      regularOnly(response as AmountResponse)
+    )
+    expect(quote.amount).toBe(0)
+    expect(quote.error).toBe(
+      'Could not get a price for this amount. Please try again in a moment.'
+    )
+  })
+
+  it('leaves quotes of methods that are not coin-priced alone', async () => {
+    expect(
+      await requestPaymentQuote(
+        5,
+        'alipay',
+        regularOnly({ success: true, data: '5.00' })
+      )
+    ).toEqual({
+      amount: 5,
+      currency: undefined,
+      rate: undefined,
+      creditQuota: undefined,
+    })
+  })
+})
+
+describe('console online top-up: coin quote', () => {
+  async function submit(response: AmountResponse) {
+    vi.mocked(walletApi.calculateAmount).mockResolvedValue(response)
+    const error = vi.spyOn(toast, 'error').mockImplementation(() => 0)
+    const user = userEvent.setup()
+    renderConsole(
+      <OnlineTopupPane topupInfo={CRYPTO_TOPUP} onPaid={() => {}} />
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Go to payment' })
+    )
+    return { error, user }
+  }
+
+  it('does not open the confirm dialog when the quote has no credited quota', async () => {
+    const { error } = await submit({ ...FULL_QUOTE, credit_quota: undefined })
+
+    await waitFor(() =>
+      expect(error).toHaveBeenCalledWith(
+        'Could not get a price for this amount. Please try again in a moment.'
+      )
+    )
+    expect(screen.queryByText('Confirm Payment')).toBeNull()
+    expect(walletApi.requestPayment).not.toHaveBeenCalled()
+  })
+
+  it('does not open the confirm dialog when the rate is not a number', async () => {
+    const { error } = await submit({ ...FULL_QUOTE, rate: 'n/a' })
+
+    await waitFor(() => expect(error).toHaveBeenCalled())
+    expect(screen.queryByText('Confirm Payment')).toBeNull()
+    expect(walletApi.requestPayment).not.toHaveBeenCalled()
+  })
+
+  it('opens the confirm dialog for a complete quote', async () => {
+    const { error } = await submit(FULL_QUOTE)
+
+    expect(await screen.findAllByText('Confirm Payment')).not.toHaveLength(0)
+    expect(error).not.toHaveBeenCalled()
   })
 })

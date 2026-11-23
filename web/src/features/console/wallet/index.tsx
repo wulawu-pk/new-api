@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -37,7 +37,10 @@ import {
 } from '@/components/terminal/data-states'
 import { errorReason } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
-import { readPendingRedeemCode } from '@/features/redeem/lib/pending-code'
+import {
+  clearPendingRedeemCode,
+  readPendingRedeemCode,
+} from '@/features/redeem/lib/pending-code'
 import { getUserLogs } from '@/features/usage-logs/api'
 import { LOG_TYPE_ENUM } from '@/features/usage-logs/constants'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
@@ -76,6 +79,10 @@ export function ConsoleWallet() {
   const self = useSelfUser()
   const topup = useTopupInfo()
   const pendingCode = useMemo(() => readPendingRedeemCode(), [])
+  // The code is in the redeem form now; do not offer it again next visit.
+  useEffect(() => {
+    clearPendingRedeemCode()
+  }, [])
 
   const history = useQuery({
     queryKey: ['console', 'wallet-history'],

@@ -25,7 +25,7 @@ import { extractRedemptionCode } from '@/features/wallet/lib/redemption-code'
 export const REDEEM_RETURN_PATH = '/redeem'
 
 export const PENDING_REDEEM_CODE_KEY = 'peroai.redeem.pending'
-const PENDING_REDEEM_CODE_TTL_MS = 10 * 60 * 1000
+export const PENDING_REDEEM_CODE_TTL_MS = 10 * 60 * 1000
 
 /** Keeps a code for this tab while the visitor signs in or signs up. */
 export function savePendingRedeemCode(input: string): void {
@@ -52,7 +52,11 @@ export function clearPendingRedeemCode(): void {
   }
 }
 
-/** Reads the pending code if it is younger than 10 minutes. */
+/**
+ * Reads the pending code if it is younger than 10 minutes. An expired or
+ * unreadable entry is removed. A valid one stays until the page that shows
+ * it calls clearPendingRedeemCode (both pages do so once it is in the form).
+ */
 export function readPendingRedeemCode(): string {
   try {
     const raw = sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)
@@ -63,10 +67,12 @@ export function readPendingRedeemCode(): string {
       typeof saved.code !== 'string' ||
       !(age >= 0 && age < PENDING_REDEEM_CODE_TTL_MS)
     ) {
+      clearPendingRedeemCode()
       return ''
     }
     return extractRedemptionCode(saved.code)
   } catch {
+    clearPendingRedeemCode()
     return ''
   }
 }

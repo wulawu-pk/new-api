@@ -49,7 +49,7 @@ import {
   deleteApiKey,
   fetchTokenKey,
   getApiKeys,
-  updateApiKey,
+  patchApiKey,
   updateApiKeyStatus,
 } from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
@@ -66,7 +66,7 @@ import { CREATE_KEY_EVENT, ConsolePageHeader } from '../shell/console-shell'
 import { CreateKeyDialog } from './components/create-key-dialog'
 import {
   buildCreateKeyPayload,
-  buildUpdateKeyPayload,
+  buildKeyPatch,
   maskedKeyTail,
   type CreateKeyValues,
 } from './lib/create-key'
@@ -81,8 +81,9 @@ const COLS = 8
 
 const STATUS_ENABLED = 1
 const STATUS_DISABLED = 2
-const STATUS_EXPIRED = 3
-const STATUS_EXHAUSTED = 4
+
+/** The key's quota changed while the edit dialog was open. */
+class KeyConflictError extends Error {}
 
 function KeyStatus(props: { status: number }) {
   const { t } = useTranslation()
@@ -167,32 +168,42 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
 
   const update = useMutation({
     mutationFn: async (args: { key: ApiKey; values: CreateKeyValues }) => {
-      const payload = buildUpdateKeyPayload(args.key, args.values)
-      const response = await updateApiKey(payload)
+      // Only the changed fields are sent. The server switches an expired or
+      // used-up key back on by itself once its date or quota is fixed.
+      const patch = buildKeyPatch(args.key, args.values)
+      if (!patch) return false
+      const response = await patchApiKey(args.key.id, patch)
+      if (!response.success && response.code === 'token_conflict') {
+        throw new KeyConflictError()
+      }
       if (!response.success) {
         throw createServerError(response, t('Update failed'))
       }
-      // The server keeps an expired / used-up key in that state even after
-      // its date or quota is fixed; switch it back on so it works again.
-      const nowSeconds = Math.floor(Date.now() / 1000)
-      const revived =
-        (args.key.status === STATUS_EXPIRED &&
-          (payload.expired_time === -1 || payload.expired_time > nowSeconds)) ||
-        (args.key.status === STATUS_EXHAUSTED &&
-          (payload.unlimited_quota || payload.remain_quota > 0))
-      if (revived) {
-        const enabled = await updateApiKeyStatus(args.key.id, STATUS_ENABLED)
-        if (!enabled.success) {
-          throw createServerError(enabled, t('Update failed'))
-        }
-      }
+      return true
     },
-    onSuccess: () => {
+    onSuccess: (saved) => {
       setEditOpen(false)
+      if (!saved) return
       toast.success(t('Saved'))
       void invalidate()
     },
-    onError: (error) => handleServerError(error, t('Update failed')),
+    onError: async (error, args) => {
+      if (!(error instanceof KeyConflictError)) {
+        handleServerError(error, t('Update failed'))
+        return
+      }
+      // Nothing was saved. Refill the dialog with the key as it is now.
+      toast.warning(
+        t(
+          'The quota of this key changed while you were editing. The form shows the current values; check them and save again.'
+        )
+      )
+      const refreshed = await keys.refetch()
+      const fresh = refreshed.data?.find((item) => item.id === args.key.id)
+      if (fresh) setToEdit(fresh)
+      else setEditOpen(false)
+      void invalidate()
+    },
   })
 
   const toggle = useMutation({
