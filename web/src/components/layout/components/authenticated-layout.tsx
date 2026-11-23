@@ -28,6 +28,7 @@ import { isConsolePath } from '@/features/console/lib/windows'
 import { ConsoleShell } from '@/features/console/shell/console-shell'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
@@ -48,6 +49,9 @@ export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
 
 function SidebarLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+  const signedIn = useAuthStore((s) => !!s.auth.user)
+  // Unmount pages on sign-out, otherwise their queries refetch and toast "Session expired!" / "invalid access token"
+  if (!signedIn) return null
 
   return (
     <LayoutProvider>
