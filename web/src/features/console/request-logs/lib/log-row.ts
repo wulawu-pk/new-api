@@ -18,7 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { LOG_TYPE_ENUM } from '@/features/usage-logs/constants'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
-import { getCacheHitRate } from '@/features/usage-logs/lib/cache-hit-rate'
+import {
+  cacheWriteTokens,
+  getCacheHitRate,
+} from '@/features/usage-logs/lib/cache-hit-rate'
 import {
   getCreditBillingSummary,
   type CreditBillingSummary,
@@ -44,6 +47,8 @@ export type ConsoleLogRow = {
   input: number
   output: number
   cacheRead: number
+  /** Tokens written to the prompt cache (5m + 1h when split). */
+  cacheWrite: number
   /** 0–1, or null when the request reported no cache activity. */
   cacheHit: number | null
   /** Total time in seconds. */
@@ -88,6 +93,7 @@ export function toConsoleLogRow(log: UsageLog): ConsoleLogRow {
     input: log.prompt_tokens,
     output: log.completion_tokens,
     cacheRead: Math.max(0, finite(other?.cache_tokens) ?? 0),
+    cacheWrite: cacheWriteTokens(other),
     cacheHit: getCacheHitRate({ promptTokens: log.prompt_tokens, other }),
     useTime: log.use_time,
     firstToken: frtMs != null && frtMs > 0 ? frtMs / 1000 : null,

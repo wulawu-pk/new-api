@@ -281,6 +281,62 @@ describe('billing basis in the detail', () => {
     return row.nextElementSibling as HTMLElement
   }
 
+  it('a credit-billed Claude request shows its cache write next to the cache read', async () => {
+    const detail = await openDetail(
+      {
+        billing_mode: 'tiered_expr',
+        matched_tier: 'credit',
+        credits: 3.6870850965174133,
+        tier_prices: { unit: 'credit', per_unit: { credits: 0.25 } },
+        usage_semantic: 'anthropic',
+        cache_tokens: 0,
+        cache_creation_tokens: 286357,
+        cache_creation_tokens_5m: 286357,
+        group_ratio: 1.5,
+        user_group_ratio: -1,
+        request_path: '/v1/messages',
+      },
+      {
+        model_name: 'claude-opus-5-5',
+        group: 'claude-kiro',
+        prompt_tokens: 4,
+        completion_tokens: 678,
+        quota: 460886,
+      }
+    )
+    expect(within(detail).getByText('By credit')).toBeInTheDocument()
+    expect(within(detail).getByText('Cache write')).toBeInTheDocument()
+    expect(within(detail).getByText('286,357')).toBeInTheDocument()
+  })
+
+  it('a token-billed request without cache writes does not show the cache write', async () => {
+    const detail = await openDetail(
+      { cache_tokens: 7471, group_ratio: 0.5 },
+      { model_name: 'gpt-6-astra', group: 'gpt-pro', prompt_tokens: 8210 }
+    )
+    expect(within(detail).getByText('By token')).toBeInTheDocument()
+    expect(within(detail).queryByText('Cache write')).not.toBeInTheDocument()
+  })
+
+  it('a token-billed request with cache writes shows them', async () => {
+    const detail = await openDetail(
+      {
+        usage_semantic: 'anthropic',
+        cache_tokens: 1000,
+        cache_creation_tokens: 2500,
+        group_ratio: 1.85,
+      },
+      {
+        model_name: 'claude-sonnet-5-5',
+        group: 'claude-ccmax',
+        prompt_tokens: 4,
+      }
+    )
+    expect(within(detail).getByText('By token')).toBeInTheDocument()
+    expect(within(detail).getByText('Cache write')).toBeInTheDocument()
+    expect(within(detail).getByText('2,500')).toBeInTheDocument()
+  })
+
   it('an image request reads per image with its size and unit price, not per token', async () => {
     const detail = await openDetail(IMAGE_OTHER)
     expect(within(detail).getByText('By image')).toBeInTheDocument()

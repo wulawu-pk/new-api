@@ -72,6 +72,7 @@ export function LogDetail(props: {
       { label: t('Charge'), value: formatLogQuota(row.quota) },
       { label: t('Input'), value: num(row.input) },
       { label: t('Cache read'), value: num(row.cacheRead) },
+      { label: t('Cache write'), value: num(row.cacheWrite) },
       { label: t('Output'), value: num(row.output) },
       { label: t('Time to first token'), value: seconds(row.firstToken) },
     ]
@@ -129,8 +130,11 @@ export function LogDetail(props: {
       { label: t('Billing'), value: t('By token') },
       { label: t('Input'), value: num(row.input) },
       { label: t('Of which cache read'), value: num(row.cacheRead) },
-      { label: t('Output'), value: num(row.output) },
     ]
+    if (row.cacheWrite > 0) {
+      cells.push({ label: t('Cache write'), value: num(row.cacheWrite) })
+    }
+    cells.push({ label: t('Output'), value: num(row.output) })
     if (perMillion?.p != null) {
       cells.push({
         label: t('Input price'),
