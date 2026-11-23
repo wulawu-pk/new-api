@@ -7366,7 +7366,7 @@
     "per credit": "每个 credit",
     "per image, by size": "每张，按尺寸",
     "Billed per image, by size": "按张计费，价格随尺寸变化",
-    "Billed by upstream credits": "按上游 credit 计费",
+    "Billed per credit": "按 credit 计费",
     "Price varies by time of day": "价格随时段变化",
     "Billed per call": "按次计费",
     "Billed by the usage the provider reports": "按上游上报的用量计费",

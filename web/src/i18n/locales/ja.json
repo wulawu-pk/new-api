@@ -7366,7 +7366,7 @@
     "per credit": "クレジットあたり",
     "per image, by size": "画像1枚あたり（サイズ別）",
     "Billed per image, by size": "画像1枚ごとの課金（サイズにより変動）",
-    "Billed by upstream credits": "上流のクレジットで課金",
+    "Billed per credit": "クレジット単位で課金",
     "Price varies by time of day": "時間帯により価格が変わります",
     "Billed per call": "1回の呼び出しごとに課金",
     "Billed by the usage the provider reports": "上流が報告する利用量に基づいて課金",

@@ -7366,7 +7366,7 @@
     "per credit": "за кредит",
     "per image, by size": "за изображение, по размеру",
     "Billed per image, by size": "Оплата за изображение, зависит от размера",
-    "Billed by upstream credits": "Оплата кредитами провайдера",
+    "Billed per credit": "Оплата за кредиты",
     "Price varies by time of day": "Цена зависит от времени суток",
     "Billed per call": "Оплата за запрос",
     "Billed by the usage the provider reports": "Оплата по данным об использовании от провайдера",

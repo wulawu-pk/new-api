@@ -258,7 +258,7 @@ export function summarizeSpecialExpression(
         note: 'per credit',
       }
     }
-    return { rows: [], note: 'Billed by upstream credits' }
+    return { rows: [], note: 'Billed per credit' }
   }
 
   // 3. Nothing countable: describe the basis in plain language.
