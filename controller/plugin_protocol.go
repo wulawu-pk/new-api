@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	pluginruntime "github.com/QuantumNous/new-api/pkg/jsplugin"
@@ -506,7 +507,7 @@ func streamTaskPluginProtocol(
 				loadElapsed.Milliseconds(),
 			)
 		}
-		view, viewErr := service.BuildTaskPluginView(task)
+		view, viewErr := service.BuildTaskPluginViewIn(i18n.StatedLang(c), task)
 		if viewErr != nil {
 			logger.LogError(c, common.LogText("build task protocol view failed: %s", viewErr.Error()))
 			writeTaskPluginProtocolFailure(c, machine, lastStatus)

@@ -11,6 +11,12 @@ import (
 // the view to a customer, so fail_reason carries the public failure reason,
 // never the upstream's text.
 func BuildTaskPluginView(task *model.Task) (dto.TaskView, error) {
+	return BuildTaskPluginViewIn("", task)
+}
+
+// BuildTaskPluginViewIn is BuildTaskPluginView with fail_reason in lang (""
+// = common.DefaultLanguage). Callers serving a request pass i18n.StatedLang(c).
+func BuildTaskPluginViewIn(lang string, task *model.Task) (dto.TaskView, error) {
 	createdAt := task.CreatedAt
 	if createdAt == 0 {
 		createdAt = task.SubmitTime
@@ -20,7 +26,7 @@ func BuildTaskPluginView(task *model.Task) (dto.TaskView, error) {
 		Platform:   string(task.Platform),
 		Status:     string(task.Status),
 		Progress:   task.Progress,
-		FailReason: PublicTaskFailReasonForTask(task),
+		FailReason: PublicTaskFailReasonForTaskIn(lang, task),
 		CreatedAt:  createdAt,
 		UpdatedAt:  task.UpdatedAt,
 		FinishedAt: task.FinishTime,

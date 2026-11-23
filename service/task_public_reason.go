@@ -3,7 +3,9 @@ package service
 import (
 	"strings"
 
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/gin-gonic/gin"
 )
 
 // Public task failure codes. Customers receive one of these instead of the
@@ -15,16 +17,30 @@ const (
 	PublicTaskFailureCodeFailed        = "generation_failed"
 )
 
-// Public task failure messages. They are fixed text on purpose: an upstream's
-// wording (account pools, provider names, URLs, prices) must never reach a
-// customer, so nothing from the raw reason is copied into them.
+// Public task failure messages, in English. They are fixed text on purpose: an
+// upstream's wording (account pools, provider names, URLs, prices) must never
+// reach a customer, so nothing from the raw reason is copied into them.
+//
+// The English text is also the language-neutral form: the web console and
+// stored refund logs carry it and the console translates it into the reader's
+// interface language. API callers get it in their own language through
+// PublicTaskFailureIn (i18n keys task.fail.*).
 const (
-	PublicTaskFailureContentPolicy = "内容审核未通过，请调整内容后重试"
-	PublicTaskFailureInvalidParams = "参数不符合要求，请检查后重试"
-	PublicTaskFailureTimeout       = "生成超时，请稍后重试"
-	PublicTaskFailureLegacyTimeout = "生成超时（旧系统遗留任务不退款，请联系管理员）"
-	PublicTaskFailureFailed        = "生成失败，请稍后重试"
+	PublicTaskFailureContentPolicy = "Content moderation failed. Please adjust the content and try again."
+	PublicTaskFailureInvalidParams = "Invalid parameters. Please check and try again."
+	PublicTaskFailureTimeout       = "Generation timed out. Please try again later."
+	PublicTaskFailureLegacyTimeout = legacyTimedOutTaskReason
+	PublicTaskFailureFailed        = "Generation failed. Please try again later."
 )
+
+// publicTaskFailureKeys maps each English message to its i18n key.
+var publicTaskFailureKeys = map[string]string{
+	PublicTaskFailureContentPolicy: i18n.MsgTaskFailContentPolicy,
+	PublicTaskFailureInvalidParams: i18n.MsgTaskFailInvalidParams,
+	PublicTaskFailureTimeout:       i18n.MsgTaskFailTimeout,
+	PublicTaskFailureLegacyTimeout: i18n.MsgTaskFailLegacyTimeout,
+	PublicTaskFailureFailed:        i18n.MsgTaskFailGeneric,
+}
 
 // legacyTimedOutTaskReason is the host's own reason for timed-out tasks left by
 // the old system (service/task_polling.go); those are not refunded, which the
@@ -92,10 +108,51 @@ func PublicTaskFailure(raw string) (code string, message string) {
 	}
 }
 
-// PublicTaskFailReason returns only the public message of PublicTaskFailure.
+// PublicTaskFailReason returns only the public (English) message of
+// PublicTaskFailure.
 func PublicTaskFailReason(raw string) string {
 	_, message := PublicTaskFailure(raw)
 	return message
+}
+
+// localizePublicTaskFailure translates an English public message into lang.
+// An empty lang means the reader stated none (common.DefaultLanguage). An
+// unknown message, or a missing translation, keeps the English text.
+func localizePublicTaskFailure(lang, message string) string {
+	key, ok := publicTaskFailureKeys[message]
+	if !ok {
+		return message
+	}
+	if err := i18n.Init(); err != nil {
+		return message
+	}
+	if text := i18n.Translate(lang, key); text != "" && text != key {
+		return text
+	}
+	return message
+}
+
+// PublicTaskFailureIn is PublicTaskFailure with the message in lang.
+func PublicTaskFailureIn(lang, raw string) (code string, message string) {
+	code, message = PublicTaskFailure(raw)
+	return code, localizePublicTaskFailure(lang, message)
+}
+
+// PublicTaskFailReasonFor is the public reason in the language the reader of
+// the request stated (account setting, then Accept-Language), for API
+// responses that no console translates.
+func PublicTaskFailReasonFor(c *gin.Context, raw string) string {
+	_, message := PublicTaskFailureIn(i18n.StatedLang(c), raw)
+	return message
+}
+
+// PublicTaskFailReasonForTaskIn is PublicTaskFailReasonForTask in lang.
+func PublicTaskFailReasonForTaskIn(lang string, task *model.Task) string {
+	reason := PublicTaskFailReasonForTask(task)
+	if reason == "" {
+		return ""
+	}
+	return localizePublicTaskFailure(lang, reason)
 }
 
 // PublicTaskFailReasonForTask is the fail_reason a customer may see for task:

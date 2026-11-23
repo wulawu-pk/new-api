@@ -1258,7 +1258,7 @@ func renderTaskPluginQuery(
 			abortTaskPluginRouteError(c, http.StatusNotFound)
 			return
 		}
-		view, viewErr := service.BuildTaskPluginView(task)
+		view, viewErr := service.BuildTaskPluginViewIn(i18n.StatedLang(c), task)
 		if viewErr != nil {
 			abortTaskPluginRouteError(c, http.StatusInternalServerError)
 			return
