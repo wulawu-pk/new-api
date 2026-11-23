@@ -22,7 +22,7 @@ import * as keysApi from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
 
 import { buildCreateKeyPayload } from '../lib/create-key'
-import { ensureGroupKey } from '../lib/create-key-flow'
+import { createKeyAndFetch, ensureGroupKey } from '../lib/create-key-flow'
 
 vi.mock('@/features/keys/api', () => ({
   getApiKeys: vi.fn(),
@@ -82,45 +82,98 @@ describe('ensureGroupKey', () => {
   })
 
   it('creates a key when the only key in the group is disabled', async () => {
-    vi.mocked(keysApi.getApiKeys)
-      .mockResolvedValueOnce(list([key(3, 'old', 'claude-kiro', 2)]))
-      .mockResolvedValueOnce(
-        list([
-          key(9, 'claude-code', 'claude-kiro'),
-          key(3, 'old', 'claude-kiro', 2),
-        ])
-      )
+    vi.mocked(keysApi.getApiKeys).mockResolvedValue(
+      list([key(3, 'old', 'claude-kiro', 2)])
+    )
     vi.mocked(keysApi.createApiKey).mockResolvedValue({
       success: true,
-    } as never)
-    vi.mocked(keysApi.fetchTokenKey).mockResolvedValue({
-      success: true,
-      data: { key: 'abc' },
-    } as never)
+      data: { id: 9, name: 'claude-code' },
+    })
 
     const result = await ensureGroupKey(PAYLOAD, 'failed')
 
     expect(result).toEqual({ created: true, name: 'claude-code' })
     expect(keysApi.createApiKey).toHaveBeenCalledWith(PAYLOAD)
+    // Only the name is needed: the full key is never read here, and the
+    // list is read once (to look for an existing key), not to find the id.
+    expect(keysApi.fetchTokenKey).not.toHaveBeenCalled()
+    expect(keysApi.getApiKeys).toHaveBeenCalledTimes(1)
   })
 
   it('creates a key when existing keys are in other groups', async () => {
-    vi.mocked(keysApi.getApiKeys)
-      .mockResolvedValueOnce(list([key(4, 'codex', 'gpt-pro')]))
-      .mockResolvedValueOnce(
-        list([key(9, 'claude-code', 'claude-kiro'), key(4, 'codex', 'gpt-pro')])
-      )
+    vi.mocked(keysApi.getApiKeys).mockResolvedValue(
+      list([key(4, 'codex', 'gpt-pro')])
+    )
     vi.mocked(keysApi.createApiKey).mockResolvedValue({
       success: true,
-    } as never)
-    vi.mocked(keysApi.fetchTokenKey).mockResolvedValue({
-      success: true,
-      data: { key: 'abc' },
-    } as never)
+      data: { id: 9, name: 'claude-code' },
+    })
 
     const result = await ensureGroupKey(PAYLOAD, 'failed')
 
     expect(result.created).toBe(true)
     expect(keysApi.createApiKey).toHaveBeenCalledTimes(1)
+  })
+
+  it('creates a key when the list cannot be read', async () => {
+    vi.mocked(keysApi.getApiKeys).mockResolvedValue({
+      success: false,
+      message: 'nope',
+    } as never)
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({
+      success: true,
+      data: { id: 9, name: 'claude-code' },
+    })
+
+    expect((await ensureGroupKey(PAYLOAD, 'failed')).created).toBe(true)
+  })
+
+  it('creates a key that never expires and has no spending cap', () => {
+    expect(PAYLOAD).toMatchObject({
+      expired_time: -1,
+      unlimited_quota: true,
+      remain_quota: 0,
+      group: 'claude-kiro',
+    })
+  })
+})
+
+describe('createKeyAndFetch', () => {
+  it('reads the full key by the id the create call returned', async () => {
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({
+      success: true,
+      data: { id: 12, name: 'claude-code' },
+    })
+    vi.mocked(keysApi.fetchTokenKey).mockResolvedValue({
+      success: true,
+      data: { key: 'abc' },
+    })
+
+    expect(await createKeyAndFetch(PAYLOAD, 'failed')).toEqual({
+      id: 12,
+      name: 'claude-code',
+      key: 'sk-abc',
+    })
+    expect(keysApi.fetchTokenKey).toHaveBeenCalledWith(12)
+    expect(keysApi.getApiKeys).not.toHaveBeenCalled()
+  })
+
+  it('fails instead of guessing by name when the server returns no id', async () => {
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({ success: true })
+    vi.mocked(keysApi.getApiKeys).mockResolvedValue(
+      list([key(9, 'claude-code', 'claude-kiro')])
+    )
+
+    await expect(createKeyAndFetch(PAYLOAD, 'failed')).rejects.toThrow('failed')
+    expect(keysApi.getApiKeys).not.toHaveBeenCalled()
+    expect(keysApi.fetchTokenKey).not.toHaveBeenCalled()
+  })
+
+  it('fails on an id that is not a positive integer', async () => {
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({
+      success: true,
+      data: { id: 0, name: 'claude-code' },
+    })
+    await expect(createKeyAndFetch(PAYLOAD, 'failed')).rejects.toThrow('failed')
   })
 })

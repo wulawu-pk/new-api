@@ -28,7 +28,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PaymentConfirmDialog } from '@/features/wallet/components/dialogs/payment-confirm-dialog'
-import { isQuoteFor, usePayment } from '@/features/wallet/hooks/use-payment'
+import {
+  QUOTE_FAILED,
+  isCoinQuote,
+  isQuoteFor,
+  usePayment,
+} from '@/features/wallet/hooks/use-payment'
 import {
   getCryptoUsdCurrency,
   getMinTopupAmount,
@@ -109,9 +114,13 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
     void calculatePaymentAmount(debouncedAmount, methodType)
   }, [debouncedAmount, methodType, minTopup, calculatePaymentAmount])
 
-  const quoteReady =
-    !payment.calculating && isQuoteFor(payment.quote, amount, methodType)
   const cryptoCurrency = getCryptoUsdCurrency(props.topupInfo, methodType)
+  // A coin-priced order may only be confirmed with a complete quote: coins,
+  // coin, rate and credited quota. Anything less never reaches the order.
+  const quoteReady =
+    !payment.calculating &&
+    isQuoteFor(payment.quote, amount, methodType) &&
+    (!cryptoCurrency || isCoinQuote(payment.quote, cryptoCurrency))
 
   // Keep the dialog's quote current for exactly this amount and method.
   useEffect(() => {
@@ -141,6 +150,11 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
     const quote = await calculatePaymentAmount(amount, method.type)
     if (quote && !(quote.amount > 0)) {
       toast.error(quote.error || t('Payment request failed'))
+      return
+    }
+    const coin = getCryptoUsdCurrency(props.topupInfo, method.type)
+    if (quote && coin && !isCoinQuote(quote, coin)) {
+      toast.error(t(QUOTE_FAILED))
       return
     }
     setConfirmOpen(true)

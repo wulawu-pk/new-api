@@ -7650,6 +7650,8 @@
     "Saving…": "Saving…",
     "Saved": "Saved",
     "Streamed": "Streamed",
-    "Not streamed": "Not streamed"
+    "Not streamed": "Not streamed",
+    "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "Hạn mức của khóa này đã thay đổi trong lúc bạn chỉnh sửa. Biểu mẫu đang hiển thị giá trị hiện tại; hãy kiểm tra rồi lưu lại.",
+    "Could not get a price for this amount. Please try again in a moment.": "Không lấy được báo giá cho số tiền này. Vui lòng thử lại sau giây lát."
   }
 }

@@ -69,10 +69,11 @@ export async function getTokenAutoGroups(): Promise<
   return res.data
 }
 
-// Create a new API key
+// Create a new API key. The server returns the new key's id and name (never
+// the key itself); older servers return no data.
 export async function createApiKey(
   data: ApiKeyFormData
-): Promise<ApiResponse<ApiKey>> {
+): Promise<ApiResponse<{ id: number; name: string }>> {
   const res = await api.post('/api/token/', data)
   return res.data
 }
@@ -82,6 +83,25 @@ export async function updateApiKey(
   data: ApiKeyFormData & { id: number }
 ): Promise<ApiResponse<ApiKey>> {
   const res = await api.put('/api/token/', data)
+  return res.data
+}
+
+// Change only the given fields of a key. A quota change must carry the quota
+// the caller last saw (`expected_*`); when the key spent quota since, the
+// server changes nothing and answers `code: "token_conflict"`.
+export async function patchApiKey(
+  id: number,
+  data: {
+    name?: string
+    group?: string
+    expired_time?: number
+    remain_quota?: number
+    unlimited_quota?: boolean
+    expected_remain_quota?: number
+    expected_unlimited_quota?: boolean
+  }
+): Promise<ApiResponse<ApiKey> & { code?: string }> {
+  const res = await api.patch(`/api/token/${id}`, data)
   return res.data
 }
 

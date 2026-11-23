@@ -7650,6 +7650,8 @@
     "Saving…": "儲存中…",
     "Saved": "已儲存",
     "Streamed": "串流",
-    "Not streamed": "非串流"
+    "Not streamed": "非串流",
+    "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "這個 Key 的額度在你編輯期間有變化，已刷新為最新值，請重新確認後再儲存。",
+    "Could not get a price for this amount. Please try again in a moment.": "暫時無法取得這個金額的報價，請稍後再試。"
   }
 }

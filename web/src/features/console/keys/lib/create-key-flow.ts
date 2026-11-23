@@ -28,29 +28,35 @@ export function withSkPrefix(key: string): string {
 }
 
 /**
- * Creates a key, then reads it back. POST /api/token/ returns no id, so the
- * newest key with the same name is taken from the first page of the list and
- * its full value fetched through POST /api/token/:id/key.
+ * Creates a key and returns the id and name POST /api/token/ answers with.
+ * A response without an id (an older server) is an error: picking the key
+ * out of the list by name could hand back a different key.
  */
+export async function createKey(
+  payload: ApiKeyFormData,
+  fallbackError: string
+): Promise<{ id: number; name: string }> {
+  const created = await createApiKey(payload)
+  if (!created.success) throw createServerError(created, fallbackError)
+  const id = created.data?.id
+  if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0) {
+    throw new Error(fallbackError)
+  }
+  const name = created.data?.name
+  return { id, name: typeof name === 'string' && name ? name : payload.name }
+}
+
+/** Creates a key, then reads its full value through POST /api/token/:id/key. */
 export async function createKeyAndFetch(
   payload: ApiKeyFormData,
   fallbackError: string
 ): Promise<CreatedKey> {
-  const created = await createApiKey(payload)
-  if (!created.success) throw createServerError(created, fallbackError)
-
-  const list = await getApiKeys({ p: 1, size: 20 })
-  if (!list.success) throw createServerError(list, fallbackError)
-  const match = (list.data?.items ?? [])
-    .filter((item) => item.name === payload.name)
-    .sort((a, b) => b.id - a.id)[0]
-  if (!match) throw new Error(fallbackError)
-
-  const reveal = await fetchTokenKey(match.id)
+  const made = await createKey(payload, fallbackError)
+  const reveal = await fetchTokenKey(made.id)
   if (!reveal.success || !reveal.data?.key) {
     throw createServerError(reveal, fallbackError)
   }
-  return { id: match.id, name: match.name, key: withSkPrefix(reveal.data.key) }
+  return { ...made, key: withSkPrefix(reveal.data.key) }
 }
 
 /** 1 = enabled (2 disabled, 3 expired, 4 exhausted). */
@@ -74,6 +80,7 @@ export async function ensureGroupKey(
       )
     : undefined
   if (existing) return { created: false, name: existing.name }
-  const made = await createKeyAndFetch(payload, fallbackError)
+  // Only the name is shown; the full key value is not read here.
+  const made = await createKey(payload, fallbackError)
   return { created: true, name: made.name }
 }

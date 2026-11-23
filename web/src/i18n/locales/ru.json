@@ -7650,6 +7650,8 @@
     "Saving…": "Saving…",
     "Saved": "Saved",
     "Streamed": "Streamed",
-    "Not streamed": "Not streamed"
+    "Not streamed": "Not streamed",
+    "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "Квота этого ключа изменилась, пока вы его редактировали. В форме показаны текущие значения; проверьте их и сохраните снова.",
+    "Could not get a price for this amount. Please try again in a moment.": "Не удалось получить цену для этой суммы. Попробуйте ещё раз чуть позже."
   }
 }

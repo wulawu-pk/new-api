@@ -36,8 +36,10 @@ import { useAuthStore } from '@/stores/auth-store'
 import { Redeem, RedeemFromUrl } from '..'
 import {
   PENDING_REDEEM_CODE_KEY,
+  PENDING_REDEEM_CODE_TTL_MS,
   readPendingRedeemCode,
   redeemCodeFromLocation,
+  savePendingRedeemCode,
 } from '../lib/pending-code'
 
 // The public header needs status, notifications and a full route tree; the
@@ -147,12 +149,54 @@ describe('redeem page', () => {
     expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
   })
 
-  it('ignores a pending code older than 10 minutes', () => {
+  it('ignores a pending code older than 10 minutes and removes it', () => {
     sessionStorage.setItem(
       PENDING_REDEEM_CODE_KEY,
       JSON.stringify({ code: CODE, at: Date.now() - 11 * 60 * 1000 })
     )
     expect(readPendingRedeemCode()).toBe('')
+    expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+  })
+
+  it('keeps a pending code until the TTL and drops it exactly at the TTL', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(1_000_000)
+      savePendingRedeemCode(CODE)
+      vi.setSystemTime(1_000_000 + PENDING_REDEEM_CODE_TTL_MS - 1)
+      expect(readPendingRedeemCode()).toBe(CODE)
+      // Reading alone does not remove a valid code; the page clears it.
+      expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toContain(CODE)
+      vi.setSystemTime(1_000_000 + PENDING_REDEEM_CODE_TTL_MS)
+      expect(readPendingRedeemCode()).toBe('')
+      expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('removes a pending code saved in the future or not readable', () => {
+    sessionStorage.setItem(
+      PENDING_REDEEM_CODE_KEY,
+      JSON.stringify({ code: CODE, at: Date.now() + 60_000 })
+    )
+    expect(readPendingRedeemCode()).toBe('')
+    expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+
+    sessionStorage.setItem(PENDING_REDEEM_CODE_KEY, '{not json')
+    expect(readPendingRedeemCode()).toBe('')
+    expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+  })
+
+  it('offers the restored code only once (a second visit starts empty)', async () => {
+    useAuthStore.getState().auth.setUser({ id: 7, username: 'buyer', role: 1 })
+    savePendingRedeemCode(CODE)
+    renderRedeem()
+    expect(await screen.findByLabelText('Card code')).toHaveValue(CODE)
+    cleanup()
+
+    renderRedeem()
+    expect(await screen.findByLabelText('Card code')).toHaveValue('')
   })
 
   it('reads a legacy ?code= link and clears it from the address bar', async () => {

@@ -116,12 +116,50 @@ export async function requestPaymentQuote(
         (typeof response.data === 'string' ? response.data : undefined),
     }
   }
-  return {
+  const quote: PaymentQuote = {
     amount: Number.parseFloat(response.data),
     currency: response.currency,
     rate: response.rate ? Number.parseFloat(response.rate) : undefined,
     creditQuota: response.credit_quota,
   }
+  // A coin-priced answer carries currency, rate and credit_quota together;
+  // one with only some of them, or a non-numeric one, is not a usable quote.
+  const coinPriced =
+    response.currency !== undefined ||
+    response.rate !== undefined ||
+    response.credit_quota !== undefined
+  if (coinPriced && !isCoinQuote(quote, quote.currency)) {
+    return { amount: 0, error: i18next.t(QUOTE_FAILED) }
+  }
+  return quote
+}
+
+/** Shown when a coin-priced quote is missing fields or has invalid numbers. */
+export const QUOTE_FAILED =
+  'Could not get a price for this amount. Please try again in a moment.'
+
+/**
+ * peroai: a coin-priced crypto quote the customer may confirm: coins to pay,
+ * the coin it is priced in, the CNY rate and the quota it credits are all
+ * present and valid.
+ */
+export function isCoinQuote(
+  quote: PaymentQuote,
+  coin: string | undefined
+): boolean {
+  return (
+    typeof coin === 'string' &&
+    coin !== '' &&
+    quote.currency === coin &&
+    Number.isFinite(quote.amount) &&
+    quote.amount > 0 &&
+    typeof quote.rate === 'number' &&
+    Number.isFinite(quote.rate) &&
+    quote.rate > 0 &&
+    typeof quote.creditQuota === 'number' &&
+    Number.isSafeInteger(quote.creditQuota) &&
+    quote.creditQuota > 0
+  )
 }
 
 export interface PaymentQuote {
