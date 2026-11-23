@@ -19,10 +19,11 @@ For commercial licensing, please contact support@quantumnous.com
 import type { TFunction } from 'i18next'
 import { z } from 'zod'
 
-import type { ApiKeyFormData } from '@/features/keys/types'
-import { parseQuotaFromDollars } from '@/lib/format'
+import type { ApiKey, ApiKeyFormData } from '@/features/keys/types'
+import { parseQuotaFromDollars, quotaUnitsToDollars } from '@/lib/format'
 
-export const EXPIRY_OPTIONS = ['never', '30', '90'] as const
+/** `keep` is only offered when editing a key that already has a date. */
+export const EXPIRY_OPTIONS = ['keep', 'never', '30', '90'] as const
 export type ExpiryOption = (typeof EXPIRY_OPTIONS)[number]
 
 /** Create-key form schema with translated messages. */
@@ -55,15 +56,11 @@ export function buildCreateKeyPayload(
   nowSeconds: number = Math.floor(Date.now() / 1000)
 ): ApiKeyFormData {
   const unlimited = values.limit.trim() === ''
-  let expiredTime = -1
-  if (values.expiry !== 'never') {
-    expiredTime = nowSeconds + Number(values.expiry) * 86400
-  }
   return {
     name: values.name.trim(),
     remain_quota: unlimited ? 0 : parseQuotaFromDollars(Number(values.limit)),
     unlimited_quota: unlimited,
-    expired_time: expiredTime,
+    expired_time: expiredTimeFor(values.expiry, nowSeconds, -1),
     model_limits_enabled: false,
     model_limits: '',
     allow_ips: '',
@@ -71,6 +68,68 @@ export function buildCreateKeyPayload(
     group: values.group,
     auto_groups: [],
     cross_group_retry: false,
+  }
+}
+
+/** Unix expiry for the chosen option; `keep` returns the key's current one. */
+function expiredTimeFor(
+  expiry: ExpiryOption,
+  nowSeconds: number,
+  current: number
+): number {
+  if (expiry === 'keep') return current
+  if (expiry === 'never') return -1
+  return nowSeconds + Number(expiry) * 86400
+}
+
+/** Form values for editing an existing key. */
+export function editKeyValues(key: ApiKey): CreateKeyValues {
+  let limit = ''
+  if (!key.unlimited_quota) {
+    // Round to cents so the field shows `12.5`, not `12.500000001`.
+    limit = String(
+      Math.round(quotaUnitsToDollars(key.remain_quota) * 100) / 100
+    )
+  }
+  return {
+    name: key.name,
+    group: key.group || '',
+    limit,
+    expiry: key.expired_time === -1 ? 'never' : 'keep',
+  }
+}
+
+/**
+ * Builds the PUT /api/token/ payload. The endpoint overwrites every field, so
+ * settings this form does not show (model limits, IP allow-list, auto groups,
+ * quota query) are carried over from the key unchanged.
+ */
+export function buildUpdateKeyPayload(
+  key: ApiKey,
+  values: CreateKeyValues,
+  nowSeconds: number = Math.floor(Date.now() / 1000)
+): ApiKeyFormData & { id: number } {
+  const unlimited = values.limit.trim() === ''
+  // An untouched quota field sends the exact quota, not the rounded figure.
+  let remainQuota = 0
+  if (values.limit.trim() === editKeyValues(key).limit) {
+    remainQuota = key.remain_quota
+  } else if (!unlimited) {
+    remainQuota = parseQuotaFromDollars(Number(values.limit))
+  }
+  return {
+    id: key.id,
+    name: values.name.trim(),
+    remain_quota: remainQuota,
+    unlimited_quota: unlimited,
+    expired_time: expiredTimeFor(values.expiry, nowSeconds, key.expired_time),
+    model_limits_enabled: key.model_limits_enabled,
+    model_limits: key.model_limits ?? '',
+    allow_ips: key.allow_ips ?? '',
+    allow_user_quota_query: key.allow_user_quota_query,
+    group: values.group,
+    auto_groups: key.auto_groups ?? [],
+    cross_group_retry: key.cross_group_retry,
   }
 }
 

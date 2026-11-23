@@ -7642,6 +7642,11 @@
     "Switch to dark theme": "切換到暗色主題",
     "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.": "英文譯本僅為方便閱讀而提供；如與中文版本不一致，以中文版本為準。",
     ", used {{amount}}": "，已用 {{amount}}",
-    "USDT / USDC": "USDT、USDC"
+    "USDT / USDC": "USDT、USDC",
+    "Edit key": "編輯金鑰",
+    "Edit key {{name}}": "編輯金鑰 {{name}}",
+    "Keep {{date}}": "不變（{{date}}）",
+    "Saving…": "儲存中…",
+    "Saved": "已儲存"
   }
 }

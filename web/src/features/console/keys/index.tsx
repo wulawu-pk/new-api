@@ -49,6 +49,7 @@ import {
   deleteApiKey,
   fetchTokenKey,
   getApiKeys,
+  updateApiKey,
   updateApiKeyStatus,
 } from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
@@ -65,6 +66,7 @@ import { CREATE_KEY_EVENT, ConsolePageHeader } from '../shell/console-shell'
 import { CreateKeyDialog } from './components/create-key-dialog'
 import {
   buildCreateKeyPayload,
+  buildUpdateKeyPayload,
   maskedKeyTail,
   type CreateKeyValues,
 } from './lib/create-key'
@@ -79,6 +81,8 @@ const COLS = 8
 
 const STATUS_ENABLED = 1
 const STATUS_DISABLED = 2
+const STATUS_EXPIRED = 3
+const STATUS_EXHAUSTED = 4
 
 function KeyStatus(props: { status: number }) {
   const { t } = useTranslation()
@@ -110,6 +114,8 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
   const [createOpen, setCreateOpen] = useState(false)
   const [revealed, setRevealed] = useState<CreatedKey | null>(null)
   const [toDelete, setToDelete] = useState<ApiKey | null>(null)
+  const [toEdit, setToEdit] = useState<ApiKey | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
   const { copyToClipboard } = useCopyToClipboard({ notify: false })
 
   const keys = useQuery({
@@ -157,6 +163,36 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
       }
     },
     onError: (error) => handleServerError(error, t('Failed to create key')),
+  })
+
+  const update = useMutation({
+    mutationFn: async (args: { key: ApiKey; values: CreateKeyValues }) => {
+      const payload = buildUpdateKeyPayload(args.key, args.values)
+      const response = await updateApiKey(payload)
+      if (!response.success) {
+        throw createServerError(response, t('Update failed'))
+      }
+      // The server keeps an expired / used-up key in that state even after
+      // its date or quota is fixed; switch it back on so it works again.
+      const nowSeconds = Math.floor(Date.now() / 1000)
+      const revived =
+        (args.key.status === STATUS_EXPIRED &&
+          (payload.expired_time === -1 || payload.expired_time > nowSeconds)) ||
+        (args.key.status === STATUS_EXHAUSTED &&
+          (payload.unlimited_quota || payload.remain_quota > 0))
+      if (revived) {
+        const enabled = await updateApiKeyStatus(args.key.id, STATUS_ENABLED)
+        if (!enabled.success) {
+          throw createServerError(enabled, t('Update failed'))
+        }
+      }
+    },
+    onSuccess: () => {
+      setEditOpen(false)
+      toast.success(t('Saved'))
+      void invalidate()
+    },
+    onError: (error) => handleServerError(error, t('Update failed')),
   })
 
   const toggle = useMutation({
@@ -239,7 +275,7 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
         }
       >
         <div className='overflow-x-auto px-1 pt-2 pb-1'>
-          <ConsoleTable minWidth={820} stateMode={stateMode}>
+          <ConsoleTable minWidth={880} stateMode={stateMode}>
             <ConsoleTableHeader>
               <ConsoleTableRow className='hover:bg-transparent'>
                 <ConsoleTh>{t('Name')}</ConsoleTh>
@@ -314,6 +350,18 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
                       >
                         {t('Copy')}
                       </Button>
+                      <Button
+                        size='sm'
+                        variant='ghost'
+                        className={TERM_BUTTON_GHOST}
+                        onClick={() => {
+                          setToEdit(key)
+                          setEditOpen(true)
+                        }}
+                        aria-label={t('Edit key {{name}}', { name: key.name })}
+                      >
+                        {t('Edit')}
+                      </Button>
                       {(key.status === STATUS_ENABLED ||
                         key.status === STATUS_DISABLED) && (
                         <Button
@@ -351,6 +399,19 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
         submitting={create.isPending}
         onSubmit={async (values) => {
           await create.mutateAsync(values).catch(() => undefined)
+        }}
+      />
+
+      <CreateKeyDialog
+        open={editOpen}
+        editing={toEdit}
+        onOpenChange={setEditOpen}
+        submitting={update.isPending}
+        onSubmit={async (values) => {
+          if (!toEdit) return
+          await update
+            .mutateAsync({ key: toEdit, values })
+            .catch(() => undefined)
         }}
       />
 

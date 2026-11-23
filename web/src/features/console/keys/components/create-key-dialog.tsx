@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
+import dayjs from 'dayjs'
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -41,9 +42,14 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import type { ApiKey } from '@/features/keys/types'
 
 import { useUserGroups } from '../../hooks/use-user-groups'
-import { getCreateKeySchema, type CreateKeyValues } from '../lib/create-key'
+import {
+  editKeyValues,
+  getCreateKeySchema,
+  type CreateKeyValues,
+} from '../lib/create-key'
 import { GroupPicker } from './group-picker'
 
 type CreateKeyDialogProps = {
@@ -51,6 +57,8 @@ type CreateKeyDialogProps = {
   onOpenChange: (open: boolean) => void
   onSubmit: (values: CreateKeyValues) => Promise<void>
   submitting: boolean
+  /** When set, the dialog edits this key instead of creating one. */
+  editing?: ApiKey | null
 }
 
 const DEFAULTS: CreateKeyValues = {
@@ -68,22 +76,42 @@ export function CreateKeyDialog(props: CreateKeyDialogProps) {
     defaultValues: DEFAULTS,
   })
 
-  // Preselect the first group once groups arrive.
+  const editing = props.editing ?? null
+
+  // Creating: preselect the first group once groups arrive.
   useEffect(() => {
-    if (!props.open) return
+    if (!props.open || editing) return
     const first = groups.data?.[0]?.key
     if (first && !form.getValues('group')) form.setValue('group', first)
-  }, [props.open, groups.data, form])
+  }, [props.open, editing, groups.data, form])
 
   useEffect(() => {
     if (!props.open) form.reset(DEFAULTS)
-  }, [props.open, form])
+    else if (editing) form.reset(editKeyValues(editing))
+  }, [props.open, editing, form])
+
+  const expiryOptions = [
+    { value: 'never', label: t('Never') },
+    { value: '30', label: t('30 days') },
+    { value: '90', label: t('90 days') },
+  ]
+  if (editing && editing.expired_time !== -1) {
+    expiryOptions.unshift({
+      value: 'keep',
+      label: t('Keep {{date}}', {
+        date: dayjs.unix(editing.expired_time).format('YYYY-MM-DD'),
+      }),
+    })
+  }
+
+  let submitLabel = props.submitting ? t('Creating…') : t('Create it')
+  if (editing) submitLabel = props.submitting ? t('Saving…') : t('Save')
 
   return (
     <Dialog
       open={props.open}
       onOpenChange={props.onOpenChange}
-      title={t('Create Key')}
+      title={editing ? t('Edit key') : t('Create Key')}
       contentClassName='sm:max-w-[560px]'
       footer={
         <>
@@ -101,7 +129,7 @@ export function CreateKeyDialog(props: CreateKeyDialogProps) {
             className={TERM_BUTTON_PRIMARY}
             disabled={props.submitting || !groups.data?.length}
           >
-            {props.submitting ? t('Creating…') : t('Create it')}
+            {submitLabel}
           </Button>
         </>
       }
@@ -182,7 +210,7 @@ export function CreateKeyDialog(props: CreateKeyDialogProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className='text-t-fg2 text-[13px] font-normal'>
-                    {t('Spending limit')}
+                    {editing ? t('Quota left') : t('Spending limit')}
                   </FormLabel>
                   <FormControl>
                     <Input
@@ -207,11 +235,7 @@ export function CreateKeyDialog(props: CreateKeyDialogProps) {
                   <FormControl>
                     <TermSelect
                       value={field.value}
-                      options={[
-                        { value: 'never', label: t('Never') },
-                        { value: '30', label: t('30 days') },
-                        { value: '90', label: t('90 days') },
-                      ]}
+                      options={expiryOptions}
                       onValueChange={field.onChange}
                     />
                   </FormControl>

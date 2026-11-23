@@ -7642,6 +7642,11 @@
     "Switch to dark theme": "Switch to dark theme",
     "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.": "This English translation is provided for convenience. If it differs from the Chinese version, the Chinese version prevails.",
     ", used {{amount}}": ", used {{amount}}",
-    "USDT / USDC": "USDT / USDC"
+    "USDT / USDC": "USDT / USDC",
+    "Edit key": "Edit key",
+    "Edit key {{name}}": "Edit key {{name}}",
+    "Keep {{date}}": "Keep {{date}}",
+    "Saving…": "Saving…",
+    "Saved": "Saved"
   }
 }
