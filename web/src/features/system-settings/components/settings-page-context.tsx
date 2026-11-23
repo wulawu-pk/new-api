@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { CONSOLE_PRIMARY_BUTTON } from '@/lib/console-surface'
 
 type SettingsPageContextValue = {
   actionsContainer: HTMLDivElement | null
@@ -124,6 +125,7 @@ export function SettingsPageFormActions(props: SettingsPageFormActionsProps) {
         <Button
           type='button'
           size='sm'
+          className='rounded-full px-3.5'
           variant={props.resetVariant ?? 'outline'}
           onClick={props.onReset}
           disabled={props.isResetDisabled || props.isSaving}
@@ -136,6 +138,7 @@ export function SettingsPageFormActions(props: SettingsPageFormActionsProps) {
         ref={props.saveButtonRef}
         type='button'
         size='sm'
+        className={CONSOLE_PRIMARY_BUTTON}
         onClick={props.onSave}
         disabled={props.isSaving || props.isSaveDisabled}
       >

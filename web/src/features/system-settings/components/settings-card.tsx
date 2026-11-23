@@ -25,6 +25,8 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card'
+import { CONSOLE_CARD } from '@/lib/console-surface'
+import { cn } from '@/lib/utils'
 
 type SettingsCardProps = {
   title: string
@@ -40,7 +42,7 @@ export const SettingsCard = memo(function SettingsCard({
   className,
 }: SettingsCardProps) {
   return (
-    <Card className={className}>
+    <Card className={cn(CONSOLE_CARD, className)}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}

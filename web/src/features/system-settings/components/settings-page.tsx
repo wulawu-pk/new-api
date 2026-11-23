@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next'
 
 import { ErrorState } from '@/components/error-state'
 import { SectionPageLayout } from '@/components/layout'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
+import { cn } from '@/lib/utils'
 
 import { useSystemOptions, getOptionValue } from '../hooks/use-system-options'
 import type { SystemOption } from '../types'
@@ -157,7 +159,7 @@ export function SettingsPage<
 
   return (
     <SettingsPageFrame title={t(sectionMeta.titleKey)}>
-      {sectionContent}
+      <div className={cn(CONSOLE_FRAME, 'p-4 sm:p-6')}>{sectionContent}</div>
     </SettingsPageFrame>
   )
 }
