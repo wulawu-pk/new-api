@@ -502,22 +502,26 @@ func videoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *d
 			return
 		}
 		if converter, ok := adaptor.(channel.OpenAIVideoConverter); ok {
+			// The renderer's view carries only the public failure reason, and
+			// the host owns the error object, so upstream wording cannot leak.
 			openAIVideoData, err := converter.ConvertToOpenAIVideo(originTask)
 			if err != nil {
 				taskResp = service.TaskErrorWrapper(err, "convert_to_openai_video_failed", http.StatusInternalServerError)
 				return
 			}
-			respBody = openAIVideoData
+			respBody, err = publicOpenAIVideoBody(originTask, openAIVideoData)
+			if err != nil {
+				taskResp = service.TaskErrorWrapper(err, "convert_to_openai_video_failed", http.StatusInternalServerError)
+			}
 			return
 		}
 		taskResp = service.TaskErrorWrapperLocal(fmt.Errorf("not_implemented:%s", originTask.Platform), "not_implemented", http.StatusNotImplemented)
 		return
 	}
 
-	// 通用 TaskDto 格式
-	taskDto := TaskModel2Dto(originTask)
-	// Customer API: never name the task plugin (upstream).
-	taskDto.Platform = PublicTaskPlatform(originTask)
+	// 通用 TaskDto 格式：token callers are customers, so they get the public
+	// projection (no channel, raw task data, upstream reason or upstream URL).
+	taskDto := PublicTaskDto(originTask, false)
 	respBody, err = common.Marshal(dto.TaskResponse[any]{
 		Code: "success",
 		Data: taskDto,
@@ -617,7 +621,7 @@ func tryRealtimeFetch(task *model.Task, isOpenAIVideoAPI bool) []byte {
 		"metadata": nil,
 		"status":   mapTaskStatusToSimple(task.Status),
 		"task_id":  task.TaskID,
-		"url":      task.GetResultURL(),
+		"url":      PublicTaskResultURL(task),
 	}
 	respBody, _ := common.Marshal(dto.TaskResponse[any]{
 		Code: "success",
@@ -695,6 +699,52 @@ func PublicTaskPlatform(task *model.Task) string {
 	default:
 		return PublicTaskPlatformTask
 	}
+}
+
+// PublicTaskResultURL is the result address a customer may see: this site's
+// own content route for a finished task with a stored result, never the
+// upstream's address. Legacy tasks keep their result URL in FailReason, which
+// GetResultURL falls back to, so a failed task must not reach it.
+func PublicTaskResultURL(task *model.Task) string {
+	if task == nil || task.Status != model.TaskStatusSuccess || strings.TrimSpace(task.GetResultURL()) == "" {
+		return ""
+	}
+	return taskcommon.BuildProxyURL(task.TaskID)
+}
+
+// PublicTaskDto is the single projection of a task for API and console
+// responses. Administrators get the full TaskModel2Dto view. Everyone else
+// gets no routing channel, no raw upstream task data (it carries our cost and
+// upstream URLs), a neutral platform label, a neutral failure reason and only
+// this site's result address.
+func PublicTaskDto(task *model.Task, viewerIsAdmin bool) *dto.TaskDto {
+	item := TaskModel2Dto(task)
+	if viewerIsAdmin {
+		return item
+	}
+	item.ChannelId = 0
+	item.Data = nil
+	item.Platform = PublicTaskPlatform(task)
+	item.FailReason = service.PublicTaskFailReasonForTask(task)
+	item.ResultURL = PublicTaskResultURL(task)
+	return item
+}
+
+// publicOpenAIVideoBody replaces the error object of a rendered OpenAI video
+// with the host's public failure code and message. Plugins may copy upstream
+// error objects (code and message) from task data; customers never see them.
+func publicOpenAIVideoBody(task *model.Task, rendered []byte) ([]byte, error) {
+	var fields map[string]any
+	if err := common.Unmarshal(rendered, &fields); err != nil {
+		return nil, err
+	}
+	if task.Status == model.TaskStatusFailure {
+		code, message := service.PublicTaskFailure(task.FailReason)
+		fields["error"] = map[string]any{"code": code, "message": message}
+	} else {
+		delete(fields, "error")
+	}
+	return common.Marshal(fields)
 }
 
 func TaskModel2Dto(task *model.Task) *dto.TaskDto {

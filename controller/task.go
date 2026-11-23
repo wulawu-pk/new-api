@@ -50,16 +50,14 @@ func GetTask(c *gin.Context) {
 	if createdAt == 0 {
 		createdAt = task.SubmitTime
 	}
-	failReason := task.FailReason
-	if task.Status == model.TaskStatusSuccess && taskFailReasonIsLegacyResultURL(task.FailReason) {
-		failReason = ""
-	}
+	// Token callers are customers: same public projection as the task list.
+	public := relay.PublicTaskDto(task, false)
 	c.JSON(http.StatusOK, gin.H{
 		"task_id":     task.TaskID,
-		"platform":    relay.PublicTaskPlatform(task),
+		"platform":    public.Platform,
 		"status":      task.Status,
 		"progress":    task.Progress,
-		"fail_reason": failReason,
+		"fail_reason": public.FailReason,
 		"created_at":  createdAt,
 		"finished_at": task.FinishTime,
 	})
@@ -457,7 +455,10 @@ func tasksToDto(tasks []*model.Task, fillUser bool, viewerRole int) []*dto.TaskD
 				task.Username = user.Username
 			}
 		}
-		item := relay.TaskModel2Dto(task)
+		// Customers get the shared public projection: no routing channel, no
+		// raw upstream task data, a neutral platform and failure reason. The
+		// console reads results through the artifacts endpoint.
+		item := relay.PublicTaskDto(task, viewerRole >= common.RoleAdminUser)
 		item.LegacyVideoAvailable = legacyVideoAvailable(task)
 		item.ResultDiscarded = task.PrivateData.ResultDiscarded
 		if task.Status == model.TaskStatusSuccess {
@@ -465,15 +466,6 @@ func tasksToDto(tasks []*model.Task, fillUser bool, viewerRole int) []*dto.TaskD
 			if taskFailReasonIsLegacyResultURL(task.FailReason) {
 				item.FailReason = ""
 			}
-		}
-		if viewerRole < common.RoleAdminUser {
-			// Customers get neither the routing channel nor the upstream's
-			// raw task response (it carries our cost and upstream URLs).
-			// The console reads results through the artifacts endpoint.
-			item.ChannelId = 0
-			item.Data = nil
-			// The task plugin key names the upstream (e.g. "supergpt-video").
-			item.Platform = relay.PublicTaskPlatform(task)
 		}
 		if viewerRole >= common.RoleAdminUser {
 			adminInfo := &dto.TaskAdminInfo{}
