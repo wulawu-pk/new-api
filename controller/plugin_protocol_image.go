@@ -103,11 +103,8 @@ func serveTaskPluginImageProtocol(c *gin.Context, pinned pluginruntime.PinnedEnd
 		}
 	}
 	if task.Status == model.TaskStatusFailure {
-		reason := strings.TrimSpace(task.FailReason)
-		if reason == "" {
-			reason = "image generation failed"
-		}
-		// The fail reason comes from the upstream, so mask the channel address in it.
+		// The fail reason is upstream text; customers get a neutral one.
+		reason := service.PublicTaskFailReason(task.FailReason)
 		taskErr = service.TaskErrorWrapper(errors.New(reason), "image_generation_failed", http.StatusBadRequest, common.UpstreamAddresses(c)...)
 		taskErr.LocalError = true
 		respondTaskPluginImageError(c, taskErr)
