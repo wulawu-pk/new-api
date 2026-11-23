@@ -7439,6 +7439,7 @@
     "At least 8 characters": "至少 8 位",
     "At least {{min}}": "最少 {{min}}",
     "At least {{min}}, whole coins": "最少 {{min}} 個，填整數",
+    "Availability": "可用率",
     "Availability per group": "各分組可用率",
     "Availability trend": "可用率走勢",
     "Avg cache hit": "平均快取命中",

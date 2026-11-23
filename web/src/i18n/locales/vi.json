@@ -7439,6 +7439,7 @@
     "At least 8 characters": "At least 8 characters",
     "At least {{min}}": "At least {{min}}",
     "At least {{min}}, whole coins": "At least {{min}}, whole coins",
+    "Availability": "Tỷ lệ khả dụng",
     "Availability per group": "Availability per group",
     "Availability trend": "Availability trend",
     "Avg cache hit": "Avg cache hit",

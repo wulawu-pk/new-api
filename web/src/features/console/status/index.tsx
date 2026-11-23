@@ -53,13 +53,18 @@ function GroupCard(props: {
   const format = props.hours === 24 ? 'MM-DD HH:00' : 'MM-DD HH:mm'
   return (
     <Pane
-      title={<b>{groupName(g.group, t)}</b>}
+      title={
+        <>
+          <b>{groupName(g.group, t)}</b>
+          <span className='opacity-70'>{g.group}</span>
+        </>
+      }
       aria-label={groupName(g.group, t)}
     >
       {/* Padding on the body, not the pane: the title bar spans the card. */}
       <div className='px-6 pt-5 pb-6'>
         <div className='mb-4 flex min-h-8 items-center justify-between gap-3'>
-          <span className='text-t-dim font-mono text-xs'>{g.group}</span>
+          <span className='text-t-dim text-[12.5px]'>{t('Availability')}</span>
           <span
             className={cn(
               'font-mono text-[22px] leading-none font-medium',
