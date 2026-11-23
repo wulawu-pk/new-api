@@ -136,3 +136,17 @@ func TestComputeTierPricesKeepsZeroPricedVariables(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, map[string]float64{"p": 0, "c": 2}, tokens.PerMillion)
 }
+
+func TestComputeTierPricesNeutralCreditExpr(t *testing.T) {
+	expression := `u("credits") != nil ? tier("credit", u("credits") * 0.16666666666666666 * 1000000) : tier("token", p * 2 + c * 10)`
+	prices, err := ComputeTierPrices(expression, "credit", false, 1.5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prices.Unit != TierPriceUnitCredit {
+		t.Fatalf("unit = %q", prices.Unit)
+	}
+	if got := prices.PerUnit["credits"]; got < 0.2499999 || got > 0.2500001 {
+		t.Fatalf("per credit = %v, want 0.25", got)
+	}
+}

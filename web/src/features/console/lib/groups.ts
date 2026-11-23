@@ -31,20 +31,20 @@ export const GROUP_META: Record<string, GroupMeta> = {
   },
   'gpt-pro': {
     nameKey: 'GPT Enterprise',
-    noteKey: 'Enterprise account pool, the main GPT group.',
+    noteKey: 'The main GPT group.',
   },
   'gpt-promax': {
     nameKey: 'GPT ProMax',
-    noteKey: 'Enterprise account pool, the fastest.',
+    noteKey: 'The fastest GPT group.',
   },
   'gpt-test': {
     nameKey: 'GPT Test',
-    noteKey: 'Low price, but about 20K tokens of injected prompt are added.',
+    noteKey: 'Low price; every request carries about 20K extra tokens of system prompt.',
   },
   'claude-kiro': {
     nameKey: 'Claude kiro',
     noteKey:
-      'Billed by the credits the upstream reports; credits are not proportional to tokens. Falls back to ccmax (token billing) when kiro is down. Works with any client.',
+      'Billed per credit at $0.25; credits are not proportional to tokens. Works with any client.',
   },
   'claude-ccmax': {
     nameKey: 'Claude ccmax',

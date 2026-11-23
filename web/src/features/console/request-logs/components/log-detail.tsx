@@ -54,7 +54,7 @@ export function LogDetail(props: {
     ]
   } else if (row.credit) {
     cells = [
-      { label: t('Billing'), value: t('By upstream credit') },
+      { label: t('Billing'), value: t('By credit') },
       {
         label: t('Consumed'),
         value:

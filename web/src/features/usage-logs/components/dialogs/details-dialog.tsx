@@ -195,7 +195,7 @@ function BillingBreakdown(props: {
   if (creditSummary) {
     rows.push({
       label: t('Billing Mode'),
-      value: t('Billed by upstream credits'),
+      value: t('Billed per credit'),
     })
     if (creditSummary.credits !== null) {
       rows.push({
