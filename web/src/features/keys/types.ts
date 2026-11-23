@@ -96,6 +96,9 @@ export interface ApiKeyFormData {
   group: string
   auto_groups: string[]
   cross_group_retry: boolean
+  /** peroai: quota the editor saw; on update an unchanged quota is left alone. */
+  expected_remain_quota?: number
+  expected_unlimited_quota?: boolean
 }
 
 export interface TokenAutoGroupsConfig {

@@ -125,13 +125,13 @@ func TestUpdateTokenColumnsConditionalOnQuota(t *testing.T) {
 	db := setupTokenControllerTestDB(t)
 	token := seedToken(t, db, 1, "cas", "patchcas1234567890")
 	affected, err := model.UpdateTokenColumns(token.Id, 1, token.Key, map[string]any{"remain_quota": 9},
-		&model.TokenQuotaExpectation{RemainQuota: 1, UnlimitedQuota: true})
+		&model.TokenColumnExpectation{Quota: &model.TokenQuotaExpectation{RemainQuota: 1, UnlimitedQuota: true}})
 	require.NoError(t, err)
 	assert.EqualValues(t, 0, affected)
 	assert.Equal(t, 100, reloadToken(t, token.Id).RemainQuota)
 
 	affected, err = model.UpdateTokenColumns(token.Id, 1, token.Key, map[string]any{"remain_quota": 9},
-		&model.TokenQuotaExpectation{RemainQuota: 100, UnlimitedQuota: true})
+		&model.TokenColumnExpectation{Quota: &model.TokenQuotaExpectation{RemainQuota: 100, UnlimitedQuota: true}})
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, affected)
 	assert.Equal(t, 9, reloadToken(t, token.Id).RemainQuota)
