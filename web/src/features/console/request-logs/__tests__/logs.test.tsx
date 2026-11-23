@@ -235,6 +235,157 @@ describe('console logs page', () => {
   })
 })
 
+describe('billing basis in the detail', () => {
+  const IMAGE_OTHER = {
+    billing_mode: 'tiered_expr',
+    billing_unit: 'request',
+    matched_tier: '1K',
+    image_count: 1,
+    fixed_price: 0.06,
+    group_ratio: 1.2,
+    user_group_ratio: -1,
+    request_path: '/v1/images/generations',
+    content_parts: [
+      { key: 'Size {{size}}', params: { size: '1024x1024' } },
+      { key: 'Image count {{count}}', params: { count: 1 } },
+    ],
+  }
+
+  async function openDetail(other: object, partial: Partial<UsageLog> = {}) {
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          log({
+            model_name: 'gpt-image-2.6-sunburst',
+            group: 'image-all',
+            prompt_tokens: 1,
+            completion_tokens: 0,
+            quota: 36000,
+            is_stream: false,
+            other: JSON.stringify(other),
+            ...partial,
+          }),
+        ],
+        total: 1,
+        page: 1,
+        page_size: 50,
+      },
+    })
+    const user = userEvent.setup()
+    renderConsole(<ConsoleLogs />)
+    const row = (
+      await screen.findByText(partial.model_name ?? 'gpt-image-2.6-sunburst')
+    ).closest('tr') as HTMLElement
+    await user.click(row)
+    return row.nextElementSibling as HTMLElement
+  }
+
+  it('an image request reads per image with its size and unit price, not per token', async () => {
+    const detail = await openDetail(IMAGE_OTHER)
+    expect(within(detail).getByText('By image')).toBeInTheDocument()
+    expect(within(detail).queryByText('By token')).not.toBeInTheDocument()
+    expect(within(detail).getByText('1K · 1024x1024')).toBeInTheDocument()
+    // Old row without tier_prices: logged unit price × group ratio.
+    expect(within(detail).getByText('$0.072 / image')).toBeInTheDocument()
+    expect(within(detail).queryByText('Group ratio')).not.toBeInTheDocument()
+  })
+
+  it('prefers the backend tier price for an image request', async () => {
+    const detail = await openDetail({
+      ...IMAGE_OTHER,
+      group_ratio: 1,
+      fixed_price: 0.054,
+      tier_prices: { unit: 'request', fixed: 0.054 },
+    })
+    expect(within(detail).getByText('$0.054 / image')).toBeInTheDocument()
+  })
+
+  it('a legacy per-image price without the tiered fields still reads per image', async () => {
+    const detail = await openDetail(
+      {
+        model_price: 0.075,
+        group_ratio: 1.2,
+        request_path: '/v1/images/generations',
+      },
+      { model_name: 'gemini-3-pro-image' }
+    )
+    expect(within(detail).getByText('By image')).toBeInTheDocument()
+    expect(within(detail).getByText('$0.09 / image')).toBeInTheDocument()
+  })
+
+  it('a video task reads per second with its length', async () => {
+    const detail = await openDetail(
+      {
+        is_task: true,
+        billing_mode: 'tiered_expr',
+        matched_tier: 'base',
+        usage_facts: { seconds: 5 },
+        tier_prices: { unit: 'task', per_unit: { seconds: 0.036 } },
+      },
+      { model_name: 'minimax-h3-base-fast', quota: 90000 }
+    )
+    expect(within(detail).getByText('By second')).toBeInTheDocument()
+    expect(within(detail).getByText('5 s')).toBeInTheDocument()
+    expect(within(detail).getByText('$0.036 / s')).toBeInTheDocument()
+  })
+})
+
+describe('console logs refresh', () => {
+  beforeEach(() => window.localStorage.removeItem('peroai:logs-live'))
+
+  const ONE = {
+    success: true,
+    data: { items: [log({})], total: 1, page: 1, page_size: 50 },
+  }
+
+  it('the refresh button reloads the list and the totals', async () => {
+    vi.mocked(logsApi.getUserLogs).mockResolvedValue(ONE)
+    const user = userEvent.setup()
+    renderConsole(<ConsoleLogs />)
+    await screen.findByText('gpt-6-astra')
+    const lists = vi.mocked(logsApi.getUserLogs).mock.calls.length
+    const totals = vi.mocked(logsApi.getUserLogStats).mock.calls.length
+
+    await user.click(screen.getByRole('button', { name: /Refresh/ }))
+    await waitFor(() =>
+      expect(vi.mocked(logsApi.getUserLogs).mock.calls.length).toBe(lists + 1)
+    )
+    expect(vi.mocked(logsApi.getUserLogStats).mock.calls.length).toBe(
+      totals + 1
+    )
+    expect(screen.getByText(/^Updated \d\d:\d\d:\d\d$/)).toBeInTheDocument()
+  })
+
+  it('live updates reload every 10 seconds and can be switched off', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      vi.mocked(logsApi.getUserLogs).mockResolvedValue(ONE)
+      renderConsole(<ConsoleLogs />)
+      await screen.findByText('gpt-6-astra')
+      const live = screen.getByRole('switch', { name: 'Live updates' })
+      expect(live).toBeChecked()
+      const before = vi.mocked(logsApi.getUserLogs).mock.calls.length
+
+      await vi.advanceTimersByTimeAsync(10_500)
+      await waitFor(() =>
+        expect(vi.mocked(logsApi.getUserLogs).mock.calls.length).toBe(
+          before + 1
+        )
+      )
+
+      live.click()
+      await waitFor(() => expect(live).not.toBeChecked())
+      expect(window.localStorage.getItem('peroai:logs-live')).toBe('off')
+      const after = vi.mocked(logsApi.getUserLogs).mock.calls.length
+      await vi.advanceTimersByTimeAsync(25_000)
+      expect(vi.mocked(logsApi.getUserLogs).mock.calls.length).toBe(after)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})
+
 describe('console logs page for admins', () => {
   const PAGE = (items: UsageLog[], total: number) => ({
     success: true,

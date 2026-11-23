@@ -75,6 +75,54 @@ export function LogDetail(props: {
       { label: t('Output'), value: num(row.output) },
       { label: t('Time to first token'), value: seconds(row.firstToken) },
     ]
+  } else if (row.billing.kind === 'image') {
+    const billing = row.billing
+    const tier = [billing.tier, billing.size].filter(Boolean).join(' · ')
+    cells = [{ label: t('Billing'), value: t('By image') }]
+    if (tier) cells.push({ label: t('Size'), value: tier })
+    cells.push({
+      label: t('Images'),
+      value: billing.count == null ? '—' : num(billing.count),
+    })
+    if (billing.unitPriceUSD != null) {
+      cells.push({
+        label: t('Unit price'),
+        value: `${usd(billing.unitPriceUSD)} / ${t('image')}`,
+      })
+    }
+    cells.push(
+      { label: t('Charge'), value: formatLogQuota(row.quota) },
+      { label: t('Total time'), value: seconds(row.useTime) }
+    )
+  } else if (row.billing.kind === 'seconds') {
+    const billing = row.billing
+    cells = [
+      { label: t('Billing'), value: t('By second') },
+      {
+        label: t('Video length'),
+        value: billing.seconds == null ? '—' : seconds(billing.seconds),
+      },
+    ]
+    if (billing.unitPriceUSD != null) {
+      cells.push({
+        label: t('Unit price'),
+        value: `${usd(billing.unitPriceUSD)} / s`,
+      })
+    }
+    cells.push({ label: t('Charge'), value: formatLogQuota(row.quota) })
+  } else if (row.billing.kind === 'request') {
+    const billing = row.billing
+    cells = [{ label: t('Billing'), value: t('By request') }]
+    if (billing.unitPriceUSD != null) {
+      cells.push({
+        label: t('Unit price'),
+        value: `${usd(billing.unitPriceUSD)} / ${t('call')}`,
+      })
+    }
+    cells.push(
+      { label: t('Charge'), value: formatLogQuota(row.quota) },
+      { label: t('Total time'), value: seconds(row.useTime) }
+    )
   } else {
     const perMillion = row.tierPrices?.per_million
     cells = [

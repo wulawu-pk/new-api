@@ -61,6 +61,7 @@ import { groupName } from '../lib/groups'
 import { ConsolePageHeader } from '../shell/console-shell'
 import { CacheHitCell, StreamCell } from './components/cells'
 import { LogDetail } from './components/log-detail'
+import { RefreshControls } from './components/refresh-controls'
 import {
   LOG_PAGE_SIZE,
   adminLogQuery,
@@ -72,6 +73,7 @@ import {
   type LogRange,
   type LogScope,
 } from './lib/filters'
+import { LIVE_INTERVAL_MS, readLivePref, writeLivePref } from './lib/live'
 import { compactTokens, toConsoleLogRow } from './lib/log-row'
 
 /** The filter row's dropdowns: as wide as their text, a little shorter. */
@@ -93,6 +95,7 @@ export function ConsoleLogs() {
     username: '',
   }))
   const [openId, setOpenId] = useState<number | null>(null)
+  const [live, setLive] = useState(readLivePref)
   const model = useDebounce(filters.model, 300)
   const username = useDebounce(filters.username, 300)
   const effective = { ...filters, model, username }
@@ -102,6 +105,9 @@ export function ConsoleLogs() {
   const narrowed = Boolean(
     filters.group || filters.model || (allUsers && filters.username)
   )
+  // Polling only on page 1: on later pages new rows would shift what the
+  // user is reading. React Query skips intervals while the tab is hidden.
+  const polling = live && filters.page === 1 ? LIVE_INTERVAL_MS : false
 
   const logs = useQuery({
     queryKey: ['console', 'logs', allUsers, effective],
@@ -118,6 +124,7 @@ export function ConsoleLogs() {
       }
     },
     placeholderData: keepPreviousData,
+    refetchInterval: polling,
     meta: { errorToast: false },
   })
 
@@ -131,6 +138,7 @@ export function ConsoleLogs() {
       )
       return response.data ?? null
     },
+    refetchInterval: polling,
     meta: { errorToast: false },
   })
 
@@ -157,6 +165,16 @@ export function ConsoleLogs() {
     setFilters((current) => ({ ...current, page: current.page + step }))
   }
 
+  const refresh = () => {
+    void logs.refetch()
+    void stats.refetch()
+  }
+
+  const changeLive = (next: boolean) => {
+    setLive(next)
+    writeLivePref(next)
+  }
+
   const toggleRow = (id: number) =>
     setOpenId((current) => (current === id ? null : id))
 
@@ -177,6 +195,16 @@ export function ConsoleLogs() {
               {t('Image and video tasks')}
             </Link>
           </>
+        }
+        actions={
+          <RefreshControls
+            live={live}
+            onLiveChange={changeLive}
+            livePaused={filters.page !== 1}
+            fetching={logs.isFetching}
+            updatedAt={logs.dataUpdatedAt}
+            onRefresh={refresh}
+          />
         }
       />
 

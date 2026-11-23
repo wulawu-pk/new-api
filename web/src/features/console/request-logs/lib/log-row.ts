@@ -27,6 +27,8 @@ import { parseLogOther } from '@/features/usage-logs/lib/format'
 import { readTierPrices } from '@/features/usage-logs/lib/tier-prices'
 import type { LogOtherData, LogTierPrices } from '@/features/usage-logs/types'
 
+import { getLogBilling, type LogBilling } from './billing-kind'
+
 /** Display facts of one request log for the console tables. */
 export type ConsoleLogRow = {
   id: number
@@ -55,6 +57,8 @@ export type ConsoleLogRow = {
   credit: CreditBillingSummary | null
   tierPrices: LogTierPrices | null
   groupRatio: number | null
+  /** Billing basis when not credit-billed: per image, second, request or token. */
+  billing: LogBilling
   isStream: boolean
   other: LogOtherData | null
 }
@@ -71,6 +75,7 @@ export function toConsoleLogRow(log: UsageLog): ConsoleLogRow {
     userRatio != null && userRatio !== -1
       ? userRatio
       : finite(other?.group_ratio)
+  const tierPrices = readTierPrices(other)
   return {
     id: log.id,
     createdAt: log.created_at,
@@ -90,8 +95,9 @@ export function toConsoleLogRow(log: UsageLog): ConsoleLogRow {
     isError: log.type === LOG_TYPE_ENUM.ERROR,
     content: log.content,
     credit: getCreditBillingSummary(other, log.quota),
-    tierPrices: readTierPrices(other),
+    tierPrices,
     groupRatio,
+    billing: getLogBilling(other, tierPrices, groupRatio),
     isStream: log.is_stream,
     other,
   }
