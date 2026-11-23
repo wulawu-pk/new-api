@@ -327,11 +327,33 @@ type TokenQuotaExpectation struct {
 	UnlimitedQuota bool
 }
 
+// TokenColumnExpectation is the row state a partial update was computed
+// from. Each non-nil part becomes a WHERE condition, so a concurrent spend,
+// status change or another editor's write turns the update into a no-op.
+type TokenColumnExpectation struct {
+	Quota  *TokenQuotaExpectation
+	Status *int
+}
+
+// Matches reports whether the token still holds the expected state.
+func (expected *TokenColumnExpectation) Matches(token *Token) bool {
+	if expected == nil {
+		return true
+	}
+	if expected.Quota != nil && (token.RemainQuota != expected.Quota.RemainQuota || token.UnlimitedQuota != expected.Quota.UnlimitedQuota) {
+		return false
+	}
+	if expected.Status != nil && token.Status != *expected.Status {
+		return false
+	}
+	return true
+}
+
 // UpdateTokenColumns writes only the given columns of the user's token and
 // returns the number of rows changed. With expected set, the write is
-// conditional on the current quota state, so a concurrent spend or another
-// editor's change makes it a no-op (0 rows).
-func UpdateTokenColumns(id int, userId int, key string, columns map[string]any, expected *TokenQuotaExpectation) (int64, error) {
+// conditional on the expected quota and/or status, so a concurrent change
+// makes it a no-op (0 rows).
+func UpdateTokenColumns(id int, userId int, key string, columns map[string]any, expected *TokenColumnExpectation) (int64, error) {
 	if id == 0 || userId == 0 {
 		return 0, common.NewMessage("Token ID or user ID is empty")
 	}
@@ -344,7 +366,12 @@ func UpdateTokenColumns(id int, userId int, key string, columns map[string]any, 
 	}
 	query := DB.Model(&Token{}).Where("id = ? AND user_id = ?", id, userId)
 	if expected != nil {
-		query = query.Where("remain_quota = ? AND unlimited_quota = ?", expected.RemainQuota, expected.UnlimitedQuota)
+		if expected.Quota != nil {
+			query = query.Where("remain_quota = ? AND unlimited_quota = ?", expected.Quota.RemainQuota, expected.Quota.UnlimitedQuota)
+		}
+		if expected.Status != nil {
+			query = query.Where("status = ?", *expected.Status)
+		}
 	}
 	result := query.Updates(columns)
 	return result.RowsAffected, result.Error

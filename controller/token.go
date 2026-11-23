@@ -478,12 +478,20 @@ func UpdateToken(c *gin.Context) {
 		}
 	}
 	if statusOnly != "" {
-		cleanToken.Status = token.Status
+		// Write the status column alone, conditional on the status that was
+		// read, so a concurrent spend, edit or toggle is never undone.
+		params["from"], params["to"] = previous.Status, token.Status
+		if token.Status != previous.Status {
+			expectedStatus := previous.Status
+			if !applyTokenColumns(c, &previous, userId, map[string]any{"status": token.Status},
+				&model.TokenColumnExpectation{Status: &expectedStatus}) {
+				return
+			}
+		}
 	} else {
 		if !requireTokenGroup(c, token.Group) {
 			return
 		}
-		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
 		cleanToken.ExpiredTime = token.ExpiredTime
 		cleanToken.RemainQuota = token.RemainQuota
@@ -504,40 +512,55 @@ func UpdateToken(c *gin.Context) {
 				return
 			}
 		}
-	}
-	err = cleanToken.Update()
-	if err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	params["name"] = cleanToken.Name
-	if statusOnly != "" {
-		params["from"], params["to"] = previous.Status, cleanToken.Status
-	} else {
+		// Write only the columns that differ from the row that was read.
+		columns := map[string]any{}
 		changedFields := []string{}
 		for _, field := range []struct {
 			name    string
 			changed bool
+			value   any
 		}{
-			{"name", previous.Name != cleanToken.Name},
-			{"expired_time", previous.ExpiredTime != cleanToken.ExpiredTime},
-			{"remain_quota", previous.RemainQuota != cleanToken.RemainQuota},
-			{"unlimited_quota", previous.UnlimitedQuota != cleanToken.UnlimitedQuota},
-			{"model_limits_enabled", previous.ModelLimitsEnabled != cleanToken.ModelLimitsEnabled},
-			{"model_limits", previous.ModelLimits != cleanToken.ModelLimits},
+			{"name", previous.Name != cleanToken.Name, cleanToken.Name},
+			{"expired_time", previous.ExpiredTime != cleanToken.ExpiredTime, cleanToken.ExpiredTime},
+			{"remain_quota", previous.RemainQuota != cleanToken.RemainQuota, cleanToken.RemainQuota},
+			{"unlimited_quota", previous.UnlimitedQuota != cleanToken.UnlimitedQuota, cleanToken.UnlimitedQuota},
+			{"model_limits_enabled", previous.ModelLimitsEnabled != cleanToken.ModelLimitsEnabled, cleanToken.ModelLimitsEnabled},
+			{"model_limits", previous.ModelLimits != cleanToken.ModelLimits, cleanToken.ModelLimits},
 			{"allow_ips", (previous.AllowIps == nil) != (cleanToken.AllowIps == nil) ||
-				(previous.AllowIps != nil && cleanToken.AllowIps != nil && *previous.AllowIps != *cleanToken.AllowIps)},
-			{"allow_user_quota_query", previous.AllowUserQuotaQuery != cleanToken.AllowUserQuotaQuery},
-			{"group", previous.Group != cleanToken.Group},
-			{"cross_group_retry", previous.CrossGroupRetry != cleanToken.CrossGroupRetry},
-			{"auto_groups", previous.AutoGroups != cleanToken.AutoGroups},
+				(previous.AllowIps != nil && cleanToken.AllowIps != nil && *previous.AllowIps != *cleanToken.AllowIps), cleanToken.AllowIps},
+			{"allow_user_quota_query", previous.AllowUserQuotaQuery != cleanToken.AllowUserQuotaQuery, cleanToken.AllowUserQuotaQuery},
+			{"group", previous.Group != cleanToken.Group, cleanToken.Group},
+			{"cross_group_retry", previous.CrossGroupRetry != cleanToken.CrossGroupRetry, cleanToken.CrossGroupRetry},
+			{"auto_groups", previous.AutoGroups != cleanToken.AutoGroups, cleanToken.AutoGroups},
 		} {
 			if field.changed {
+				columns[field.name] = field.value
 				changedFields = append(changedFields, field.name)
 			}
 		}
+		var expected *model.TokenColumnExpectation
+		_, remainChanged := columns["remain_quota"]
+		_, unlimitedChanged := columns["unlimited_quota"]
+		if remainChanged || unlimitedChanged {
+			// The new quota replaces the one that was read; a spend landing
+			// in between must not be overwritten.
+			expected = &model.TokenColumnExpectation{Quota: &model.TokenQuotaExpectation{
+				RemainQuota:    previous.RemainQuota,
+				UnlimitedQuota: previous.UnlimitedQuota,
+			}}
+		}
+		if !applyTokenColumns(c, &previous, userId, columns, expected) {
+			return
+		}
 		params["changed_fields"] = changedFields
 	}
+	updated, err := model.GetTokenByIds(previous.Id, userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	cleanToken = updated
+	params["name"] = cleanToken.Name
 	common.SetContextKey(c, constant.ContextKeyTokenAuditSucceeded, true)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -661,36 +684,29 @@ func PatchToken(c *gin.Context) {
 		}
 	}
 
-	var expected *model.TokenQuotaExpectation
+	var expected *model.TokenColumnExpectation
 	if quotaChange {
-		expected = &model.TokenQuotaExpectation{
+		quota := &model.TokenQuotaExpectation{
 			RemainQuota:    *request.ExpectedRemainQuota,
 			UnlimitedQuota: *request.ExpectedUnlimitedQuota,
 		}
-		if previous.RemainQuota != expected.RemainQuota || previous.UnlimitedQuota != expected.UnlimitedQuota {
+		if previous.RemainQuota != quota.RemainQuota || previous.UnlimitedQuota != quota.UnlimitedQuota {
 			respondTokenConflict(c)
 			return
 		}
+		expected = &model.TokenColumnExpectation{Quota: quota}
 	}
-	if len(columns) > 0 {
-		affected, err := model.UpdateTokenColumns(token.Id, userId, token.Key, columns, expected)
-		if err != nil {
-			common.ApiError(c, err)
-			return
+	if _, ok := columns["status"]; ok {
+		// Auto-recovery was decided from the status that was read; a
+		// concurrent manual disable must win over it.
+		if expected == nil {
+			expected = &model.TokenColumnExpectation{}
 		}
-		if affected == 0 {
-			// Some databases (MySQL) report 0 rows when the values were
-			// already in place; only a real mismatch is a conflict.
-			current, err := model.GetTokenByIds(id, userId)
-			if err != nil {
-				common.ApiError(c, err)
-				return
-			}
-			if expected != nil && (current.RemainQuota != expected.RemainQuota || current.UnlimitedQuota != expected.UnlimitedQuota) {
-				respondTokenConflict(c)
-				return
-			}
-		}
+		expectedStatus := previous.Status
+		expected.Status = &expectedStatus
+	}
+	if !applyTokenColumns(c, &previous, userId, columns, expected) {
+		return
 	}
 
 	updated, err := model.GetTokenByIds(id, userId)
@@ -702,6 +718,34 @@ func PatchToken(c *gin.Context) {
 	params["changed_fields"] = changedFields
 	common.SetContextKey(c, constant.ContextKeyTokenAuditSucceeded, true)
 	common.ApiSuccess(c, buildMaskedTokenResponse(updated))
+}
+
+// applyTokenColumns writes columns to the token, conditional on expected.
+// It responds and returns false on error or when the row no longer matches
+// the expected state (token_conflict).
+func applyTokenColumns(c *gin.Context, token *model.Token, userId int, columns map[string]any, expected *model.TokenColumnExpectation) bool {
+	if len(columns) == 0 {
+		return true
+	}
+	affected, err := model.UpdateTokenColumns(token.Id, userId, token.Key, columns, expected)
+	if err != nil {
+		common.ApiError(c, err)
+		return false
+	}
+	if affected == 0 && expected != nil {
+		// Some databases (MySQL) report 0 rows when the values were
+		// already in place; only a real mismatch is a conflict.
+		current, err := model.GetTokenByIds(token.Id, userId)
+		if err != nil {
+			common.ApiError(c, err)
+			return false
+		}
+		if !expected.Matches(current) {
+			respondTokenConflict(c)
+			return false
+		}
+	}
+	return true
 }
 
 func respondTokenConflict(c *gin.Context) {
