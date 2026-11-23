@@ -39,18 +39,7 @@ import { MIN_REQUESTS_FOR_RATE, toSlots } from './lib/slots'
 
 type Hours = 24 | 168
 
-/** Columns shared by every row and the time axis: name, bars, rate. */
-const ROW_GRID =
-  'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-3 px-6 md:grid-cols-[12rem_minmax(0,1fr)_7.5rem]'
-
-const STAT_DD = 'text-t-fg ml-0 font-mono text-[13px] font-medium'
-
-/**
- * One group as one row of the status list: name, availability bars and the
- * rate on one line, the request figures under the bars. Rows share their
- * column widths, so bars and rates line up from group to group.
- */
-function GroupRow(props: {
+function GroupCard(props: {
   group: GroupHealthSummary
   windowStart: number
   windowEnd: number
@@ -59,78 +48,76 @@ function GroupRow(props: {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const g = props.group
-  const name = groupName(g.group, t)
   const enough = g.request_count >= MIN_REQUESTS_FOR_RATE
   const slots = toSlots(g.series, props.windowStart, props.windowEnd)
   const format = props.hours === 24 ? 'MM-DD HH:00' : 'MM-DD HH:mm'
   return (
-    <article
-      aria-label={name}
-      className={cn(ROW_GRID, 'border-t-line py-5 [&+&]:border-t')}
+    <Pane
+      title={<b>{groupName(g.group, t)}</b>}
+      aria-label={groupName(g.group, t)}
     >
-      <div className='min-w-0 md:col-start-1 md:row-start-1'>
-        <div className='text-t-fg truncate text-sm font-medium'>{name}</div>
-        <div className='text-t-dim mt-1 truncate font-mono text-[11.5px]'>
-          {g.group}
-        </div>
-      </div>
-      <div className='text-right md:col-start-3 md:row-start-1'>
-        {enough ? (
+      {/* Padding on the body, not the pane: the title bar spans the card. */}
+      <div className='px-6 pt-5 pb-6'>
+        <div className='mb-4 flex min-h-8 items-center justify-between gap-3'>
+          <span className='text-t-dim font-mono text-xs'>{g.group}</span>
           <span
             className={cn(
-              'font-mono text-xl leading-none font-medium',
-              successRateClass(g.success_rate)
+              'font-mono text-[22px] leading-none font-medium',
+              !enough && 'text-t-dim text-[13px]',
+              enough && successRateClass(g.success_rate)
             )}
           >
-            {`${g.success_rate.toFixed(1)}%`}
+            {enough
+              ? `${g.success_rate.toFixed(1)}%`
+              : t('Too few requests to rate')}
           </span>
-        ) : (
-          <span className='text-t-dim text-xs leading-snug'>
-            {t('Too few requests to rate')}
-          </span>
-        )}
+        </div>
+        <AsciiSpark
+          className='mb-5 h-10'
+          cellClassName='rounded-t-[2px]'
+          label={t('Availability trend')}
+          warnBelow={99}
+          cells={slots.map((slot) => ({
+            id: slot.start,
+            value: slot.rate,
+            title:
+              slot.rate == null
+                ? `${dayjs.unix(slot.start).format(format)} · ${t('no requests')}`
+                : `${dayjs.unix(slot.start).format(format)} · ${slot.rate.toFixed(1)}%`,
+          }))}
+        />
+        <dl className='border-t-line text-t-dim m-0 grid grid-cols-4 gap-x-4 gap-y-4 border-t pt-4 text-[12.5px] max-[480px]:grid-cols-2'>
+          <div>
+            <dt>{t('Requests')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {formatNumber(g.request_count, locale)}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('Avg latency')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {g.avg_latency_ms > 0
+                ? `${(g.avg_latency_ms / 1000).toFixed(2)} s`
+                : '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('Time to first token')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {g.avg_ttft_ms > 0
+                ? `${(g.avg_ttft_ms / 1000).toFixed(1)} s`
+                : '—'}
+            </dd>
+          </div>
+          <div>
+            <dt>{t('Throughput')}</dt>
+            <dd className='text-t-fg mt-1.5 ml-0 font-mono text-[15px] font-medium'>
+              {g.avg_tps > 0 ? `${Math.round(g.avg_tps)} tok/s` : '—'}
+            </dd>
+          </div>
+        </dl>
       </div>
-      <AsciiSpark
-        className='col-span-2 h-9 md:col-span-1 md:col-start-2 md:row-start-1'
-        cellClassName='rounded-[2px]'
-        label={t('Availability trend')}
-        warnBelow={99}
-        cells={slots.map((slot) => ({
-          id: slot.start,
-          value: slot.rate,
-          title:
-            slot.rate == null
-              ? `${dayjs.unix(slot.start).format(format)} · ${t('no requests')}`
-              : `${dayjs.unix(slot.start).format(format)} · ${slot.rate.toFixed(1)}%`,
-        }))}
-      />
-      <dl className='text-t-dim col-span-2 m-0 flex flex-wrap gap-x-6 gap-y-1.5 text-xs md:col-start-2 md:row-start-2'>
-        <div className='flex items-baseline gap-2'>
-          <dt>{t('Requests')}</dt>
-          <dd className={STAT_DD}>{formatNumber(g.request_count, locale)}</dd>
-        </div>
-        <div className='flex items-baseline gap-2'>
-          <dt>{t('Avg latency')}</dt>
-          <dd className={STAT_DD}>
-            {g.avg_latency_ms > 0
-              ? `${(g.avg_latency_ms / 1000).toFixed(2)} s`
-              : '—'}
-          </dd>
-        </div>
-        <div className='flex items-baseline gap-2'>
-          <dt>{t('Time to first token')}</dt>
-          <dd className={STAT_DD}>
-            {g.avg_ttft_ms > 0 ? `${(g.avg_ttft_ms / 1000).toFixed(1)} s` : '—'}
-          </dd>
-        </div>
-        <div className='flex items-baseline gap-2'>
-          <dt>{t('Throughput')}</dt>
-          <dd className={STAT_DD}>
-            {g.avg_tps > 0 ? `${Math.round(g.avg_tps)} tok/s` : '—'}
-          </dd>
-        </div>
-      </dl>
-    </article>
+    </Pane>
   )
 }
 
@@ -178,19 +165,17 @@ export function ConsoleStatus() {
         }
       />
       {summary.isPending && (
-        <Pane title={<b>{t('Availability per group')}</b>}>
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className={cn(ROW_GRID, 'border-t-line py-6 [&+&]:border-t')}
-            >
-              <span className='t-skeleton font-mono'>░░░░░░░░</span>
-              <span className='t-skeleton col-span-2 font-mono md:col-span-1 md:col-start-2 md:row-start-1'>
-                ░░░░░░░░░░░░░░░░░░░░░░░░
-              </span>
-            </div>
+        <div className='grid grid-cols-2 gap-6 max-md:grid-cols-1'>
+          {[0, 1].map((i) => (
+            <Pane key={i} title={<b>░░░░</b>}>
+              <div className='px-6 py-10'>
+                <span className='t-skeleton font-mono'>
+                  ░░░░░░░░░░░░░░░░░░░░
+                </span>
+              </div>
+            </Pane>
           ))}
-        </Pane>
+        </div>
       )}
       {summary.isError && (
         <Pane title={<b>{t('Status')}</b>}>
@@ -208,9 +193,9 @@ export function ConsoleStatus() {
         </p>
       )}
       {groups.length > 0 && (
-        <Pane title={<b>{t('Availability per group')}</b>}>
+        <div className='grid grid-cols-2 gap-6 max-md:grid-cols-1'>
           {groups.map((group) => (
-            <GroupRow
+            <GroupCard
               key={group.group}
               group={group}
               windowStart={windowStart}
@@ -218,19 +203,7 @@ export function ConsoleStatus() {
               hours={hours}
             />
           ))}
-          <div
-            aria-hidden='true'
-            className={cn(
-              ROW_GRID,
-              'border-t-line text-t-dim border-t py-3 font-mono text-[11px]'
-            )}
-          >
-            <div className='col-span-2 flex justify-between md:col-span-1 md:col-start-2'>
-              <span>{hours === 24 ? t('24 hours ago') : t('7 days ago')}</span>
-              <span>{t('Now')}</span>
-            </div>
-          </div>
-        </Pane>
+        </div>
       )}
     </>
   )

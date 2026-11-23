@@ -42,8 +42,7 @@ type AsciiSparkProps = {
  * Availability trend: one equal-width CSS column per period.
  *
  * Not drawn with █▆▄ glyphs because their height and weight differ from font
- * to font. An empty period draws a faint full-height slot, so the row
- * reads as a track instead of a dashed line.
+ * to font. An empty period draws only a short baseline.
  */
 export function AsciiSpark(props: AsciiSparkProps) {
   const warnBelow = props.warnBelow ?? 99
@@ -61,7 +60,7 @@ export function AsciiSpark(props: AsciiSparkProps) {
               title={cell.title}
               data-empty='true'
               className={cn(
-                'bg-t-ink/6 block h-full min-w-[3px] flex-1',
+                'bg-t-dim block h-[2px] min-w-[3px] flex-1 opacity-60',
                 props.cellClassName
               )}
             />
