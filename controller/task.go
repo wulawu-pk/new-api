@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
@@ -52,6 +53,7 @@ func GetTask(c *gin.Context) {
 	}
 	// Token callers are customers: same public projection as the task list.
 	public := relay.PublicTaskDto(task, false)
+	public.FailReason = service.PublicTaskFailReasonForTaskIn(i18n.StatedLang(c), task)
 	c.JSON(http.StatusOK, gin.H{
 		"task_id":     task.TaskID,
 		"platform":    public.Platform,

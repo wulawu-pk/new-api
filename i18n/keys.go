@@ -60,6 +60,13 @@ const (
 	MsgRelayUpstreamRateLimited          = "relay.upstream_rate_limited"
 	MsgRelayUpstreamTimeout              = "relay.upstream_timeout"
 	MsgRelayUpstreamInvalidRequest       = "relay.upstream_invalid_request"
+
+	// peroai: public reasons of failed video / image tasks
+	MsgTaskFailContentPolicy = "task.fail.content_policy"
+	MsgTaskFailInvalidParams = "task.fail.invalid_params"
+	MsgTaskFailTimeout       = "task.fail.timeout"
+	MsgTaskFailLegacyTimeout = "task.fail.legacy_timeout"
+	MsgTaskFailGeneric       = "task.fail.generic"
 )
 
 // Emails and the name of the token created at registration, in the

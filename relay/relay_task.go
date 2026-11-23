@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
@@ -509,7 +510,7 @@ func videoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *d
 				taskResp = service.TaskErrorWrapper(err, "convert_to_openai_video_failed", http.StatusInternalServerError)
 				return
 			}
-			respBody, err = publicOpenAIVideoBody(originTask, openAIVideoData)
+			respBody, err = publicOpenAIVideoBody(i18n.StatedLang(c), originTask, openAIVideoData)
 			if err != nil {
 				taskResp = service.TaskErrorWrapper(err, "convert_to_openai_video_failed", http.StatusInternalServerError)
 			}
@@ -522,6 +523,8 @@ func videoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *d
 	// 通用 TaskDto 格式：token callers are customers, so they get the public
 	// projection (no channel, raw task data, upstream reason or upstream URL).
 	taskDto := PublicTaskDto(originTask, false)
+	// API callers read the reason themselves: give it in their language.
+	taskDto.FailReason = service.PublicTaskFailReasonForTaskIn(i18n.StatedLang(c), originTask)
 	respBody, err = common.Marshal(dto.TaskResponse[any]{
 		Code: "success",
 		Data: taskDto,
@@ -733,13 +736,13 @@ func PublicTaskDto(task *model.Task, viewerIsAdmin bool) *dto.TaskDto {
 // publicOpenAIVideoBody replaces the error object of a rendered OpenAI video
 // with the host's public failure code and message. Plugins may copy upstream
 // error objects (code and message) from task data; customers never see them.
-func publicOpenAIVideoBody(task *model.Task, rendered []byte) ([]byte, error) {
+func publicOpenAIVideoBody(lang string, task *model.Task, rendered []byte) ([]byte, error) {
 	var fields map[string]any
 	if err := common.Unmarshal(rendered, &fields); err != nil {
 		return nil, err
 	}
 	if task.Status == model.TaskStatusFailure {
-		code, message := service.PublicTaskFailure(task.FailReason)
+		code, message := service.PublicTaskFailureIn(lang, task.FailReason)
 		fields["error"] = map[string]any{"code": code, "message": message}
 	} else {
 		delete(fields, "error")

@@ -50,6 +50,13 @@ relay.upstream_rate_limited: "請求過多，請稍後再試"
 relay.upstream_timeout: "請求逾時，請稍後再試"
 relay.upstream_invalid_request: "請求被拒絕，請檢查請求參數後重試"
 
+# Public reasons of failed video / image tasks (peroai)
+task.fail.content_policy: "內容審核未通過，請調整內容後重試"
+task.fail.invalid_params: "參數不符合要求，請檢查後重試"
+task.fail.timeout: "生成逾時，請稍後重試"
+task.fail.legacy_timeout: "任務逾時（舊系統遺留任務，不進行退款，請聯絡管理員）"
+task.fail.generic: "生成失敗，請稍後重試"
+
 # Emails and the name of the token created at registration
 user.default_token_name: "{{.Username}}的初始令牌"
 email.verification.subject: "{{.SystemName}}電子郵件驗證"

@@ -756,7 +756,7 @@ func presentTaskSubmission(c *gin.Context, outcome *taskSubmissionOutcome) {
 	}
 	if pinnedValue, exists := c.Get(pluginruntime.ContextKeyPinnedRoute); exists {
 		if pinned, ok := pinnedValue.(pluginruntime.PinnedRoute); ok && pinned.Plugin != nil && pinned.Route.Render != "" {
-			view, err := service.BuildTaskPluginView(outcome.Task)
+			view, err := service.BuildTaskPluginViewIn(i18n.StatedLang(c), outcome.Task)
 			requestValue, _ := c.Get(pluginruntime.ContextKeyRouteRequest)
 			requestContext, _ := requestValue.(pluginruntime.RouteRequestContext)
 			if err == nil {
