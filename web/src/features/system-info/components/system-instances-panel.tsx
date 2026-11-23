@@ -56,6 +56,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { toIntlLocale } from '@/i18n/languages'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { formatTimestampRelative, formatTimestampToDate } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
 import { createServerError } from '@/lib/server-error-message'
@@ -238,7 +239,7 @@ function SystemInstancesList(props: SystemInstancesTableProps) {
   const { t, i18n } = useTranslation()
 
   return (
-    <div className='overflow-x-auto rounded-md border'>
+    <div className='overflow-x-auto rounded-2xl border'>
       <Table className='min-w-[1230px]'>
         <TableHeader>
           <TableRow className='bg-muted/40 hover:bg-muted/40'>
@@ -630,11 +631,11 @@ export function SystemInstancesPanel() {
 
   return (
     <>
-      <section className='bg-card overflow-hidden rounded-lg border shadow-xs'>
-        <div className='flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5'>
+      <section className={CONSOLE_FRAME}>
+        <div className='flex flex-col gap-3 border-b border-dashed px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5'>
           <div className='min-w-0'>
             <div className='flex items-center gap-2'>
-              <span className='bg-muted text-muted-foreground inline-flex size-7 items-center justify-center rounded-md'>
+              <span className='bg-muted text-muted-foreground inline-flex size-8 items-center justify-center rounded-full'>
                 <ServerCog className='size-4' aria-hidden='true' />
               </span>
               <div className='min-w-0'>
@@ -658,6 +659,7 @@ export function SystemInstancesPanel() {
                 type='button'
                 variant='destructive'
                 size='sm'
+                className='rounded-full px-3.5'
                 onClick={() => setDeleteAllConfirmOpen(true)}
                 disabled={
                   isMutatingInstance || deleteStaleInstancesMutation.isPending
@@ -683,6 +685,7 @@ export function SystemInstancesPanel() {
               type='button'
               variant='outline'
               size='sm'
+              className='rounded-full px-3.5'
               onClick={() => void instancesQuery.refetch()}
               disabled={instancesQuery.isFetching}
               aria-label={t('Refresh')}

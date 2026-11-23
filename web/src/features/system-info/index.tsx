@@ -32,7 +32,10 @@ export function SystemInfo() {
       <SectionPageLayout.Title>
         <span className='inline-flex min-w-0 items-center gap-2'>
           <span className='truncate'>{t('System Info')}</span>
-          <Badge variant='outline' className='shrink-0'>
+          <Badge
+            variant='outline'
+            className='font-ascii shrink-0 rounded-full font-normal'
+          >
             Root
           </Badge>
         </span>

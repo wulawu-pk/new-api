@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { listSystemTasks } from '@/features/system-settings/api'
+import { CONSOLE_FRAME } from '@/lib/console-surface'
 import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
@@ -56,11 +57,11 @@ export function SystemTasksPanel() {
   const hasActiveTasks = activeTasks.length > 0
 
   return (
-    <section className='bg-card overflow-hidden rounded-lg border shadow-xs'>
-      <div className='flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5'>
+    <section className={CONSOLE_FRAME}>
+      <div className='flex flex-col gap-3 border-b border-dashed px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5'>
         <div className='min-w-0'>
           <div className='flex items-center gap-2'>
-            <span className='bg-muted text-muted-foreground inline-flex size-7 items-center justify-center rounded-md'>
+            <span className='bg-muted text-muted-foreground inline-flex size-8 items-center justify-center rounded-full'>
               <ListChecks className='size-4' aria-hidden='true' />
             </span>
             <div className='min-w-0'>
@@ -81,7 +82,7 @@ export function SystemTasksPanel() {
             <span
               className={cn(
                 'size-1.5 rounded-full',
-                hasActiveTasks ? 'bg-emerald-500' : 'bg-muted-foreground/40'
+                hasActiveTasks ? 'bg-landing-accent' : 'bg-muted-foreground/40'
               )}
               aria-hidden='true'
             />
@@ -95,6 +96,7 @@ export function SystemTasksPanel() {
             type='button'
             variant='outline'
             size='sm'
+            className='rounded-full px-3.5'
             onClick={() => void tasksQuery.refetch()}
             disabled={tasksQuery.isFetching}
             aria-label={t('Refresh')}
@@ -147,7 +149,7 @@ export function SystemTasksPanel() {
               {activeTasks.length > 0 ? (
                 <SystemTasksTable tasks={activeTasks} />
               ) : (
-                <div className='text-muted-foreground rounded-md border border-dashed px-4 py-6 text-center text-sm'>
+                <div className='text-muted-foreground rounded-2xl border border-dashed px-4 py-6 text-center text-sm'>
                   {t('No active system tasks.')}
                 </div>
               )}
