@@ -27,9 +27,33 @@ export const REDEEM_RETURN_PATH = '/redeem'
 export const PENDING_REDEEM_CODE_KEY = 'peroai.redeem.pending'
 export const PENDING_REDEEM_CODE_TTL_MS = 10 * 60 * 1000
 
-/** Keeps a code for this tab while the visitor signs in or signs up. */
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
+
+function cancelExpiryTimer(): void {
+  if (expiryTimer !== undefined) clearTimeout(expiryTimer)
+  expiryTimer = undefined
+}
+
+/** Removes the entry once it expires: reading drops an expired entry. */
+function scheduleExpiry(delayMs: number): void {
+  cancelExpiryTimer()
+  expiryTimer = setTimeout(
+    () => {
+      expiryTimer = undefined
+      readPendingRedeemCode()
+    },
+    Math.max(0, delayMs)
+  )
+}
+
+/**
+ * Keeps a code for this tab while the visitor signs in or signs up. It is
+ * removed after PENDING_REDEEM_CODE_TTL_MS even if nothing reads it again
+ * (a visitor who gives up on sign-in but keeps the tab open).
+ */
 export function savePendingRedeemCode(input: string): void {
   const code = extractRedemptionCode(input)
+  cancelExpiryTimer()
   try {
     if (!code) {
       sessionStorage.removeItem(PENDING_REDEEM_CODE_KEY)
@@ -41,10 +65,13 @@ export function savePendingRedeemCode(input: string): void {
     )
   } catch {
     // Storage disabled: the visitor pastes the code again after signing in.
+    return
   }
+  scheduleExpiry(PENDING_REDEEM_CODE_TTL_MS)
 }
 
 export function clearPendingRedeemCode(): void {
+  cancelExpiryTimer()
   try {
     sessionStorage.removeItem(PENDING_REDEEM_CODE_KEY)
   } catch {
@@ -85,4 +112,22 @@ export function redeemCodeFromLocation(
   if (searchCode) return searchCode
   const fragment = hash.startsWith('#') ? hash.slice(1) : hash
   return new URLSearchParams(fragment).get('code') ?? ''
+}
+
+/**
+ * Drops an expired entry left by an earlier page load (the timer above
+ * does not survive a reload) and re-arms removal for a live one. Called
+ * once at app start (main.tsx).
+ */
+export function purgeExpiredPendingRedeemCode(): void {
+  try {
+    const raw = sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)
+    if (!raw) return
+    const code = readPendingRedeemCode()
+    if (!code) return
+    const at = Number((JSON.parse(raw) as { at?: unknown }).at)
+    scheduleExpiry(at + PENDING_REDEEM_CODE_TTL_MS - Date.now())
+  } catch {
+    clearPendingRedeemCode()
+  }
 }

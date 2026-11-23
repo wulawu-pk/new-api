@@ -71,7 +71,9 @@ import {
   type CreateKeyValues,
 } from './lib/create-key'
 import {
+  KeyRevealError,
   createKeyAndFetch,
+  revealKey,
   withSkPrefix,
   type CreatedKey,
 } from './lib/create-key-flow'
@@ -82,7 +84,7 @@ const COLS = 8
 const STATUS_ENABLED = 1
 const STATUS_DISABLED = 2
 
-/** The key's quota changed while the edit dialog was open. */
+/** The key changed on the server since the page last read it. */
 class KeyConflictError extends Error {}
 
 function KeyStatus(props: { status: number }) {
@@ -114,6 +116,11 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [revealed, setRevealed] = useState<CreatedKey | null>(null)
+  // A key that was created but whose value could not be read yet.
+  const [unrevealed, setUnrevealed] = useState<{
+    id: number
+    name: string
+  } | null>(null)
   const [toDelete, setToDelete] = useState<ApiKey | null>(null)
   const [toEdit, setToEdit] = useState<ApiKey | null>(null)
   const [editOpen, setEditOpen] = useState(false)
@@ -143,27 +150,61 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
     onOpenCreateHandled?.()
   }, [openCreate, onOpenCreateHandled])
 
+  const warnConflict = () =>
+    toast.warning(
+      t(
+        'The quota of this key changed while you were editing. The form shows the current values; check them and save again.'
+      )
+    )
+
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ['console'] })
+
+  const showCreated = async (created: CreatedKey) => {
+    if (await copyToClipboard(created.key)) {
+      toast.success(
+        t('Created {{name}}; the key is copied', { name: created.name })
+      )
+    } else {
+      setRevealed(created)
+    }
+  }
 
   const create = useMutation({
     mutationFn: (values: CreateKeyValues) =>
       createKeyAndFetch(
         buildCreateKeyPayload(values),
-        t('Failed to create key')
+        t('Failed to create key'),
+        // The key exists from here on; show it in the list right away.
+        () => void invalidate()
       ),
     onSuccess: async (created) => {
       setCreateOpen(false)
       void invalidate()
-      if (await copyToClipboard(created.key)) {
-        toast.success(
-          t('Created {{name}}; the key is copied', { name: created.name })
-        )
-      } else {
-        setRevealed(created)
-      }
+      await showCreated(created)
     },
-    onError: (error) => handleServerError(error, t('Failed to create key')),
+    onError: (error) => {
+      if (error instanceof KeyRevealError) {
+        // The key was created. Retrying must only read it, never create.
+        setCreateOpen(false)
+        setUnrevealed({ id: error.id, name: error.keyName })
+        void invalidate()
+        return
+      }
+      handleServerError(error, t('Failed to create key'))
+    },
+  })
+
+  const retryReveal = useMutation({
+    mutationFn: async (target: { id: number; name: string }) => ({
+      ...target,
+      key: await revealKey(target.id, t('Failed to copy')),
+    }),
+    onSuccess: async (created) => {
+      setUnrevealed(null)
+      await showCreated(created)
+    },
+    onError: (error) => handleServerError(error, t('Failed to copy')),
   })
 
   const update = useMutation({
@@ -193,11 +234,7 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
         return
       }
       // Nothing was saved. Refill the dialog with the key as it is now.
-      toast.warning(
-        t(
-          'The quota of this key changed while you were editing. The form shows the current values; check them and save again.'
-        )
-      )
+      warnConflict()
       const refreshed = await keys.refetch()
       const fresh = refreshed.data?.find((item) => item.id === args.key.id)
       if (fresh) setToEdit(fresh)
@@ -211,6 +248,9 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
       const next =
         key.status === STATUS_ENABLED ? STATUS_DISABLED : STATUS_ENABLED
       const response = await updateApiKeyStatus(key.id, next)
+      if (!response.success && response.code === 'token_conflict') {
+        throw new KeyConflictError()
+      }
       if (!response.success) {
         throw createServerError(response, t('Update failed'))
       }
@@ -220,7 +260,16 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
       toast.success(next === STATUS_ENABLED ? t('Enabled') : t('Disabled'))
       void invalidate()
     },
-    onError: (error) => handleServerError(error, t('Update failed')),
+    onError: (error) => {
+      if (!(error instanceof KeyConflictError)) {
+        handleServerError(error, t('Update failed'))
+        return
+      }
+      // The key changed meanwhile and nothing was saved: show it as it is.
+      warnConflict()
+      void keys.refetch()
+      void invalidate()
+    },
   })
 
   const remove = useMutation({
@@ -439,6 +488,27 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
         isLoading={remove.isPending}
         handleConfirm={() => toDelete && remove.mutate(toDelete)}
       />
+
+      <Dialog
+        open={unrevealed != null}
+        onOpenChange={(open) => !open && setUnrevealed(null)}
+        title={t('Key created')}
+        description={t(
+          'Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.',
+          { name: unrevealed?.name ?? '' }
+        )}
+      >
+        <div className='flex justify-end'>
+          <Button
+            type='button'
+            className={TERM_BUTTON_PRIMARY}
+            disabled={retryReveal.isPending}
+            onClick={() => unrevealed && retryReveal.mutate(unrevealed)}
+          >
+            {t('Load the key again')}
+          </Button>
+        </div>
+      </Dialog>
 
       <Dialog
         open={revealed != null}

@@ -2846,7 +2846,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "Projets liés",
     "footer.defaultCopyright": "Tous droits réservés.",
-    "footer.new\u0061pi.projectAttributionSuffix": "Tous droits réservés. Conçu et développé par les contributeurs du projet.",
+    "footer.newapi.projectAttributionSuffix": "Tous droits réservés. Conçu et développé par les contributeurs du projet.",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "Pour les canaux personnalisés avancés, ceci ne s’applique qu’aux routes /v1/responses sans conversion de protocole.",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "Pour les canaux ajoutés après le 10 mai 2025, pas besoin de supprimer \".\" des noms de modèles lors du déploiement",
     "For private deployments, format: https://fastgpt.run/api/openapi": "Pour les déploiements privés, format : https://fastgpt.run/api/openapi",
@@ -7652,6 +7652,9 @@
     "Streamed": "Streamed",
     "Not streamed": "Not streamed",
     "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "Le quota de cette clé a changé pendant votre modification. Le formulaire affiche les valeurs actuelles ; vérifiez-les puis enregistrez à nouveau.",
-    "Could not get a price for this amount. Please try again in a moment.": "Impossible d’obtenir un prix pour ce montant. Réessayez dans un instant."
+    "Could not get a price for this amount. Please try again in a moment.": "Impossible d’obtenir un prix pour ce montant. Réessayez dans un instant.",
+    "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.": "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.",
+    "Load the key again": "Load the key again",
+    "Your balance will update shortly.": "Your balance will update shortly."
   }
 }

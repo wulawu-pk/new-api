@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -130,6 +130,16 @@ describe('wallet history', () => {
       paid: 5,
       creditQuota: 16675000,
     })
+  })
+
+  it('shows the method the payment actually arrived through', () => {
+    const [row] = mergeHistory(
+      [{ ...ORDER, actual_payment_method: 'usdc.trc20' }],
+      []
+    )
+    expect(row).toMatchObject({ method: 'usdc.trc20', coin: 'USDC' })
+    const [plain] = mergeHistory([{ ...ORDER, actual_payment_method: '' }], [])
+    expect(plain).toMatchObject({ method: 'usdt.bsc', coin: 'USDT' })
   })
 
   it('labels crypto methods by coin and network', () => {
@@ -313,5 +323,40 @@ describe('console online top-up: coin quote', () => {
 
     expect(await screen.findAllByText('Confirm Payment')).not.toHaveLength(0)
     expect(error).not.toHaveBeenCalled()
+  })
+
+  it('orders the confirmed quote and opens no checkout without a matching credit', async () => {
+    vi.mocked(walletApi.requestPayment).mockResolvedValue({
+      success: true,
+      message: 'success',
+      data: { checkout_url: 'https://peroai.cc/pay/checkout/T' },
+      url: 'https://peroai.cc/pay/checkout/T',
+    })
+    const open = vi.spyOn(window, 'open')
+    const onPaid = vi.fn()
+    vi.mocked(walletApi.calculateAmount).mockResolvedValue(FULL_QUOTE)
+    vi.spyOn(toast, 'error').mockImplementation(() => 0)
+    const user = userEvent.setup()
+    renderConsole(<OnlineTopupPane topupInfo={CRYPTO_TOPUP} onPaid={onPaid} />)
+    await user.click(
+      await screen.findByRole('button', { name: 'Go to payment' })
+    )
+    const dialog = await screen.findByRole('alertdialog')
+    const confirm = within(dialog).getByRole('button', {
+      name: 'Confirm Payment',
+    })
+    await waitFor(() => expect(confirm).toBeEnabled())
+    await user.click(confirm)
+
+    await waitFor(() =>
+      expect(walletApi.requestPayment).toHaveBeenCalledWith({
+        amount: 5,
+        payment_method: 'usdt.trc20',
+        expected_credit_quota: 17_750_000,
+      })
+    )
+    expect(open).not.toHaveBeenCalled()
+    expect(onPaid).not.toHaveBeenCalled()
+    open.mockRestore()
   })
 })

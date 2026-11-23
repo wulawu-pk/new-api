@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as keysApi from '@/features/keys/api'
@@ -151,6 +152,68 @@ describe('console keys page', () => {
       await screen.findByRole('dialog', { name: 'Create Key' })
     ).toBeInTheDocument()
     expect(handled).toHaveBeenCalled()
+  })
+})
+
+describe('console keys page: create and status', () => {
+  it('when the new key cannot be read, retrying reads it again and creates nothing', async () => {
+    vi.mocked(keysApi.getApiKeys).mockResolvedValue(listResponse([]) as never)
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({
+      success: true,
+      data: { id: 21, name: 'cc' },
+    })
+    vi.mocked(keysApi.fetchTokenKey)
+      .mockResolvedValueOnce({ success: false, message: 'busy' })
+      .mockResolvedValueOnce({ success: true, data: { key: 'abc' } })
+    const error = vi.spyOn(toast, 'error').mockImplementation(() => 0)
+    const user = userEvent.setup()
+    renderConsole(<ConsoleKeys openCreate />)
+
+    const dialog = await screen.findByRole('dialog', { name: 'Create Key' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'cc')
+    await user.click(within(dialog).getByRole('button', { name: 'Create it' }))
+
+    const notice = await screen.findByRole('dialog', { name: 'Key created' })
+    expect(notice).toHaveTextContent('could not be loaded')
+    expect(error).not.toHaveBeenCalled()
+    // The list is refreshed as soon as the key exists.
+    await waitFor(() =>
+      expect(vi.mocked(keysApi.getApiKeys).mock.calls.length).toBeGreaterThan(1)
+    )
+
+    await user.click(
+      within(notice).getByRole('button', { name: 'Load the key again' })
+    )
+    await waitFor(() => expect(keysApi.fetchTokenKey).toHaveBeenCalledTimes(2))
+    expect(keysApi.fetchTokenKey).toHaveBeenLastCalledWith(21)
+    expect(keysApi.createApiKey).toHaveBeenCalledTimes(1)
+  })
+
+  it('on a status conflict refreshes the list and explains why', async () => {
+    vi.mocked(keysApi.getApiKeys).mockResolvedValue(
+      listResponse([KEY]) as never
+    )
+    vi.mocked(keysApi.updateApiKeyStatus).mockResolvedValue({
+      success: false,
+      code: 'token_conflict',
+      message: 'changed',
+    })
+    const warning = vi.spyOn(toast, 'warning').mockImplementation(() => 0)
+    const error = vi.spyOn(toast, 'error').mockImplementation(() => 0)
+    const user = userEvent.setup()
+    renderConsole(<ConsoleKeys />)
+
+    await user.click(await screen.findByRole('button', { name: 'Disable' }))
+
+    await waitFor(() =>
+      expect(warning).toHaveBeenCalledWith(
+        expect.stringContaining('The quota of this key changed')
+      )
+    )
+    expect(error).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(vi.mocked(keysApi.getApiKeys).mock.calls.length).toBeGreaterThan(1)
+    )
   })
 })
 

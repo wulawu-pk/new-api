@@ -20,6 +20,7 @@ import i18next from 'i18next'
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 
+import { clearPendingRedeemCode } from '@/features/redeem/lib/pending-code'
 import { getSelf } from '@/lib/api'
 import { formatQuota } from '@/lib/format'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -31,45 +32,77 @@ import { extractRedemptionCode } from '../lib/redemption-code'
 // Redemption Hook
 // ============================================================================
 
+/** Shown when the card was activated but the balance could not be read. */
+export const BALANCE_REFRESH_PENDING = 'Your balance will update shortly.'
+
+/** Reads the balance after a redemption; a failure is only a notice. */
+export async function refreshBalanceOrNotify(): Promise<number | null> {
+  try {
+    const self = await getSelf()
+    if (self?.success && typeof self.data?.quota === 'number') {
+      return self.data.quota
+    }
+  } catch {
+    // fall through to the notice
+  }
+  toast.info(i18next.t(BALANCE_REFRESH_PENDING))
+  return null
+}
+
 export function useRedemption() {
   const [redeeming, setRedeeming] = useState(false)
 
-  /** Resolves to the quota added, or 0 when the code was not redeemed. */
-  const redeemCode = useCallback(async (input: string): Promise<number> => {
-    const code = extractRedemptionCode(input ?? '')
-    if (!code) {
-      toast.error(
-        (input ?? '').trim()
-          ? i18next.t('Invalid redemption code format')
-          : i18next.t('Please enter a redemption code')
-      )
-      return 0
-    }
-
-    try {
-      setRedeeming(true)
-      const response = await redeemTopupCode({ key: code })
-
-      if (response.success && response.data) {
-        const quotaAdded = response.data
-        toast.success(
-          i18next.t('Redemption successful! Added: {{quota}}', {
-            quota: formatQuota(quotaAdded),
-          })
+  /**
+   * Resolves to the quota added, or 0 when the code was not redeemed. Once
+   * the server accepts the code the redemption counts as done: a balance
+   * refresh that fails afterwards only shows a notice. Pass
+   * `refreshBalance: false` when the caller reads the balance itself.
+   */
+  const redeemCode = useCallback(
+    async (
+      input: string,
+      options: { refreshBalance?: boolean } = {}
+    ): Promise<number> => {
+      const code = extractRedemptionCode(input ?? '')
+      if (!code) {
+        toast.error(
+          (input ?? '').trim()
+            ? i18next.t('Invalid redemption code format')
+            : i18next.t('Please enter a redemption code')
         )
-        await getSelf()
-        return quotaAdded
+        return 0
       }
 
-      handleServerError(response, i18next.t('Redemption failed'))
-      return 0
-    } catch (_error) {
-      handleServerError(_error, i18next.t('Redemption failed'))
-      return 0
-    } finally {
-      setRedeeming(false)
-    }
-  }, [])
+      let quotaAdded = 0
+      try {
+        setRedeeming(true)
+        const response = await redeemTopupCode({ key: code })
+        if (!response.success || !response.data) {
+          handleServerError(response, i18next.t('Redemption failed'))
+          return 0
+        }
+        quotaAdded = response.data
+      } catch (error) {
+        handleServerError(error, i18next.t('Redemption failed'))
+        return 0
+      } finally {
+        setRedeeming(false)
+      }
+
+      // The code is used up; never offer it again.
+      clearPendingRedeemCode()
+      toast.success(
+        i18next.t('Redemption successful! Added: {{quota}}', {
+          quota: formatQuota(quotaAdded),
+        })
+      )
+      if (options.refreshBalance !== false) {
+        await refreshBalanceOrNotify()
+      }
+      return quotaAdded
+    },
+    []
+  )
 
   return {
     redeeming,

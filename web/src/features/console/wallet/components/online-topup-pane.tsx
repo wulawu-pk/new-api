@@ -162,11 +162,9 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
 
   const confirm = async () => {
     if (!method || !quoteReady) return
-    const ok = await payment.processPayment(
-      amount,
-      method.type,
-      payment.quote.creditQuota
-    )
+    // The order is placed from the quote the dialog shows, as one snapshot.
+    const confirmed = payment.quote
+    const ok = await payment.processPayment(amount, method.type, confirmed)
     if (ok) {
       setConfirmOpen(false)
       props.onPaid()
@@ -320,7 +318,7 @@ export function OnlineTopupPane(props: OnlineTopupPaneProps) {
         onOpenChange={setConfirmOpen}
         onConfirm={confirm}
         topupAmount={amount}
-        paymentAmount={payment.amount}
+        paymentAmount={payment.quote.amount}
         paymentMethod={method}
         calculating={payment.calculating}
         quoteReady={quoteReady}

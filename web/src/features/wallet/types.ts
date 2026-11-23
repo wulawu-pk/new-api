@@ -286,8 +286,13 @@ export interface TopupRecord {
   credit_quota?: number
   /** Trade/order number */
   trade_no: string
-  /** Payment method type */
+  /** Payment method type the order was placed with */
   payment_method: string
+  /**
+   * peroai: method the payment actually arrived through (the gateway can
+   * report another network than the one ordered); empty when unknown
+   */
+  actual_payment_method?: string
   /** Creation timestamp */
   create_time: number
   /** Completion timestamp */
