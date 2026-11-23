@@ -56,7 +56,7 @@ func GetTask(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"task_id":     task.TaskID,
-		"platform":    task.Platform,
+		"platform":    relay.PublicTaskPlatform(task),
 		"status":      task.Status,
 		"progress":    task.Progress,
 		"fail_reason": failReason,
@@ -472,6 +472,8 @@ func tasksToDto(tasks []*model.Task, fillUser bool, viewerRole int) []*dto.TaskD
 			// The console reads results through the artifacts endpoint.
 			item.ChannelId = 0
 			item.Data = nil
+			// The task plugin key names the upstream (e.g. "supergpt-video").
+			item.Platform = relay.PublicTaskPlatform(task)
 		}
 		if viewerRole >= common.RoleAdminUser {
 			adminInfo := &dto.TaskAdminInfo{}

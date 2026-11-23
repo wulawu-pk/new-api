@@ -1,11 +1,15 @@
 package claude
 
 import (
+	"io"
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
@@ -50,8 +54,12 @@ func TestHandleClaudeResponseDataCapturesKiroCredits(t *testing.T) {
 	assert.Equal(t, "kiro", info.ProviderUsage["provider"])
 	assert.Equal(t, 0.0382, info.ProviderUsage["credits"])
 	assert.Equal(t, 1.25, info.ProviderUsage["context_usage_percentage"])
-	// The client still receives the upstream body unchanged.
-	assert.Equal(t, body, w.Body.String())
+	// The client gets the upstream body minus provider_usage.
+	assert.NotContains(t, w.Body.String(), "provider_usage")
+	assert.NotContains(t, w.Body.String(), "kiro")
+	assert.JSONEq(t, `{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-5-5",`+
+		`"content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn",`+
+		`"usage":{"input_tokens":709,"output_tokens":236}}`, w.Body.String())
 }
 
 func TestHandleClaudeResponseDataWithoutProviderUsage(t *testing.T) {
@@ -112,10 +120,9 @@ func TestHandleStreamResponseDataCapturesKiroCreditsFromMessageDelta(t *testing.
 			assert.Equal(t, 0.0442, info.ProviderUsage["credits"])
 			assert.Equal(t, 2.5, info.ProviderUsage["context_usage_percentage"])
 			assert.Equal(t, 49, state.Usage.CompletionTokens)
-			if format == types.RelayFormatClaude {
-				// The message_delta usage patch keeps provider_usage for the client.
-				assert.Contains(t, w.Body.String(), `"provider_usage"`)
-			}
+			// Billing captured it; the client never sees it.
+			assert.NotContains(t, w.Body.String(), "provider_usage")
+			assert.NotContains(t, w.Body.String(), "kiro")
 		})
 	}
 }
@@ -160,4 +167,106 @@ func TestCaptureClaudeProviderUsageDropsNonFinitePercentage(t *testing.T) {
 	assert.Equal(t, 0.5, info.ProviderUsage["credits"])
 	_, hasPercentage := info.ProviderUsage["context_usage_percentage"]
 	assert.False(t, hasPercentage)
+}
+
+func TestHandleClaudeResponseDataStripsProviderUsageInConvertedFormats(t *testing.T) {
+	body := `{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-5-5",` +
+		`"content":[{"type":"text","text":"hi"}],"stop_reason":"end_turn",` +
+		`"usage":{"input_tokens":709,"output_tokens":236},` +
+		`"provider_usage":{"provider":"kiro","credits":0.0061,"context_usage_percentage":0.19}}`
+	for _, format := range []types.RelayFormat{types.RelayFormatOpenAI, types.RelayFormatOpenAIResponses} {
+		t.Run(string(format), func(t *testing.T) {
+			c, w := newKiroTestContext(t)
+			info := newKiroRelayInfo(format)
+			require.Nil(t, HandleClaudeResponseData(c, info, &ClaudeResponseInfo{Usage: &dto.Usage{}}, nil, []byte(body)))
+			require.NotNil(t, info.ProviderUsage)
+			assert.Equal(t, 0.0061, info.ProviderUsage["credits"])
+			assert.NotContains(t, w.Body.String(), "provider_usage")
+			assert.NotContains(t, w.Body.String(), "kiro")
+		})
+	}
+}
+
+// kiro also puts provider_usage inside message_start.message; every event the
+// client receives must be clean while billing still sees the delta credits.
+func TestHandleStreamResponseDataStripsProviderUsageFromEveryEvent(t *testing.T) {
+	c, w := newKiroTestContext(t)
+	info := newKiroRelayInfo(types.RelayFormatClaude)
+	state := &ClaudeResponseInfo{Usage: &dto.Usage{}}
+	events := []string{
+		`{"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-5-5","content":[],` +
+			`"usage":{"input_tokens":3470,"output_tokens":1},"provider_usage":{"provider":"kiro","credits":0,"context_usage_percentage":0.19}}}`,
+		`{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`,
+		`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hello"}}`,
+		`{"type":"content_block_stop","index":0}`,
+		`{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":49},` +
+			`"provider_usage":{"provider":"kiro","credits":0.0061,"context_usage_percentage":0.19}}`,
+		`{"type":"message_stop"}`,
+	}
+	for _, event := range events {
+		require.Nil(t, HandleStreamResponseData(c, info, state, event))
+	}
+	HandleStreamFinalResponse(c, info, state)
+
+	out := w.Body.String()
+	assert.NotContains(t, out, "provider_usage")
+	assert.NotContains(t, out, "kiro")
+	assert.Contains(t, out, `"input_tokens":3470`)
+	assert.Contains(t, out, `"output_tokens":49`)
+	require.NotNil(t, info.ProviderUsage)
+	assert.Equal(t, "kiro", info.ProviderUsage["provider"])
+	assert.Equal(t, 0.0061, info.ProviderUsage["credits"])
+	assert.Equal(t, 0.19, info.ProviderUsage["context_usage_percentage"])
+}
+
+func TestStripClaudeProviderUsageLeavesOtherBodiesUntouched(t *testing.T) {
+	body := []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hi"}}`)
+	out := stripClaudeProviderUsage(body)
+	assert.Equal(t, string(body), string(out))
+	// A text that merely mentions the word is not rewritten.
+	mention := []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"provider_usage"}}`)
+	assert.Equal(t, string(mention), string(stripClaudeProviderUsage(mention)))
+}
+
+// The converted stream paths (Claude -> Chat, Claude -> Responses) rebuild
+// events from dto.ClaudeResponse, so provider_usage cannot reach the client;
+// this pins that down end to end through the SSE scanner.
+func TestClaudeConvertedStreamsDoNotLeakProviderUsage(t *testing.T) {
+	previousTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = previousTimeout })
+	stream := "data: " + `{"type":"message_start","message":{"id":"msg_1","type":"message","model":"claude-sonnet-5-5","role":"assistant","content":[],` +
+		`"usage":{"input_tokens":2,"output_tokens":0},"provider_usage":{"provider":"kiro","credits":0,"context_usage_percentage":0.19}}}` +
+		"\n\ndata: " + `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}` +
+		"\n\ndata: " + `{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hello"}}` +
+		"\n\ndata: " + `{"type":"content_block_stop","index":0}` +
+		"\n\ndata: " + `{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":3},` +
+		`"provider_usage":{"provider":"kiro","credits":0.0061,"context_usage_percentage":0.19}}` +
+		"\n\ndata: " + `{"type":"message_stop"}` + "\n\n"
+	for _, tc := range []struct {
+		name    string
+		format  types.RelayFormat
+		handler func(*gin.Context, *http.Response, *relaycommon.RelayInfo) (*dto.Usage, *types.NewAPIError)
+	}{
+		{"claude", types.RelayFormatClaude, ClaudeStreamHandler},
+		{"chat", types.RelayFormatOpenAI, ClaudeStreamHandler},
+		{"responses", types.RelayFormatOpenAIResponses, ClaudeResponsesStreamHandler},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, w := newKiroTestContext(t)
+			info := newKiroRelayInfo(tc.format)
+			info.IsStream = true
+			info.DisablePing = true
+			info.StartTime = time.Now()
+			resp := &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(stream))}
+			_, apiErr := tc.handler(c, resp, info)
+			require.Nil(t, apiErr)
+			out := w.Body.String()
+			assert.Contains(t, out, "hello")
+			assert.NotContains(t, out, "provider_usage")
+			assert.NotContains(t, out, "kiro")
+			require.NotNil(t, info.ProviderUsage)
+			assert.Equal(t, 0.0061, info.ProviderUsage["credits"])
+		})
+	}
 }

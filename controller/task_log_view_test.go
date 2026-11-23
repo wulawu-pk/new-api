@@ -157,3 +157,31 @@ func TestTaskLogDTOHidesChannelAndUpstreamDataFromUsers(t *testing.T) {
 	assert.Equal(t, 61, adminView.ChannelId)
 	assert.Contains(t, string(adminView.Data), "upstream-video-id")
 }
+
+func TestTaskLogDTOHidesTaskPluginPlatformFromUsers(t *testing.T) {
+	for _, tc := range []struct {
+		platform constant.TaskPlatform
+		action   string
+		want     string
+	}{
+		{"supergpt-video", constant.TaskActionTextToVideo, "Video"},
+		{"supergpt-video", constant.TaskActionImageToVideo, "Video"},
+		{"supergpt-video", "generate", "Video"},
+		{"supergpt-video", constant.TaskActionRemix, "Video"},
+		{"image-plugin", "image_generation", "Image"},
+		{"document-parser", "parse", "Task"},
+		{"55", constant.TaskActionTextToVideo, "Video"},
+		{constant.TaskPlatformSuno, "MUSIC", "suno"},
+	} {
+		task := &model.Task{TaskID: "task_x", Platform: tc.platform, Action: tc.action}
+		userView := tasksToDto([]*model.Task{task}, false, common.RoleCommonUser)[0]
+		assert.Equal(t, tc.want, userView.Platform, string(tc.platform)+"/"+tc.action)
+		adminView := tasksToDto([]*model.Task{task}, false, common.RoleAdminUser)[0]
+		assert.Equal(t, string(tc.platform), adminView.Platform)
+	}
+
+	task := &model.Task{TaskID: "task_video", Platform: "supergpt-video", Action: constant.TaskActionTextToVideo}
+	encoded, err := common.Marshal(tasksToDto([]*model.Task{task}, false, common.RoleCommonUser)[0])
+	require.NoError(t, err)
+	assert.NotContains(t, string(encoded), "supergpt")
+}

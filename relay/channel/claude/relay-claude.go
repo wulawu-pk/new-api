@@ -21,6 +21,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 func stopReasonClaude2OpenAI(reason string) string {
@@ -92,6 +93,9 @@ func FormatClaudeResponseInfo(claudeResponse *dto.ClaudeResponse, oaiResponse *d
 // fork). kiro relays bill per credit, not per token, and send
 // provider_usage {provider, credits, context_usage_percentage} at the top
 // level of a non-stream response and of the final message_delta event.
+// The field is stripped from client bytes after capture (see
+// stripClaudeProviderUsage); converted formats never carry it because
+// dto.ClaudeResponse has no such field.
 // Credits are not linear in tokens, so they are passed through to tiered_expr
 // settlement as u("credits") / u("provider") instead of being estimated.
 // maxProviderCredits bounds a single request's upstream-reported credits. A
@@ -126,6 +130,28 @@ func captureClaudeProviderUsage(info *relaycommon.RelayInfo, data []byte) {
 		}
 	}
 	info.ProviderUsage = facts
+}
+
+// providerUsageKey is kiro's billing field. It names the upstream and carries
+// our cost, so it is read for billing and then removed from client bytes.
+const providerUsageKey = "provider_usage"
+
+// stripClaudeProviderUsage removes provider_usage from the top level and from
+// message (message_start) of a Claude response or stream event. Bodies that
+// do not mention the key are returned untouched without parsing.
+func stripClaudeProviderUsage(data []byte) []byte {
+	if len(data) == 0 || !strings.Contains(string(data), providerUsageKey) {
+		return data
+	}
+	for _, path := range []string{providerUsageKey, "message." + providerUsageKey} {
+		if !gjson.GetBytes(data, path).Exists() {
+			continue
+		}
+		if stripped, err := sjson.DeleteBytes(data, path); err == nil {
+			data = stripped
+		}
+	}
+	return data
 }
 
 func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *ClaudeResponseInfo, data string) *types.NewAPIError {
@@ -169,6 +195,9 @@ func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 			}
 		}
 		countClaudeStreamBillableTools(info, &claudeResponse)
+		if strings.Contains(data, providerUsageKey) {
+			data = string(stripClaudeProviderUsage([]byte(data)))
+		}
 		helper.ClaudeChunkData(c, claudeResponse, data)
 	} else if info.RelayFormat == types.RelayFormatOpenAI {
 		state, err := claudeToChatStreamState(info)
@@ -455,7 +484,9 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 			return types.NewError(err, types.ErrorCodeBadResponseBody)
 		}
 	case types.RelayFormatClaude:
-		responseData = data
+		// provider_usage was captured above for billing; it must not reach
+		// the client.
+		responseData = stripClaudeProviderUsage(data)
 	case types.RelayFormatGemini:
 		{
 			convertResult, convertErr := service.ConvertResponse(c, info, types.RelayFormatGemini, &claudeResponse)

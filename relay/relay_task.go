@@ -515,9 +515,12 @@ func videoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *d
 	}
 
 	// 通用 TaskDto 格式
+	taskDto := TaskModel2Dto(originTask)
+	// Customer API: never name the task plugin (upstream).
+	taskDto.Platform = PublicTaskPlatform(originTask)
 	respBody, err = common.Marshal(dto.TaskResponse[any]{
 		Code: "success",
-		Data: TaskModel2Dto(originTask),
+		Data: taskDto,
 	})
 	if err != nil {
 		taskResp = service.TaskErrorWrapper(err, "marshal_response_failed", http.StatusInternalServerError)
@@ -659,6 +662,38 @@ func mapTaskStatusToSimple(status model.TaskStatus) string {
 		return "queued"
 	default:
 		return "processing"
+	}
+}
+
+// Neutral platform labels shown to customers instead of a task plugin key.
+// The frontend renders platform through t(), and these three keys already
+// have translations in every locale.
+const (
+	PublicTaskPlatformVideo = "Video"
+	PublicTaskPlatformImage = "Image"
+	PublicTaskPlatformTask  = "Task"
+)
+
+// PublicTaskPlatform is the platform a customer may see. Task plugin keys
+// (e.g. "supergpt-video") and channel-type numbers name the upstream, so they
+// are replaced with a label derived from the action. Suno and Midjourney keep
+// their value: the console switches its legacy viewers on it.
+func PublicTaskPlatform(task *model.Task) string {
+	if task == nil {
+		return ""
+	}
+	switch task.Platform {
+	case constant.TaskPlatformSuno, constant.TaskPlatformMidjourney:
+		return string(task.Platform)
+	}
+	action := strings.ToLower(constant.NormalizeTaskAction(task.Action))
+	switch {
+	case strings.Contains(action, "video") || action == constant.TaskActionRemix:
+		return PublicTaskPlatformVideo
+	case strings.Contains(action, "image"):
+		return PublicTaskPlatformImage
+	default:
+		return PublicTaskPlatformTask
 	}
 }
 

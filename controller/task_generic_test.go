@@ -739,3 +739,24 @@ func TestSelfTaskMediaURLGuard(t *testing.T) {
 	assert.True(t, isTaskMediaFallbackLoop(remoteURL.String(), "task-1"))
 	assert.False(t, isTaskMediaFallbackLoop(remoteURL.String(), "task-2"))
 }
+
+func TestGetTaskHidesTaskPluginPlatform(t *testing.T) {
+	task := setupGenericTaskTest(t)
+	task.Platform = "supergpt-video"
+	task.Action = constant.TaskActionTextToVideo
+	require.NoError(t, model.DB.Save(task).Error)
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Set("id", 7)
+	c.Params = gin.Params{{Key: "key", Value: task.TaskID}}
+	c.Request = httptest.NewRequest(http.MethodGet, "/v1/tasks/"+task.TaskID, nil)
+
+	GetTask(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var response map[string]any
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+	assert.Equal(t, "Video", response["platform"])
+	assert.NotContains(t, recorder.Body.String(), "supergpt")
+}
