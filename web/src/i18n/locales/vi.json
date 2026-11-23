@@ -7673,6 +7673,10 @@
     "Back on the site. Your balance updates on its own once the payment is confirmed.": "Bạn đã quay lại trang. Số dư sẽ tự cập nhật khi thanh toán được xác nhận.",
     "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "Đã xảy ra lỗi nội bộ. Vui lòng thử lại sau hoặc liên hệ hỗ trợ kèm mã yêu cầu {{request_id}}",
     "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Không thể xóa khóa trang hoặc khóa bí mật Turnstile khi xác minh Turnstile đang bật. Hãy tắt Turnstile trước.",
-    "Turnstile key configuration status is read-only": "Trạng thái cấu hình khóa Turnstile chỉ đọc"
+    "Turnstile key configuration status is read-only": "Trạng thái cấu hình khóa Turnstile chỉ đọc",
+    "Content moderation failed. Please adjust the content and try again.": "Nội dung không vượt qua kiểm duyệt. Vui lòng điều chỉnh nội dung và thử lại.",
+    "Invalid parameters. Please check and try again.": "Tham số không hợp lệ. Vui lòng kiểm tra và thử lại.",
+    "Generation timed out. Please try again later.": "Tạo nội dung đã hết thời gian. Vui lòng thử lại sau.",
+    "Generation failed. Please try again later.": "Tạo nội dung thất bại. Vui lòng thử lại sau."
   }
 }

@@ -7673,6 +7673,10 @@
     "Back on the site. Your balance updates on its own once the payment is confirmed.": "Вы вернулись на сайт. Баланс обновится автоматически после подтверждения оплаты.",
     "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "Произошла внутренняя ошибка. Повторите попытку позже или обратитесь в поддержку, указав ID запроса {{request_id}}",
     "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Нельзя очистить ключ сайта или секретный ключ Turnstile, пока проверка Turnstile включена. Сначала отключите Turnstile.",
-    "Turnstile key configuration status is read-only": "Состояние настройки ключа Turnstile доступно только для чтения"
+    "Turnstile key configuration status is read-only": "Состояние настройки ключа Turnstile доступно только для чтения",
+    "Content moderation failed. Please adjust the content and try again.": "Контент не прошёл модерацию. Измените содержимое и повторите попытку.",
+    "Invalid parameters. Please check and try again.": "Недопустимые параметры. Проверьте их и повторите попытку.",
+    "Generation timed out. Please try again later.": "Время генерации истекло. Повторите попытку позже.",
+    "Generation failed. Please try again later.": "Генерация не удалась. Повторите попытку позже."
   }
 }

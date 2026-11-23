@@ -7673,6 +7673,10 @@
     "Back on the site. Your balance updates on its own once the payment is confirmed.": "已回到本站，付款确认后余额会自动更新。",
     "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "服务内部出错，请稍后再试，或带上请求编号 {{request_id}} 联系客服",
     "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Turnstile 校验已开启，不能清空站点密钥或私钥，请先关闭 Turnstile",
-    "Turnstile key configuration status is read-only": "Turnstile 密钥配置状态为只读"
+    "Turnstile key configuration status is read-only": "Turnstile 密钥配置状态为只读",
+    "Content moderation failed. Please adjust the content and try again.": "内容审核未通过，请调整内容后重试",
+    "Invalid parameters. Please check and try again.": "参数不符合要求，请检查后重试",
+    "Generation timed out. Please try again later.": "生成超时，请稍后重试",
+    "Generation failed. Please try again later.": "生成失败，请稍后重试"
   }
 }

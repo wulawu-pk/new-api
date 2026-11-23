@@ -7673,6 +7673,10 @@
     "Back on the site. Your balance updates on its own once the payment is confirmed.": "Back on the site. Your balance updates on its own once the payment is confirmed.",
     "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "An internal error occurred. Please try again later or contact support with request ID {{request_id}}",
     "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.",
-    "Turnstile key configuration status is read-only": "Turnstile key configuration status is read-only"
+    "Turnstile key configuration status is read-only": "Turnstile key configuration status is read-only",
+    "Content moderation failed. Please adjust the content and try again.": "Content moderation failed. Please adjust the content and try again.",
+    "Invalid parameters. Please check and try again.": "Invalid parameters. Please check and try again.",
+    "Generation timed out. Please try again later.": "Generation timed out. Please try again later.",
+    "Generation failed. Please try again later.": "Generation failed. Please try again later."
   }
 }

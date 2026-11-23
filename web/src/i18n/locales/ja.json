@@ -7673,6 +7673,10 @@
     "Back on the site. Your balance updates on its own once the payment is confirmed.": "サイトに戻りました。支払いが確認されると残高は自動で更新されます。",
     "An internal error occurred. Please try again later or contact support with request ID {{request_id}}": "内部エラーが発生しました。しばらくしてから再試行するか、リクエスト ID {{request_id}} を添えてサポートにお問い合わせください",
     "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.": "Turnstile 検証が有効な間は、サイトキーまたはシークレットキーを空にできません。先に Turnstile を無効にしてください。",
-    "Turnstile key configuration status is read-only": "Turnstile キーの設定状態は読み取り専用です"
+    "Turnstile key configuration status is read-only": "Turnstile キーの設定状態は読み取り専用です",
+    "Content moderation failed. Please adjust the content and try again.": "コンテンツ審査を通過しませんでした。内容を調整して再試行してください。",
+    "Invalid parameters. Please check and try again.": "パラメーターが無効です。確認して再試行してください。",
+    "Generation timed out. Please try again later.": "生成がタイムアウトしました。しばらくしてから再試行してください。",
+    "Generation failed. Please try again later.": "生成に失敗しました。しばらくしてから再試行してください。"
   }
 }
