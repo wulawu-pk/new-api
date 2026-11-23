@@ -156,7 +156,7 @@ describe('cache hit rate', () => {
 describe('credit-billed logs', () => {
   test('quote credits and the per-credit price instead of the multiplier', () => {
     renderDetails(makeLog(kiroOther({ credits: 0.0442 }), 5525, 94), false)
-    expect(rowValue('Billing Mode')).toBe('Billed by upstream credits')
+    expect(rowValue('Billing Mode')).toBe('Billed per credit')
     expect(rowValue('Credits used')).toBe('0.0442')
     expect(rowValue('Per credit')).toBe('$0.25')
     expect(screen.queryByText('Group Ratio')).toBeNull()

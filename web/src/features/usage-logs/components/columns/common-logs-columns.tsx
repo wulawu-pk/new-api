@@ -200,7 +200,7 @@ function buildTypeDetailSegments(
     }
     segments.push({
       text:
-        parts.length > 0 ? parts.join(' · ') : t('Billed by upstream credits'),
+        parts.length > 0 ? parts.join(' · ') : t('Billed per credit'),
     })
   } else if (isTieredExpr && other.is_task) {
     const taskPrices = readTierPrices(other)

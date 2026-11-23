@@ -70,15 +70,16 @@ export const PREFERRED_GROUP_ORDER = [
 
 /**
  * Groups whose channel reports upstream credits. A shared Claude model carries
- * one expression for every group, `u("provider") == "kiro" ? tier("credit", …)
- * : <token price>`, and only these groups ever take the credit branch. Every
- * other section must quote the token branch, or a token-billed group would
- * advertise a per-credit price it never charges.
+ * one expression for every group, `u("credits") != nil ? tier("credit", …)
+ * : <token price>` (older configs test `u("provider") == "…"` instead), and
+ * only these groups ever take the credit branch. Every other section must
+ * quote the token branch, or a token-billed group would advertise a
+ * per-credit price it never charges.
  */
 export const CREDIT_BILLED_GROUPS = new Set(['claude-kiro'])
 
 const PROVIDER_CREDIT_BRANCH =
-  /^\s*u\(\s*"provider"\s*\)\s*==\s*"[^"]*"\s*\?\s*tier\(\s*"credit"\s*,[^?:]*\)\s*:\s*([\s\S]+)$/
+  /^\s*u\(\s*"(?:provider|credits)"\s*\)\s*(?:==\s*"[^"]*"|!=\s*nil)\s*\?\s*tier\(\s*"credit"\s*,[^?:]*\)\s*:\s*([\s\S]+)$/
 
 /** The token-priced remainder of a provider-conditional credit expression. */
 export function stripProviderCreditBranch(expression: string): string | null {
