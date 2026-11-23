@@ -249,8 +249,17 @@ func UpdateOption(c *gin.Context) {
 			return
 		}
 	case "TurnstileCheckEnabled":
-		if option.Value == "true" && common.TurnstileSiteKey == "" {
+		// Verification sends TurnstileSecretKey to Cloudflare, and the login
+		// page needs TurnstileSiteKey, so both must be set before enabling.
+		if option.Value == "true" && (strings.TrimSpace(common.TurnstileSiteKey) == "" || strings.TrimSpace(common.TurnstileSecretKey) == "") {
 			common.ApiErrorT(c, "Cannot enable Turnstile verification. Enter the Turnstile settings first.")
+			return
+		}
+	case "TurnstileSiteKey", "TurnstileSecretKey":
+		// GetOptions hides both keys and the console sends only fields the
+		// administrator changed, so an empty value here really clears the key.
+		if common.TurnstileCheckEnabled && strings.TrimSpace(option.Value.(string)) == "" {
+			common.ApiErrorT(c, "Cannot clear the Turnstile site key or secret key while Turnstile verification is enabled. Disable Turnstile first.")
 			return
 		}
 	case "TelegramOAuthEnabled":

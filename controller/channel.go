@@ -1277,7 +1277,7 @@ func UpdateChannelStatus(c *gin.Context) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
-	changed := model.UpdateChannelStatus(id, "", req.Status, "manual operation")
+	changed := model.UpdateChannelStatusManual(id, "", req.Status, "manual operation")
 	if changed {
 		model.InitChannelCache()
 		if req.Status != common.ChannelStatusEnabled {
@@ -1305,7 +1305,7 @@ func BatchUpdateChannelStatus(c *gin.Context) {
 	changedCount := 0
 	var disabledIDs []int
 	for _, id := range req.Ids {
-		if model.UpdateChannelStatus(id, "", req.Status, "manual batch operation") {
+		if model.UpdateChannelStatusManual(id, "", req.Status, "manual batch operation") {
 			changedCount++
 			if req.Status != common.ChannelStatusEnabled {
 				disabledIDs = append(disabledIDs, id)

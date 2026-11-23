@@ -537,7 +537,7 @@ func SetTaskPluginStatus(c *gin.Context) {
 					}
 					continue
 				}
-				if model.UpdateChannelStatus(channel.Id, "", common.ChannelStatusManuallyDisabled, "task plugin disabled") {
+				if model.UpdateChannelStatusManual(channel.Id, "", common.ChannelStatusManuallyDisabled, "task plugin disabled") {
 					disabledChannels++
 				}
 			}
