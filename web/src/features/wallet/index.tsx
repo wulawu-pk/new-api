@@ -232,14 +232,15 @@ export function Wallet(props: WalletProps) {
   const handlePaymentConfirm = async () => {
     if (!selectedPaymentMethod || !quoteReady) return
 
-    const confirmedCreditQuota = paymentQuote.creditQuota
+    // The order is placed from the quote the dialog shows, as one snapshot.
+    const confirmedQuote = paymentQuote
     const success = await dispatchSelectedPayment(
       selectedPaymentMethod,
       topupAmount,
       selectedWaffoMethodIndex,
       {
         regular: (amount, paymentType) =>
-          processPayment(amount, paymentType, confirmedCreditQuota),
+          processPayment(amount, paymentType, confirmedQuote),
         waffo: processWaffoPayment,
         waffoPancake: processWaffoPancakePayment,
       }

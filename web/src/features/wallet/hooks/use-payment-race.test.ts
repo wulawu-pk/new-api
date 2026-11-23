@@ -139,6 +139,16 @@ describe('payment quotes', () => {
   })
 })
 
+/** The quote the customer confirmed: 1 USDT for 3_335_000 quota. */
+const CONFIRMED = {
+  amount: 1,
+  currency: 'USDT',
+  rate: 6.67,
+  creditQuota: 3_335_000,
+  requestAmount: 1,
+  paymentType: 'usdt.trc20',
+}
+
 describe('coin-priced payment', () => {
   test('opens the checkout page the server returned', async () => {
     apiMocks.requestPayment.mockResolvedValue({
@@ -154,7 +164,7 @@ describe('coin-priced payment', () => {
 
     let ok: unknown
     await act(async () => {
-      ok = await result.current.processPayment(1, 'usdt.trc20', 3_335_000)
+      ok = await result.current.processPayment(1, 'usdt.trc20', CONFIRMED)
     })
 
     expect(ok).toBe(true)
@@ -185,7 +195,7 @@ describe('coin-priced payment', () => {
 
     let ok: unknown
     await act(async () => {
-      ok = await result.current.processPayment(1, 'usdt.trc20', 3_335_000)
+      ok = await result.current.processPayment(1, 'usdt.trc20', CONFIRMED)
     })
 
     expect(ok).toBe(false)
@@ -211,6 +221,131 @@ describe('coin-priced payment', () => {
     await act(async () => {
       ok = await result.current.processPayment(1, 'usdt.trc20')
     })
+    expect(ok).toBe(false)
+    expect(open).not.toHaveBeenCalled()
+  })
+
+  test('orders the coins of the confirmed quote, not the typed amount', async () => {
+    apiMocks.requestPayment.mockResolvedValue({
+      success: true,
+      message: 'success',
+      data: { checkout_url: 'https://peroai.cc/pay/checkout/T2' },
+      credit_quota: 3 * 3_335_000,
+    } as PaymentResponse)
+    vi.spyOn(window, 'open').mockReturnValue({ opener: {} } as Window)
+    const { result } = renderHook(() => usePayment())
+    const confirmed = {
+      ...CONFIRMED,
+      amount: 3,
+      requestAmount: 3,
+      creditQuota: 3 * 3_335_000,
+    }
+
+    let ok: unknown
+    await act(async () => {
+      ok = await result.current.processPayment(3.7, 'usdt.trc20', confirmed)
+    })
+
+    expect(ok).toBe(true)
+    expect(apiMocks.requestPayment).toHaveBeenCalledWith({
+      amount: 3,
+      payment_method: 'usdt.trc20',
+      expected_credit_quota: 3 * 3_335_000,
+    })
+  })
+
+  test('refuses a confirmed quote whose coins differ from what it was asked for', async () => {
+    const { result } = renderHook(() => usePayment())
+
+    let ok: unknown
+    await act(async () => {
+      ok = await result.current.processPayment(1, 'usdt.trc20', {
+        ...CONFIRMED,
+        amount: 2,
+      })
+    })
+
+    expect(ok).toBe(false)
+    expect(apiMocks.requestPayment).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    ['missing', undefined],
+    ['zero', 0],
+    ['fractional', 3_335_000.5],
+    ['a string', '3335000'],
+  ])(
+    'does not open the checkout when credit_quota is %s',
+    async (_label, creditQuota) => {
+      apiMocks.requestPayment.mockResolvedValue({
+        success: true,
+        message: 'success',
+        data: { checkout_url: 'https://peroai.cc/pay/checkout/T3' },
+        url: 'https://peroai.cc/pay/checkout/T3',
+        currency: 'USDT',
+        rate: '6.67',
+        credit_quota: creditQuota,
+      } as unknown as PaymentResponse)
+      const open = vi.spyOn(window, 'open')
+      const { result } = renderHook(() => usePayment())
+
+      let ok: unknown
+      await act(async () => {
+        ok = await result.current.processPayment(1, 'usdt.trc20', CONFIRMED)
+      })
+
+      expect(ok).toBe(false)
+      expect(open).not.toHaveBeenCalled()
+      // No usable quote came back, so the dialog must fetch a new one.
+      expect(isQuoteFor(result.current.quote, 1, 'usdt.trc20')).toBe(false)
+    }
+  )
+
+  test('does not open the checkout when the order credits something else', async () => {
+    apiMocks.requestPayment.mockResolvedValue({
+      success: true,
+      message: 'success',
+      data: { checkout_url: 'https://peroai.cc/pay/checkout/T4' },
+      url: 'https://peroai.cc/pay/checkout/T4',
+      currency: 'USDT',
+      rate: '6.5',
+      credit_quota: 3_250_000,
+    } as PaymentResponse)
+    const open = vi.spyOn(window, 'open')
+    const { result } = renderHook(() => usePayment())
+
+    let ok: unknown
+    await act(async () => {
+      ok = await result.current.processPayment(1, 'usdt.trc20', CONFIRMED)
+    })
+
+    expect(ok).toBe(false)
+    expect(open).not.toHaveBeenCalled()
+    expect(result.current.quote).toMatchObject({
+      amount: 1,
+      creditQuota: 3_250_000,
+      requestAmount: 1,
+    })
+  })
+
+  test('does not open the checkout when the server echoes other coins', async () => {
+    apiMocks.requestPayment.mockResolvedValue({
+      success: true,
+      message: 'success',
+      data: '2' as unknown as Record<string, unknown>,
+      url: 'https://peroai.cc/pay/checkout/T5',
+      currency: 'USDT',
+      rate: '6.67',
+      credit_quota: 3_335_000,
+    } as PaymentResponse)
+    const open = vi.spyOn(window, 'open')
+    const { result } = renderHook(() => usePayment())
+
+    let ok: unknown
+    await act(async () => {
+      ok = await result.current.processPayment(1, 'usdt.trc20', CONFIRMED)
+    })
+
     expect(ok).toBe(false)
     expect(open).not.toHaveBeenCalled()
   })

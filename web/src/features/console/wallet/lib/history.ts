@@ -68,12 +68,14 @@ export function redeemRowFromLog(log: UsageLog): WalletHistoryRow | null {
 }
 
 export function orderRow(record: TopupRecord): WalletHistoryRow {
-  const coin = getCoinOfPaymentMethod(record.payment_method)
+  // The method the payment arrived through, when the server knows it.
+  const method = record.actual_payment_method || record.payment_method
+  const coin = getCoinOfPaymentMethod(method)
   return {
     id: `order-${record.id}`,
     time: record.create_time,
     kind: 'order',
-    method: record.payment_method,
+    method,
     coin,
     paid: record.money,
     creditQuota: record.credit_quota || undefined,

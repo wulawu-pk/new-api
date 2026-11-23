@@ -73,6 +73,39 @@ it('translates billing history statuses and updates them when the language chang
   }
 })
 
+it('names the method a coin order was actually paid with', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        total: 1,
+        items: [
+          {
+            id: 1,
+            status: 'success',
+            amount: 5,
+            money: 5,
+            credit_quota: 16675000,
+            trade_no: 'order-coin',
+            payment_method: 'usdt.trc20',
+            actual_payment_method: 'usdc.trc20',
+            create_time: 1,
+          },
+        ],
+      },
+    },
+  })
+  await i18n.changeLanguage('en')
+  render(
+    <I18nextProvider i18n={i18n}>
+      <BillingHistoryDialog open onOpenChange={vi.fn()} />
+    </I18nextProvider>
+  )
+  await screen.findByText('order-coin')
+  expect(screen.getByText(/5 USDC/)).toBeVisible()
+  expect(screen.queryByText(/USDT/)).toBeNull()
+})
+
 it.each([
   { priceRatio: 7.3, paid: '584', saved: '146', full: '146' },
   { priceRatio: 0.000123, paid: '0.0098', saved: '0.0025', full: '0.0025' },

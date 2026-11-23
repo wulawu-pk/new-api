@@ -189,19 +189,45 @@ export function isQuoteFor(
   )
 }
 
+/** A quote that prices the order in coins (currency, rate, credit_quota). */
+export function isCoinPricedQuote(quote: PaymentQuote | undefined): boolean {
+  return (
+    quote !== undefined &&
+    (quote.currency !== undefined ||
+      quote.rate !== undefined ||
+      quote.creditQuota !== undefined)
+  )
+}
+
+function isPositiveSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+}
+
+/** The new quote an order response carries, for the coins that were sent. */
 function quoteFromPaymentResponse(
   response: PaymentResponse,
-  topupAmount: number,
+  coins: number,
   paymentType: string
 ): PaymentQuote {
   return {
-    amount: Math.floor(topupAmount),
+    amount: coins,
     currency: response.currency,
     rate: response.rate ? Number.parseFloat(response.rate) : undefined,
     creditQuota: response.credit_quota,
-    requestAmount: topupAmount,
+    requestAmount: coins,
     paymentType,
   }
+}
+
+/**
+ * Coins the response says the order is for, when it says so. On success the
+ * server answers `data: { checkout_url }`, so usually this is undefined.
+ */
+function coinsInResponse(response: PaymentResponse): number | undefined {
+  const data = response.data as unknown
+  if (typeof data === 'number') return data
+  if (typeof data === 'string' && /^\d+$/.test(data)) return Number(data)
+  return undefined
 }
 
 export function usePayment() {
@@ -240,20 +266,61 @@ export function usePayment() {
     []
   )
 
-  // Process payment. expectedCreditQuota is the credit the customer
-  // confirmed for a coin-priced crypto order; when the order would credit
-  // something else, no checkout opens and the new quote is shown instead.
+  // Process payment. For a coin-priced crypto order, `confirmed` is the
+  // quote the customer saw in the confirm dialog: the order is placed for
+  // exactly its coins and its credit, and it opens only when the server
+  // answers with that same credit. Otherwise no checkout opens and the new
+  // quote (or a fresh request for one) replaces it in the dialog.
   const processPayment = useCallback(
     async (
       topupAmount: number,
       paymentType: string,
-      expectedCreditQuota?: number
+      confirmed?: PaymentQuote
     ) => {
+      const showQuoteChanged = (
+        response: PaymentResponse,
+        coins: number,
+        warn: boolean
+      ) => {
+        quoteRequestId.current++
+        const updated = quoteFromPaymentResponse(response, coins, paymentType)
+        const usable = isCoinQuote(updated, updated.currency)
+        // An unusable quote is dropped, so the dialog asks for a fresh one.
+        const next = usable ? updated : { amount: 0 }
+        setAmount(next.amount)
+        setQuote(next)
+        setCalculating(false)
+        if (warn || usable) {
+          toast.warning(
+            i18next.t(
+              'The exchange rate has been updated. Please review and confirm again.'
+            )
+          )
+        } else {
+          toast.error(i18next.t(QUOTE_FAILED))
+        }
+      }
+
       try {
         setProcessing(true)
 
         const isStripe = isStripePayment(paymentType)
-        const amount = Math.floor(topupAmount)
+        const snapshot =
+          !isStripe && isCoinPricedQuote(confirmed) ? confirmed : undefined
+        if (snapshot) {
+          if (
+            !isCoinQuote(snapshot, snapshot.currency) ||
+            snapshot.paymentType !== paymentType ||
+            !isPositiveSafeInteger(snapshot.requestAmount) ||
+            snapshot.amount !== snapshot.requestAmount
+          ) {
+            toast.error(i18next.t(QUOTE_FAILED))
+            return false
+          }
+        }
+        const expectedCreditQuota = snapshot?.creditQuota
+        // Coin orders send the coins the confirmed quote was priced for.
+        const amount = snapshot?.requestAmount ?? Math.floor(topupAmount)
 
         const response = isStripe
           ? await requestStripePayment({
@@ -268,29 +335,22 @@ export function usePayment() {
                 : {}),
             })
 
-        if (!isStripe && expectedCreditQuota) {
+        if (snapshot && expectedCreditQuota) {
           const paid = response as PaymentResponse
-          const changed =
-            paid.quote_changed === true ||
-            (isApiSuccess(paid) &&
-              typeof paid.credit_quota === 'number' &&
-              paid.credit_quota !== expectedCreditQuota)
-          if (changed && typeof paid.credit_quota === 'number') {
-            quoteRequestId.current++
-            const updated = quoteFromPaymentResponse(
-              paid,
-              topupAmount,
-              paymentType
-            )
-            setAmount(updated.amount)
-            setQuote(updated)
-            setCalculating(false)
-            toast.warning(
-              i18next.t(
-                'The exchange rate has been updated. Please review and confirm again.'
-              )
-            )
+          if (paid.quote_changed === true) {
+            showQuoteChanged(paid, amount, true)
             return false
+          }
+          if (isApiSuccess(paid)) {
+            const coins = coinsInResponse(paid)
+            if (
+              !isPositiveSafeInteger(paid.credit_quota) ||
+              paid.credit_quota !== expectedCreditQuota ||
+              (coins !== undefined && coins !== amount)
+            ) {
+              showQuoteChanged(paid, amount, false)
+              return false
+            }
           }
         }
 

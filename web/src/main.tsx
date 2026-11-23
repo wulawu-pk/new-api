@@ -21,6 +21,7 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 
+import { purgeExpiredPendingRedeemCode } from '@/features/redeem/lib/pending-code'
 import { installBuildMetadata } from '@/lib/build-metadata'
 import { applyFaviconToDom } from '@/lib/dom-utils'
 import '@/lib/dayjs'
@@ -42,6 +43,8 @@ import './styles/index.css'
 // VChart theme is driven by our ThemeProvider (html.light/html.dark) via per-chart `theme` prop.
 initializeFrontendCache()
 installBuildMetadata()
+// A card code kept for sign-in must not outlive its 10 minutes.
+purgeExpiredPendingRedeemCode()
 
 const queryClient = createAppQueryClient(() => {
   void router.navigate({ to: '/500' })

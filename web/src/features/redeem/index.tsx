@@ -25,8 +25,10 @@ import { PublicLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useRedemption } from '@/features/wallet/hooks/use-redemption'
-import { getSelf } from '@/lib/api'
+import {
+  refreshBalanceOrNotify,
+  useRedemption,
+} from '@/features/wallet/hooks/use-redemption'
 import { formatQuota } from '@/lib/format'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -83,20 +85,17 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
   }, [])
 
   const handleActivate = async () => {
-    const added = await redeemCode(code)
+    const added = await redeemCode(code, { refreshBalance: false })
     if (!added) return
-    let balance: number | null = null
-    try {
-      const self = await getSelf()
-      if (self?.success && typeof self.data?.quota === 'number') {
-        balance = self.data.quota
-      }
-    } catch {
-      // The credit already landed; a failed balance refresh is cosmetic.
-    }
+    // The card is activated: clear the code and show the success first.
     setCode('')
     clearPendingRedeemCode()
-    setResult({ added, balance })
+    setResult({ added, balance: null })
+    // A failed balance read only shows a notice; the credit already landed.
+    const balance = await refreshBalanceOrNotify()
+    if (balance !== null) {
+      setResult((current) => (current ? { ...current, balance } : current))
+    }
   }
 
   const keepCodeForSignIn = () => savePendingRedeemCode(code)

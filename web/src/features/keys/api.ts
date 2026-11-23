@@ -119,11 +119,12 @@ export async function batchDeleteApiKeys(
   return res.data
 }
 
-// Update API key status (enable/disable)
+// Update API key status (enable/disable). When the key changed concurrently
+// the server changes nothing and answers `code: "token_conflict"`.
 export async function updateApiKeyStatus(
   id: number,
   status: number
-): Promise<ApiResponse<ApiKey>> {
+): Promise<ApiResponse<ApiKey> & { code?: string }> {
   const res = await api.put('/api/token/?status_only=true', { id, status })
   return res.data
 }

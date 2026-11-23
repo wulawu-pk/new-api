@@ -2846,7 +2846,7 @@
     "footer.columns.related.links.oneApi": "1つのAPI",
     "footer.columns.related.title": "関連プロジェクト",
     "footer.defaultCopyright": "すべての権利を留保します。",
-    "footer.new\u0061pi.projectAttributionSuffix": "すべての権利を留保します。プロジェクトコントリビューターにより設計・開発されています。",
+    "footer.newapi.projectAttributionSuffix": "すべての権利を留保します。プロジェクトコントリビューターにより設計・開発されています。",
     "For advanced custom channels this applies only to /v1/responses routes without protocol conversion.": "高度なカスタムチャネルでは、プロトコル変換を行わない /v1/responses ルートにのみ適用されます。",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "2025 年 5 月 10 日以降に追加されたチャネルの場合、デプロイ時にモデル名から「.」を削除する必要はありません",
     "For private deployments, format: https://fastgpt.run/api/openapi": "プライベートデプロイメントの場合、形式: https://fastgpt.run/api/openapi",
@@ -7652,6 +7652,9 @@
     "Streamed": "Streamed",
     "Not streamed": "Not streamed",
     "The quota of this key changed while you were editing. The form shows the current values; check them and save again.": "編集中にこのキーの残り額度が変わりました。最新の値に更新したので、確認してからもう一度保存してください。",
-    "Could not get a price for this amount. Please try again in a moment.": "この金額の見積もりを取得できませんでした。しばらくしてからもう一度お試しください。"
+    "Could not get a price for this amount. Please try again in a moment.": "この金額の見積もりを取得できませんでした。しばらくしてからもう一度お試しください。",
+    "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.": "Created {{name}}, but its value could not be loaded. Try again; this reads the same key and does not create another.",
+    "Load the key again": "Load the key again",
+    "Your balance will update shortly.": "Your balance will update shortly."
   }
 }

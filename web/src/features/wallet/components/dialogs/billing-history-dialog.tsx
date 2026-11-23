@@ -189,6 +189,10 @@ export function BillingHistoryDialog({
               <div className='space-y-3'>
                 {records.map((record) => {
                   const statusConfig = getStatusConfig(record.status)
+                  // The method the payment arrived through, when known.
+                  const paidWith =
+                    record.actual_payment_method || record.payment_method
+                  const paidCoin = getCoinOfPaymentMethod(paidWith)
                   return (
                     <div
                       key={record.id}
@@ -241,7 +245,7 @@ export function BillingHistoryDialog({
                             {t('Payment Method')}
                           </Label>
                           <div className='text-sm font-medium'>
-                            {getPaymentMethodName(record.payment_method, t)}
+                            {getPaymentMethodName(paidWith, t)}
                           </div>
                         </div>
                         <div className='space-y-1'>
@@ -268,9 +272,8 @@ export function BillingHistoryDialog({
                           </Label>
                           <div className='text-sm font-semibold text-red-600'>
                             {formatNumber(record.money)}
-                            {record.credit_quota &&
-                            getCoinOfPaymentMethod(record.payment_method)
-                              ? ` ${getCoinOfPaymentMethod(record.payment_method)}`
+                            {record.credit_quota && paidCoin
+                              ? ` ${paidCoin}`
                               : ''}
                           </div>
                         </div>

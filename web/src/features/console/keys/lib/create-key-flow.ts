@@ -46,17 +46,50 @@ export async function createKey(
   return { id, name: typeof name === 'string' && name ? name : payload.name }
 }
 
-/** Creates a key, then reads its full value through POST /api/token/:id/key. */
-export async function createKeyAndFetch(
-  payload: ApiKeyFormData,
+/**
+ * The key was created but its full value could not be read. The key exists:
+ * retry with `revealKey(id)`, never by creating again.
+ */
+export class KeyRevealError extends Error {
+  readonly id: number
+  readonly keyName: string
+  constructor(id: number, keyName: string, cause: unknown) {
+    super(cause instanceof Error ? cause.message : 'reveal failed')
+    this.name = 'KeyRevealError'
+    this.id = id
+    this.keyName = keyName
+  }
+}
+
+/** Reads the full value of an existing key through POST /api/token/:id/key. */
+export async function revealKey(
+  id: number,
   fallbackError: string
-): Promise<CreatedKey> {
-  const made = await createKey(payload, fallbackError)
-  const reveal = await fetchTokenKey(made.id)
+): Promise<string> {
+  const reveal = await fetchTokenKey(id)
   if (!reveal.success || !reveal.data?.key) {
     throw createServerError(reveal, fallbackError)
   }
-  return { ...made, key: withSkPrefix(reveal.data.key) }
+  return withSkPrefix(reveal.data.key)
+}
+
+/**
+ * Creates a key, then reads its full value. `onCreated` runs as soon as the
+ * key exists (to refresh the list). When only the read fails, a
+ * KeyRevealError carrying the new id is thrown.
+ */
+export async function createKeyAndFetch(
+  payload: ApiKeyFormData,
+  fallbackError: string,
+  onCreated?: (made: { id: number; name: string }) => void
+): Promise<CreatedKey> {
+  const made = await createKey(payload, fallbackError)
+  onCreated?.(made)
+  try {
+    return { ...made, key: await revealKey(made.id, fallbackError) }
+  } catch (error) {
+    throw new KeyRevealError(made.id, made.name, error)
+  }
 }
 
 /** 1 = enabled (2 disabled, 3 expired, 4 exhausted). */
@@ -80,7 +113,8 @@ export async function ensureGroupKey(
       )
     : undefined
   if (existing) return { created: false, name: existing.name }
-  // Only the name is shown; the full key value is not read here.
+  // Only the name is shown; the full key value is not read here, so a
+  // created key never turns into an error that would invite a second one.
   const made = await createKey(payload, fallbackError)
   return { created: true, name: made.name }
 }

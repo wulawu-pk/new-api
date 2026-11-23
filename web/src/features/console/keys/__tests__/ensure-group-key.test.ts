@@ -22,7 +22,11 @@ import * as keysApi from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
 
 import { buildCreateKeyPayload } from '../lib/create-key'
-import { createKeyAndFetch, ensureGroupKey } from '../lib/create-key-flow'
+import {
+  KeyRevealError,
+  createKeyAndFetch,
+  ensureGroupKey,
+} from '../lib/create-key-flow'
 
 vi.mock('@/features/keys/api', () => ({
   getApiKeys: vi.fn(),
@@ -175,5 +179,26 @@ describe('createKeyAndFetch', () => {
       data: { id: 0, name: 'claude-code' },
     })
     await expect(createKeyAndFetch(PAYLOAD, 'failed')).rejects.toThrow('failed')
+  })
+
+  it('reports a created key whose value could not be read, with its id', async () => {
+    vi.mocked(keysApi.createApiKey).mockResolvedValue({
+      success: true,
+      data: { id: 12, name: 'claude-code' },
+    })
+    vi.mocked(keysApi.fetchTokenKey).mockResolvedValue({
+      success: false,
+      message: 'busy',
+    })
+    const onCreated = vi.fn()
+
+    const error = await createKeyAndFetch(PAYLOAD, 'failed', onCreated).catch(
+      (e: unknown) => e
+    )
+
+    expect(error).toBeInstanceOf(KeyRevealError)
+    expect(error).toMatchObject({ id: 12, keyName: 'claude-code' })
+    expect(onCreated).toHaveBeenCalledWith({ id: 12, name: 'claude-code' })
+    expect(keysApi.createApiKey).toHaveBeenCalledTimes(1)
   })
 })

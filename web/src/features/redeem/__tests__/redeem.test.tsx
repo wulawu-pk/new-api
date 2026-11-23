@@ -27,6 +27,7 @@ import {
 } from '@tanstack/react-router'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { toast } from 'sonner'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { extractRedemptionCode } from '@/features/wallet/lib/redemption-code'
@@ -37,6 +38,8 @@ import { Redeem, RedeemFromUrl } from '..'
 import {
   PENDING_REDEEM_CODE_KEY,
   PENDING_REDEEM_CODE_TTL_MS,
+  clearPendingRedeemCode,
+  purgeExpiredPendingRedeemCode,
   readPendingRedeemCode,
   redeemCodeFromLocation,
   savePendingRedeemCode,
@@ -283,5 +286,75 @@ describe('redeem page', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Activate' }))
     expect(post).not.toHaveBeenCalled()
+  })
+
+  it('shows the activation when the balance cannot be read afterwards', async () => {
+    useAuthStore.getState().auth.setUser({ id: 7, username: 'buyer', role: 1 })
+    vi.spyOn(api, 'post').mockResolvedValue({
+      data: { success: true, data: 5000000 },
+    })
+    vi.spyOn(api, 'get').mockRejectedValue(new Error('network down'))
+    const error = vi.spyOn(toast, 'error').mockImplementation(() => 0)
+    const info = vi.spyOn(toast, 'info').mockImplementation(() => 0)
+    const user = userEvent.setup()
+    renderRedeem(CODE)
+    sessionStorage.setItem(
+      PENDING_REDEEM_CODE_KEY,
+      JSON.stringify({ code: CODE, at: Date.now() })
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Activate' }))
+
+    expect(await screen.findByText('Activated')).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent('$10 has been added')
+    expect(screen.getByRole('status')).not.toHaveTextContent('Current balance')
+    await vi.waitFor(() =>
+      expect(info).toHaveBeenCalledWith('Your balance will update shortly.')
+    )
+    expect(error).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+  })
+})
+
+describe('pending code expiry', () => {
+  it('removes a saved code at the TTL even when nothing reads it', () => {
+    vi.useFakeTimers()
+    try {
+      savePendingRedeemCode(CODE)
+      vi.advanceTimersByTime(PENDING_REDEEM_CODE_TTL_MS - 1)
+      expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toContain(CODE)
+      vi.advanceTimersByTime(1)
+      expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+    } finally {
+      clearPendingRedeemCode()
+      vi.useRealTimers()
+    }
+  })
+
+  it('on start removes an expired code and schedules removal of a live one', () => {
+    vi.useFakeTimers()
+    try {
+      sessionStorage.setItem(
+        PENDING_REDEEM_CODE_KEY,
+        JSON.stringify({
+          code: CODE,
+          at: Date.now() - PENDING_REDEEM_CODE_TTL_MS,
+        })
+      )
+      purgeExpiredPendingRedeemCode()
+      expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+
+      sessionStorage.setItem(
+        PENDING_REDEEM_CODE_KEY,
+        JSON.stringify({ code: CODE, at: Date.now() - 60_000 })
+      )
+      purgeExpiredPendingRedeemCode()
+      expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toContain(CODE)
+      vi.advanceTimersByTime(PENDING_REDEEM_CODE_TTL_MS - 60_000)
+      expect(sessionStorage.getItem(PENDING_REDEEM_CODE_KEY)).toBeNull()
+    } finally {
+      clearPendingRedeemCode()
+      vi.useRealTimers()
+    }
   })
 })
