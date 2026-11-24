@@ -272,7 +272,7 @@ export function summarizeSpecialExpression(
     return { rows: [], note: 'Billed per call' }
   }
   if (expression.includes('u("')) {
-    return { rows: [], note: 'Billed by the usage the provider reports' }
+    return { rows: [], note: 'Billed by the usage measured for each request' }
   }
   return { rows: [], note: 'Price depends on the request' }
 }

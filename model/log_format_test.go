@@ -262,13 +262,13 @@ func TestFormatUserLogsHidesPricingInternalsAndChannel(t *testing.T) {
 
 	for name, other := range map[string]string{"current": current.JSONString(), "legacy": legacy} {
 		t.Run(name, func(t *testing.T) {
-			logs := []*Log{{ChannelId: 42, ChannelName: "upstream-channel", Other: other}}
+			logs := []*Log{{ChannelId: 42, ChannelName: "upstream-channel", UpstreamRequestId: "req-private-upstream", Other: other}}
 			formatUserLogs(logs, 0)
 
 			encoded, err := common.Marshal(logs[0])
 			require.NoError(t, err)
 			text := string(encoded)
-			for _, forbidden := range []string{"expr_b64", "tier(", "request_rules", "response_model", "upstream-channel", "secret-upstream-model", "admin_info"} {
+			for _, forbidden := range []string{"expr_b64", "tier(", "request_rules", "response_model", "upstream-channel", "secret-upstream-model", "admin_info", "req-private-upstream"} {
 				assert.NotContains(t, text, forbidden)
 			}
 			assert.Contains(t, text, `"channel":0`)

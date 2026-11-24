@@ -123,6 +123,7 @@ func formatUserLogs(logs []*Log, startIdx int) {
 func formatUserLog(log *Log) {
 	log.ChannelId = 0
 	log.ChannelName = ""
+	log.UpstreamRequestId = ""
 	log.Other = formatLogOtherJSON(log.Other, logOtherVisibilityUser)
 }
 
