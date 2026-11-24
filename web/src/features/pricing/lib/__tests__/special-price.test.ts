@@ -87,7 +87,7 @@ describe('summarizeSpecialExpression', () => {
       'u("seconds") > 30 ? tier("long", u("seconds") * 0.3) : tier("short", u("seconds") * 0.4)'
     const summary = summarizeSpecialExpression(model(expression))
     expect(summary?.rows).toEqual([])
-    expect(summary?.note).toBe('Billed by the usage the provider reports')
+    expect(summary?.note).toBe('Billed by the usage measured for each request')
     expect(JSON.stringify(summary)).not.toContain('tier(')
   })
 

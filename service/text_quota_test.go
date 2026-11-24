@@ -1698,10 +1698,10 @@ func TestPostTextConsumeQuotaLogsMissingUsageAsStructuredContent(t *testing.T) {
 	log := getLastLog(t)
 	require.NotNil(t, log)
 	assert.Zero(t, log.Quota)
-	assert.Equal(t, "Upstream returned no usage, so nothing was charged (possibly an upstream timeout)", log.Content)
+	assert.Equal(t, "No usage was reported for this request, so nothing was charged (possibly a timeout)", log.Content)
 	var other map[string]any
 	require.NoError(t, common.UnmarshalJsonStr(log.Other, &other))
 	assert.Equal(t, []any{
-		map[string]any{"key": "Upstream returned no usage, so nothing was charged (possibly an upstream timeout)"},
+		map[string]any{"key": "No usage was reported for this request, so nothing was charged (possibly a timeout)"},
 	}, other["content_parts"])
 }
