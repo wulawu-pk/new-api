@@ -23,7 +23,7 @@ For commercial licensing, please contact support@quantumnous.com
  * prevails. Keep it in step, clause for clause, when the Chinese text
  * changes.
  */
-export const PRIVACY_POLICY_EN = `**Last updated: 2026-11-15　Effective: 2026-11-15**
+export const PRIVACY_POLICY_EN = `**Last updated: 2026-11-24　Effective: 2026-11-24**
 
 This policy explains what information peroai ("the Site") collects when you use peroai.cc, api.peroai.cc and related services, how it is used and shared, how long it is kept, and the rights you have. This policy forms part of the [User Agreement](/user-agreement).
 
@@ -41,7 +41,7 @@ If you have questions, contact [support@peroai.cc](mailto:support@peroai.cc).
 
 For every call to a model API, the Site records: the time, the name of the key used, the group, the model, the number of input / output / cache tokens or other billed usage, the credit charged, the duration, whether it was streamed, the request id, and the error message when a call fails. These records are used for billing, reconciliation, troubleshooting and preventing abuse; you can view and export your own records under "Usage logs" in the console.
 
-**The Site does not store the body of your requests and responses in its database** (prompts, conversation content, generated images or videos). Request content passes through the Site's servers while it is forwarded, but is not kept. The result files of asynchronous tasks such as videos are stored by the upstream; the Site stores only the task id and status.
+**The Site does not store the body of your requests and responses in its database** (prompts, conversation content, generated images or videos). Request content passes through the Site's servers while it is forwarded, but is not kept. The result files of asynchronous tasks such as videos are stored by the third-party model provider; the Site stores only the task id and status.
 
 ### 3. IP addresses and access information
 
@@ -76,14 +76,14 @@ To provide the service, the following third parties process related information 
 
 | Third party | Purpose | Information involved |
 |---|---|---|
-| Upstream model providers and model vendors | Actually processing your model requests | The request content you submit |
+| Third-party model providers and model vendors | Actually processing your model requests | The request content you submit |
 | Cloudflare | DNS, network acceleration and protection, email forwarding | Visiting IP, request data (encrypted in transit), emails sent to the support address |
 | Tencent Cloud (Singapore) | Server hosting | All data stored by the Site |
 | Resend | Sending verification codes and notification emails | Your email address and the email content |
 | 链动小铺 (Liandong Shop) | Selling redeem codes, handling WeChat Pay / Alipay payments | The payment information you submit in that shop, subject to its own rules |
 | Blockchain networks and node providers | Checking cryptocurrency payments | Public on-chain transaction data |
 
-**Your request content is sent to upstream providers and model vendors, and its processing is subject to their own data processing rules**; the Site cannot control how long they keep it. Do not submit personal information, trade secrets or other restricted material that you have no right to submit.
+**Your request content is sent to third-party model providers and model vendors, and its processing is subject to their own data processing rules**; the Site cannot control how long they keep it. Do not submit personal information, trade secrets or other restricted material that you have no right to submit.
 
 Apart from the cases above, the Site discloses your information only: with your consent; when required by laws and regulations or by judicial or administrative authorities in accordance with the law; or when necessary to protect the personal or property safety of the Site, its users or the public.
 

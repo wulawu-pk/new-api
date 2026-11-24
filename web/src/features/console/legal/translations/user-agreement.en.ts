@@ -23,7 +23,7 @@ For commercial licensing, please contact support@quantumnous.com
  * prevails. Keep it in step, clause for clause, when the Chinese text
  * changes.
  */
-export const USER_AGREEMENT_EN = `**Last updated: 2026-11-15　Effective: 2026-11-15**
+export const USER_AGREEMENT_EN = `**Last updated: 2026-11-24　Effective: 2026-11-24**
 
 Welcome to peroai. This agreement is made between you and the operator of peroai ("the Site"). It applies to the model APIs, account console, top-up and other related services provided at peroai.cc, api.peroai.cc and related subdomains.
 
@@ -48,7 +48,7 @@ Please read this agreement carefully before signing up, **especially the clauses
 ## 3. Rules of use
 
 1. You must confirm for yourself that your purpose of use, the content you submit and its subsequent use comply with applicable law, and that you hold the necessary rights and authorisations.
-2. You may not use the Site to: commit fraud or other illegal activities; infringe others' privacy, intellectual property or other lawful rights; generate or spread illegal or harmful content or malicious programs; attack, scan or interfere with the Site or upstream systems; fake transactions or maliciously consume resources; or circumvent technical measures such as rate limits, billing, access control or group restrictions.
+2. You may not use the Site to: commit fraud or other illegal activities; infringe others' privacy, intellectual property or other lawful rights; generate or spread illegal or harmful content or malicious programs; attack, scan or interfere with the systems of the Site or of third-party model providers; fake transactions or maliciously consume resources; or circumvent technical measures such as rate limits, billing, access control or group restrictions.
 3. You may not violate the usage policies of the providers of the models you call.
 4. Without permission, you may not copy, sell or misuse the Site's name, logo, page content or protected technical work.
 5. Third-party claims, actual losses attributable to you and reasonable enforcement costs arising from your violation of law or of this agreement are borne by you in accordance with the law.
@@ -61,9 +61,9 @@ Please read this agreement carefully before signing up, **especially the clauses
 
 ## 5. Groups, billing and prices
 
-1. A group must be chosen when you create an API key. Groups differ in available models, price ratios, stability and conditions of use, as shown at the time in the [model plaza](/pricing) and the [group notes](/docs/groups/). **Restrictions stated in the group notes (for example, only certain clients are supported, or the upstream adds a prompt) are part of that group's service**, and choosing the group means accepting them.
+1. A group must be chosen when you create an API key. Groups differ in available models, price ratios, stability and conditions of use, as shown at the time in the [model plaza](/pricing) and the [group notes](/docs/groups/). **Restrictions stated in the group notes (for example, only certain clients are supported, or a system prompt is added) are part of that group's service**, and choosing the group means accepting them.
 2. Account credit is denominated in US dollars ($). Charges follow the model price, group ratio, usage and billing rules that apply at the time of the call. Billing may be by input, output, cache reads and writes, per call, per image, per second, per credit and so on, as shown on the pages at the time.
-3. **A request that times out, a client that disconnects, a request that is cancelled or a result that is not fully received does not mean no charge was incurred.** Usage that the upstream actually processed and that falls under the billing rules is billed as normal; requests that a client resends or retries automatically may each incur charges.
+3. **A request that times out, a client that disconnects, a request that is cancelled or a result that is not fully received does not mean no charge was incurred.** Usage that the model actually processed and that falls under the billing rules is billed as normal; requests that a client resends or retries automatically may each incur charges.
 4. The Site may change the prices, groups, model range and usage limits for later calls; changes take effect from the time they are announced. Consumption that has already occurred is settled under the rules that applied at the time.
 5. If you dispute a charge, provide the request id, time, model, group and other information needed to check it. Where a check confirms a system error or a duplicate charge, the Site will correct it.
 
@@ -95,7 +95,7 @@ The Site supports the following top-up methods; the steps for each are in the [t
 
 ## 8. Service changes and handling of violations
 
-1. Model capabilities, APIs, groups, concurrency limits and availability may change for operational reasons, upstream policies, maintenance or technical reasons. **The Site does not promise that all models and groups will remain available, nor a fixed response speed or entirely uninterrupted service.** The live availability of each group can be seen on the [service status](/status) page.
+1. Model capabilities, APIs, groups, concurrency limits and availability may change for operational reasons, policies of third-party model providers, maintenance or technical reasons. **The Site does not promise that all models and groups will remain available, nor a fixed response speed or entirely uninterrupted service.** The live availability of each group can be seen on the [service status](/status) page.
 2. For violations of this agreement, suspected fraud, attacks, infringement, circumvention of restrictions or other conduct that endangers the security of the service, the Site may, depending on the circumstances, refuse requests, restrict features, or suspend or terminate the service; in an emergency it may act immediately.
 3. For orders with a reasonable transaction risk, the Site may suspend processing and verify them to the extent necessary. The related transactions, balance and disputes are handled under this agreement and applicable law.
 4. After the service has been restricted, you may not continue to use the Site by circumventing technical measures. The Site reserves the right to pursue liability in accordance with the law.
@@ -103,7 +103,7 @@ The Site supports the following top-up methods; the steps for each are in the [t
 ## 9. Privacy and data processing
 
 1. To carry out API calls, billing, payment verification and the necessary troubleshooting and security handling, the Site needs to process related account, usage and transaction information. See the [Privacy Policy](/privacy-policy) for details.
-2. When you use third-party model services, the content of your requests has to be sent to the upstream providers and model vendors that actually provide those services. Their processing after receipt is also subject to their own data processing rules.
+2. When you use third-party model services, the content of your requests has to be sent to the third-party model providers and model vendors that actually provide those services. Their processing after receipt is also subject to their own data processing rules.
 3. The Site is not a storage or backup service. Back up any output and business material you need to keep long term.
 
 ## 10. Limitation of liability
