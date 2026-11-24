@@ -31,14 +31,14 @@ export const GROUP_META: Record<string, GroupMeta> = {
   },
   'gpt-pro': {
     nameKey: 'GPT Enterprise',
-    noteKey: 'The main GPT group.',
+    noteKey: 'The stable GPT group.',
   },
   'gpt-promax': {
     nameKey: 'GPT ProMax',
     noteKey: 'The fastest GPT group.',
   },
   'gpt-test': {
-    nameKey: 'GPT Test',
+    nameKey: 'GPT Main',
     noteKey: 'Low price; every request carries about 20K extra tokens of system prompt.',
   },
   'claude-kiro': {
