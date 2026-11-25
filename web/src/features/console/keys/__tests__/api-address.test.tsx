@@ -63,7 +63,6 @@ describe('api address pane', () => {
     expect(
       await screen.findByText('https://api.peroai.cc/v1')
     ).toBeInTheDocument()
-    expect(screen.getByText('without /v1')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^Copy Claude Code$/ }))
     expect(writeText).toHaveBeenLastCalledWith('https://api.peroai.cc')

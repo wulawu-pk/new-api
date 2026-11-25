@@ -42,13 +42,11 @@ export function ApiAddressPane() {
       id: 'openai',
       label: t('OpenAI compatible / Codex'),
       value: `${base}/v1`,
-      note: null,
     },
     {
       id: 'claude',
       label: 'Claude Code',
       value: base,
-      note: t('without /v1'),
     },
   ]
 
@@ -69,11 +67,6 @@ export function ApiAddressPane() {
             <span className='text-t-dim max-sm:col-span-2'>{row.label}</span>
             <span className='min-w-0 font-mono break-all select-all'>
               {row.value}
-              {row.note && (
-                <span className='text-t-dim ml-2 font-sans text-xs'>
-                  {row.note}
-                </span>
-              )}
             </span>
             <Button
               type='button'
