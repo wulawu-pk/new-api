@@ -16,43 +16,111 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 
 import { cn } from '@/lib/utils'
 
 import { prefersReducedMotion } from './lib'
 import { createSonar, type SonarHandle } from './sonar-engine'
 
-/**
- * Decorative page backdrop: the sonar relay (see sonar-engine.ts) over a
- * faint grid that fades out from the top. Hidden from assistive tech and
- * never takes the pointer.
+/*
+ * One sonar for the whole app. Some console pages (models, status, redeem)
+ * render their own ConsoleShell, so switching to or from them unmounts one
+ * backdrop and mounts another; a backdrop owning its own canvas restarted the
+ * rings from the centre on every such switch, while the pages sharing the
+ * authenticated layout kept theirs. The canvas and its engine therefore live
+ * at module level: a backdrop that mounts adopts the canvas (moving a canvas
+ * keeps its pixels, and the engine carries on in the same time line), and the
+ * engine is only destroyed when no backdrop has shown it for a while.
  */
-export function SonarBackdrop(props: { paused?: boolean; className?: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const handle = useRef<SonarHandle | null>(null)
+type Host = { el: HTMLDivElement; paused: boolean }
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas || typeof canvas.getContext !== 'function') return
-    let context: CanvasRenderingContext2D | null = null
+const RELEASE_AFTER_MS = 1500
+
+let shared: { canvas: HTMLCanvasElement; sonar: SonarHandle | null } | null =
+  null
+let hosts: Host[] = []
+let releaseTimer: ReturnType<typeof setTimeout> | undefined
+
+/** The shared canvas; its sonar is null where there is no 2D canvas. */
+function acquire(): NonNullable<typeof shared> {
+  if (shared) return shared
+  const canvas = document.createElement('canvas')
+  canvas.className = 'absolute inset-0 block size-full'
+  let context: unknown = null
+  if (typeof canvas.getContext === 'function') {
     try {
       context = canvas.getContext('2d')
     } catch {
       context = null
     }
-    if (!context) return
-    const sonar = createSonar(canvas, { reducedMotion: prefersReducedMotion() })
-    handle.current = sonar
-    sonar.refresh()
+  }
+  const sonar = context
+    ? createSonar(canvas, { reducedMotion: prefersReducedMotion() })
+    : null
+  shared = { canvas, sonar }
+  return shared
+}
+
+/** Puts the canvas in the newest backdrop still mounted. */
+function place() {
+  if (!shared) return
+  const host = hosts.at(-1)
+  if (!host) {
+    shared.canvas.remove()
+    return
+  }
+  const moved = shared.canvas.parentElement !== host.el
+  if (moved) host.el.appendChild(shared.canvas)
+  shared.sonar?.setPaused(host.paused)
+  if (moved) shared.sonar?.refresh()
+}
+
+function scheduleRelease() {
+  clearTimeout(releaseTimer)
+  releaseTimer = setTimeout(() => {
+    releaseTimer = undefined
+    if (hosts.length || !shared) return
+    shared.sonar?.destroy()
+    shared.canvas.remove()
+    shared = null
+  }, RELEASE_AFTER_MS)
+}
+
+/**
+ * Decorative page backdrop: the sonar relay (see sonar-engine.ts) over a
+ * faint grid that fades out from the top. Hidden from assistive tech and
+ * never takes the pointer. Every backdrop shows the same running sonar, so
+ * moving between pages never restarts it.
+ */
+export function SonarBackdrop(props: { paused?: boolean; className?: string }) {
+  const slotRef = useRef<HTMLDivElement>(null)
+  const hostRef = useRef<Host | null>(null)
+
+  // Layout effect: the canvas is in place before the new page paints.
+  useLayoutEffect(() => {
+    const el = slotRef.current
+    if (!el) return
+    acquire()
+    clearTimeout(releaseTimer)
+    releaseTimer = undefined
+    const host: Host = { el, paused: false }
+    hostRef.current = host
+    hosts.push(host)
+    place()
     return () => {
-      sonar.destroy()
-      handle.current = null
+      hosts = hosts.filter((h) => h !== host)
+      hostRef.current = null
+      place()
+      if (!hosts.length) scheduleRelease()
     }
   }, [])
 
   useEffect(() => {
-    handle.current?.setPaused(Boolean(props.paused))
+    const host = hostRef.current
+    if (!host) return
+    host.paused = Boolean(props.paused)
+    if (hosts.at(-1) === host) shared?.sonar?.setPaused(host.paused)
   }, [props.paused])
 
   return (
@@ -61,7 +129,7 @@ export function SonarBackdrop(props: { paused?: boolean; className?: string }) {
       className={cn('pointer-events-none overflow-hidden', props.className)}
     >
       <div className='t-backdrop-grid absolute inset-0' />
-      <canvas ref={canvasRef} className='absolute inset-0 block size-full' />
+      <div ref={slotRef} className='absolute inset-0' />
     </div>
   )
 }
