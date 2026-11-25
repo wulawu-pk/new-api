@@ -324,6 +324,8 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
         }
       />
 
+      <ApiAddressPane />
+
       <Pane
         hero
         title={
@@ -453,8 +455,6 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
           </ConsoleTable>
         </div>
       </Pane>
-
-      <ApiAddressPane />
 
       <CreateKeyDialog
         open={createOpen}

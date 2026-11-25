@@ -27,7 +27,10 @@ import { useStatus } from '@/hooks/use-status'
 
 import { apiBaseUrl } from '../lib/api-address'
 
-/** The two addresses to copy next to the keys, so nobody has to open the docs. */
+/**
+ * The two addresses to copy, above the key list so a long list never pushes
+ * them out of sight: one compact row, the two addresses side by side.
+ */
 export function ApiAddressPane() {
   const { t } = useTranslation()
   const { status } = useStatus()
@@ -57,11 +60,11 @@ export function ApiAddressPane() {
 
   return (
     <Pane title={<b>{t('API address')}</b>}>
-      <div className='flex flex-col px-[18px] py-2'>
+      <div className='grid grid-cols-2 gap-x-6 px-[18px] py-2 max-lg:grid-cols-1'>
         {rows.map((row) => (
           <div
             key={row.id}
-            className='border-t-line grid grid-cols-[minmax(10rem,14rem)_1fr_auto] items-center gap-3 border-t py-2.5 text-sm first:border-t-0 max-sm:grid-cols-[1fr_auto]'
+            className='max-lg:border-t-line grid min-w-0 grid-cols-[auto_1fr_auto] items-center gap-3 py-2 text-sm max-lg:border-t max-lg:first:border-t-0 max-sm:grid-cols-[1fr_auto]'
           >
             <span className='text-t-dim max-sm:col-span-2'>{row.label}</span>
             <span className='min-w-0 font-mono break-all select-all'>
