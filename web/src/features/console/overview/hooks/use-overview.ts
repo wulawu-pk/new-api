@@ -21,15 +21,21 @@ import dayjs from 'dayjs'
 
 import { getUserQuotaDates } from '@/features/dashboard/api'
 import { getApiKeys } from '@/features/keys/api'
-import { getUserLogs } from '@/features/usage-logs/api'
+import { getAllLogs, getUserLogs } from '@/features/usage-logs/api'
 import { LOG_TYPE_ENUM } from '@/features/usage-logs/constants'
 import type { UsageLog } from '@/features/usage-logs/data/schema'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
+/**
+ * Whose data the overview shows: an administrator sees every user's usage
+ * by default (`all`, the admin endpoints), anyone else only their own.
+ */
+export type OverviewScope = 'all' | 'self'
+
 /** Usage rows from the start of this month (hourly buckets). */
-export function useMonthUsage() {
+export function useMonthUsage(scope: OverviewScope = 'self') {
   return useQuery({
-    queryKey: ['console', 'overview', 'month-usage'],
+    queryKey: ['console', 'overview', 'month-usage', scope],
     queryFn: async () => {
       const now = dayjs()
       // The 7-day chart may reach back into last month.
@@ -37,11 +43,14 @@ export function useMonthUsage() {
       const weekStart = now.startOf('day').subtract(6, 'day')
       const start = monthStart.isBefore(weekStart) ? monthStart : weekStart
       const response = requireServerSuccess(
-        await getUserQuotaDates({
-          start_timestamp: start.unix(),
-          end_timestamp: now.unix(),
-          default_time: 'hour',
-        })
+        await getUserQuotaDates(
+          {
+            start_timestamp: start.unix(),
+            end_timestamp: now.unix(),
+            default_time: 'hour',
+          },
+          scope === 'all'
+        )
       )
       return response.data ?? []
     },
@@ -50,16 +59,17 @@ export function useMonthUsage() {
 }
 
 /** Request totals this month: successful (consume) and failed (error) logs. */
-export function useMonthRequestTotals() {
+export function useMonthRequestTotals(scope: OverviewScope = 'self') {
+  const fetchLogs = scope === 'all' ? getAllLogs : getUserLogs
   return useQuery({
-    queryKey: ['console', 'overview', 'month-totals'],
+    queryKey: ['console', 'overview', 'month-totals', scope],
     queryFn: async () => {
       const start = dayjs().startOf('month').unix()
       const end = dayjs().unix()
       const [ok, failed] = await Promise.all(
         [LOG_TYPE_ENUM.CONSUME, LOG_TYPE_ENUM.ERROR].map(async (type) => {
           const response = requireServerSuccess(
-            await getUserLogs({
+            await fetchLogs({
               p: 1,
               page_size: 1,
               type,
@@ -77,12 +87,16 @@ export function useMonthRequestTotals() {
 }
 
 /** Latest successful requests (used for the table and the cache average). */
-export function useRecentRequests(pageSize: number) {
+export function useRecentRequests(
+  pageSize: number,
+  scope: OverviewScope = 'self'
+) {
+  const fetchLogs = scope === 'all' ? getAllLogs : getUserLogs
   return useQuery({
-    queryKey: ['console', 'overview', 'recent', pageSize],
+    queryKey: ['console', 'overview', 'recent', pageSize, scope],
     queryFn: async () => {
       const response = requireServerSuccess(
-        await getUserLogs({
+        await fetchLogs({
           p: 1,
           page_size: pageSize,
           type: LOG_TYPE_ENUM.CONSUME,

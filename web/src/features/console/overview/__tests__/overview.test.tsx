@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import dayjs from 'dayjs'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -39,13 +39,16 @@ import {
 vi.mock('@/features/dashboard/api', () => ({ getUserQuotaDates: vi.fn() }))
 vi.mock('@/features/keys/api', () => ({ getApiKeys: vi.fn() }))
 vi.mock('@/features/profile/api', () => ({ getUserProfile: vi.fn() }))
-vi.mock('@/features/usage-logs/api', () => ({ getUserLogs: vi.fn() }))
+vi.mock('@/features/usage-logs/api', () => ({
+  getUserLogs: vi.fn(),
+  getAllLogs: vi.fn(),
+}))
 
-function signIn() {
+function signIn(role = 1) {
   useAuthStore.setState((state) => ({
     auth: {
       ...state.auth,
-      user: { id: 2, username: 'demo', role: 1 } as never,
+      user: { id: 2, username: 'demo', role } as never,
     },
   }))
 }
@@ -172,5 +175,64 @@ describe('console overview page', () => {
     expect(
       (await screen.findAllByText('/api/data/self')).length
     ).toBeGreaterThan(0)
+  })
+
+  it('shows a regular user only their own data', async () => {
+    selfUser(5, 0)
+    renderConsole(<ConsoleOverview />)
+
+    expect(await screen.findByText('Balance')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(dashboardApi.getUserQuotaDates).toHaveBeenCalled()
+    )
+    for (const call of vi.mocked(dashboardApi.getUserQuotaDates).mock.calls) {
+      expect(call[1]).toBe(false)
+    }
+    expect(logsApi.getAllLogs).not.toHaveBeenCalled()
+    expect(screen.queryByLabelText('Whose requests')).not.toBeInTheDocument()
+  })
+
+  it("starts an administrator on every user's data, with a user column", async () => {
+    signIn(10)
+    selfUser(5, 0)
+    vi.mocked(dashboardApi.getUserQuotaDates).mockResolvedValue({
+      success: true,
+      data: [{ created_at: dayjs().unix(), quota: 1000000, count: 4 }],
+    } as never)
+    vi.mocked(logsApi.getAllLogs).mockResolvedValue({
+      success: true,
+      data: {
+        items: [
+          {
+            id: 9,
+            created_at: dayjs().unix(),
+            type: 2,
+            username: 'zy',
+            model_name: 'claude-opus-5-5',
+            group: 'claude-kiro',
+            quota: 500000,
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            other: '{}',
+          },
+        ],
+        total: 1,
+        page: 1,
+        page_size: 100,
+      },
+    } as never)
+    renderConsole(<ConsoleOverview />)
+
+    expect(await screen.findByText('Spend this month')).toBeInTheDocument()
+    expect(screen.queryByText('Balance')).not.toBeInTheDocument()
+    expect(
+      screen.getByText('Usage this month so far, all users.')
+    ).toBeInTheDocument()
+    expect(await screen.findByText('zy')).toBeInTheDocument()
+    expect(screen.getByText('User')).toBeInTheDocument()
+    expect(vi.mocked(dashboardApi.getUserQuotaDates).mock.calls[0][1]).toBe(
+      true
+    )
+    expect(logsApi.getUserLogs).not.toHaveBeenCalled()
   })
 })

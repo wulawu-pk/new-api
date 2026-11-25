@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
 import dayjs from 'dayjs'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AsciiBar } from '@/components/terminal/ascii-bar'
@@ -39,7 +39,9 @@ import {
 import { errorReason } from '@/components/terminal/lib'
 import { Pane } from '@/components/terminal/pane'
 import { RollingNumber } from '@/components/terminal/rolling-number'
+import { TermSelect } from '@/components/terminal/term-select'
 import { Button } from '@/components/ui/button'
+import { useIsAdmin } from '@/hooks/use-admin'
 import { toIntlLocale } from '@/i18n/languages'
 import { formatLogQuota, formatNumber, formatQuota } from '@/lib/format'
 
@@ -51,6 +53,7 @@ import { toConsoleLogRow } from '../request-logs/lib/log-row'
 import { ConsolePageHeader } from '../shell/console-shell'
 import { WeekChart } from './components/week-chart'
 import {
+  type OverviewScope,
   useHasKeys,
   useMonthRequestTotals,
   useMonthUsage,
@@ -100,10 +103,17 @@ function Kpi(props: {
 export function ConsoleOverview() {
   const { t, i18n } = useTranslation()
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
+  const isAdmin = useIsAdmin()
+  // Administrators start on the whole site's numbers, like the log page.
+  const [scope, setScope] = useState<OverviewScope>(() =>
+    isAdmin ? 'all' : 'self'
+  )
+  const allUsers = isAdmin && scope === 'all'
+  const dataScope: OverviewScope = allUsers ? 'all' : 'self'
   const self = useSelfUser()
-  const usage = useMonthUsage()
-  const totals = useMonthRequestTotals()
-  const recent = useRecentRequests(CACHE_SAMPLE)
+  const usage = useMonthUsage(dataScope)
+  const totals = useMonthRequestTotals(dataScope)
+  const recent = useRecentRequests(CACHE_SAMPLE, dataScope)
   const isNewUser = self.data != null && self.data.request_count === 0
   const hasKeys = useHasKeys(isNewUser)
 
@@ -143,6 +153,14 @@ export function ConsoleOverview() {
     balanceValue = <RollingNumber text={formatQuota(balance)} />
   }
 
+  // Site-wide, the first figure is what everyone spent this month; an
+  // admin's own balance says nothing about the site (it is in the top bar).
+  let spendValue: React.ReactNode = <SkeletonText />
+  if (usage.isError) spendValue = '—'
+  else if (usage.data) {
+    spendValue = <RollingNumber text={formatQuota(monthUsage.quota)} />
+  }
+
   let requestsValue: React.ReactNode = <SkeletonText />
   if (usage.isError) requestsValue = '—'
   else if (usage.data) {
@@ -170,49 +188,83 @@ export function ConsoleOverview() {
   }
 
   const kpiError = self.isError || usage.isError || totals.isError
-  let kpiErrorApi = '/api/log/self'
+  const logApi = allUsers ? '/api/log/' : '/api/log/self'
+  const dataApi = allUsers ? '/api/data/' : '/api/data/self'
+  let kpiErrorApi = logApi
   if (self.isError) kpiErrorApi = '/api/user/self'
-  else if (usage.isError) kpiErrorApi = '/api/data/self'
+  else if (usage.isError) kpiErrorApi = dataApi
+  const cols = allUsers ? 7 : 6
   const availClass = avail == null ? undefined : successRateClass(avail * 100)
 
   return (
     <>
       <ConsolePageHeader
         title={t('Overview')}
-        description={t('Usage this month so far.')}
+        description={
+          allUsers
+            ? t('Usage this month so far, all users.')
+            : t('Usage this month so far.')
+        }
+        actions={
+          isAdmin ? (
+            <TermSelect
+              aria-label={t('Whose requests')}
+              value={scope}
+              options={[
+                { value: 'all', label: t('All users') },
+                { value: 'self', label: t('My requests') },
+              ]}
+              onValueChange={(value) => setScope(value as OverviewScope)}
+              className='w-auto min-w-[130px] py-2 text-[13.5px]'
+            />
+          ) : undefined
+        }
       />
 
       <Pane hero title={<b>{t('Month to date')}</b>}>
         <div className='grid grid-cols-[1.4fr_1fr_1fr_1fr] max-md:grid-cols-2'>
-          <Kpi
-            label={t('Balance')}
-            value={balanceValue}
-            big
-            className='max-md:col-span-2'
-          >
-            <div className='text-t-dim mt-2.5 overflow-hidden font-mono text-xs whitespace-nowrap'>
-              {usage.data && self.data && monthUsage.quota > 0 && (
-                <>
-                  <AsciiBar
-                    value={monthUsage.quota}
-                    max={monthUsage.quota + balance}
-                    tone='accent'
-                  />
-                  {'　'}
-                  {t('Used this month {{amount}}', {
-                    amount: formatQuota(monthUsage.quota),
-                  })}
-                </>
-              )}
-              {usage.data && monthUsage.quota === 0 && (
-                <>
-                  <AsciiBar value={0} />
-                  {'　'}
-                  {t('No usage this month yet')}
-                </>
-              )}
-            </div>
-          </Kpi>
+          {allUsers ? (
+            <Kpi
+              label={t('Spend this month')}
+              value={spendValue}
+              big
+              className='max-md:col-span-2'
+            >
+              <div className='text-t-dim mt-2.5 overflow-hidden font-mono text-xs whitespace-nowrap'>
+                {t('All users combined')}
+              </div>
+            </Kpi>
+          ) : (
+            <Kpi
+              label={t('Balance')}
+              value={balanceValue}
+              big
+              className='max-md:col-span-2'
+            >
+              <div className='text-t-dim mt-2.5 overflow-hidden font-mono text-xs whitespace-nowrap'>
+                {usage.data && self.data && monthUsage.quota > 0 && (
+                  <>
+                    <AsciiBar
+                      value={monthUsage.quota}
+                      max={monthUsage.quota + balance}
+                      tone='accent'
+                    />
+                    {'　'}
+                    {t('Used this month {{amount}}', {
+                      amount: formatQuota(monthUsage.quota),
+                    })}
+                  </>
+                )}
+                {usage.data && monthUsage.quota === 0 && (
+                  <>
+                    <AsciiBar value={0} />
+                    {'　'}
+                    {t('No usage this month yet')}
+                  </>
+                )}
+              </div>
+            </Kpi>
+          )}
           <Kpi
             label={t('Requests')}
             value={requestsValue}
@@ -250,7 +302,7 @@ export function ConsoleOverview() {
           {usage.isError && (
             <div className='flex min-h-[218px] items-center justify-center p-[18px]'>
               <LoadErrorText
-                api='/api/data/self'
+                api={dataApi}
                 reason={errorReason(usage.error)}
                 onRetry={() => void usage.refetch()}
               />
@@ -318,6 +370,7 @@ export function ConsoleOverview() {
             <ConsoleTableHeader>
               <ConsoleTableRow className='hover:bg-transparent'>
                 <ConsoleTh>{t('Time')}</ConsoleTh>
+                {allUsers && <ConsoleTh>{t('User')}</ConsoleTh>}
                 <ConsoleTh>{t('Model')}</ConsoleTh>
                 <ConsoleTh>{t('Group')}</ConsoleTh>
                 <ConsoleTh>{t('Usage')}</ConsoleTh>
@@ -326,18 +379,18 @@ export function ConsoleOverview() {
               </ConsoleTableRow>
             </ConsoleTableHeader>
             <ConsoleTableBody>
-              {recent.isPending && <TableSkeletonRows cols={6} />}
+              {recent.isPending && <TableSkeletonRows cols={cols} />}
               {recent.isError && (
-                <TableMessageRow cols={6}>
+                <TableMessageRow cols={cols}>
                   <LoadErrorText
-                    api='/api/log/self'
+                    api={logApi}
                     reason={errorReason(recent.error)}
                     onRetry={() => void recent.refetch()}
                   />
                 </TableMessageRow>
               )}
               {recent.data && rows.length === 0 && (
-                <TableMessageRow cols={6}>
+                <TableMessageRow cols={cols}>
                   {t(
                     'No requests yet. Send your first request with the configuration from the home page; it shows up here within seconds.'
                   )}
@@ -353,6 +406,9 @@ export function ConsoleOverview() {
                   <ConsoleTd kind='mono'>
                     {dayjs.unix(row.createdAt).format('HH:mm')}
                   </ConsoleTd>
+                  {allUsers && (
+                    <ConsoleTd kind='mono'>{row.username || '—'}</ConsoleTd>
+                  )}
                   <ConsoleTd kind='mono'>{row.model}</ConsoleTd>
                   <ConsoleTd>{groupName(row.group, t)}</ConsoleTd>
                   <ConsoleTd kind='mono'>
