@@ -63,6 +63,7 @@ import {
 
 import { groupName } from '../lib/groups'
 import { CREATE_KEY_EVENT, ConsolePageHeader } from '../shell/console-shell'
+import { ApiAddressPane } from './components/api-address-pane'
 import { CreateKeyDialog } from './components/create-key-dialog'
 import {
   buildCreateKeyPayload,
@@ -452,6 +453,8 @@ export function ConsoleKeys(props: ConsoleKeysProps) {
           </ConsoleTable>
         </div>
       </Pane>
+
+      <ApiAddressPane />
 
       <CreateKeyDialog
         open={createOpen}

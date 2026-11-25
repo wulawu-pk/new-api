@@ -1,0 +1,90 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+
+import { Pane } from '@/components/terminal/pane'
+import { TERM_BUTTON_GHOST } from '@/components/terminal/styles'
+import { Button } from '@/components/ui/button'
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
+import { useStatus } from '@/hooks/use-status'
+
+import { apiBaseUrl } from '../lib/api-address'
+
+/** The two addresses to copy next to the keys, so nobody has to open the docs. */
+export function ApiAddressPane() {
+  const { t } = useTranslation()
+  const { status } = useStatus()
+  const { copyToClipboard } = useCopyToClipboard({ notify: false })
+  const base = apiBaseUrl(status?.server_address)
+
+  const rows = [
+    {
+      id: 'openai',
+      label: t('OpenAI compatible / Codex'),
+      value: `${base}/v1`,
+      note: null,
+    },
+    {
+      id: 'claude',
+      label: 'Claude Code',
+      value: base,
+      note: t('without /v1'),
+    },
+  ]
+
+  const copy = async (label: string, value: string) => {
+    if (await copyToClipboard(value)) {
+      toast.success(t('Copied the {{name}} address', { name: label }))
+    } else toast.error(t('Copy failed; select and copy it manually'))
+  }
+
+  return (
+    <Pane title={<b>{t('API address')}</b>}>
+      <div className='flex flex-col px-[18px] py-2'>
+        {rows.map((row) => (
+          <div
+            key={row.id}
+            className='border-t-line grid grid-cols-[minmax(10rem,14rem)_1fr_auto] items-center gap-3 border-t py-2.5 text-sm first:border-t-0 max-sm:grid-cols-[1fr_auto]'
+          >
+            <span className='text-t-dim max-sm:col-span-2'>{row.label}</span>
+            <span className='min-w-0 font-mono break-all select-all'>
+              {row.value}
+              {row.note && (
+                <span className='text-t-dim ml-2 font-sans text-xs'>
+                  {row.note}
+                </span>
+              )}
+            </span>
+            <Button
+              type='button'
+              size='sm'
+              variant='ghost'
+              className={TERM_BUTTON_GHOST}
+              onClick={() => void copy(row.label, row.value)}
+              aria-label={t('Copy {{name}}', { name: row.label })}
+            >
+              {t('Copy')}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </Pane>
+  )
+}
