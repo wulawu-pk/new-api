@@ -17,11 +17,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate } from '@tanstack/react-router'
-import { CheckCircle2, Gift, Loader2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { PublicLayout } from '@/components/layout'
+import { Pane } from '@/components/terminal/pane'
+import { SpinButton } from '@/components/terminal/spin-button'
+import {
+  TERM_BUTTON,
+  TERM_BUTTON_GHOST,
+  TERM_BUTTON_PRIMARY,
+  TERM_INPUT,
+} from '@/components/terminal/styles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,8 +36,10 @@ import {
   useRedemption,
 } from '@/features/wallet/hooks/use-redemption'
 import { formatQuota } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
+import { ConsolePageHeader } from '../console/shell/console-shell'
 import {
   REDEEM_RETURN_PATH,
   clearPendingRedeemCode,
@@ -125,31 +133,43 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
   let body
   if (result) {
     body = (
-      <div className='space-y-5' role='status'>
-        <div className='flex items-center gap-3'>
-          <CheckCircle2 className='text-primary size-6 shrink-0' />
-          <div className='space-y-1'>
-            <h2 className='text-lg font-semibold'>{t('Activated')}</h2>
-            <p className='text-muted-foreground text-sm'>
-              {t('{{quota}} has been added to your account.', {
-                quota: formatQuota(result.added),
+      <div className='flex flex-col gap-5 px-5 pt-6 pb-5' role='status'>
+        <div className='flex flex-col gap-1.5'>
+          <h2 className='m-0 text-base font-semibold'>
+            <span className='text-t-ok' aria-hidden='true'>
+              ✓
+            </span>{' '}
+            <span>{t('Activated')}</span>
+          </h2>
+          <p className='text-t-fg2 m-0 text-sm leading-[1.7]'>
+            {t('{{quota}} has been added to your account.', {
+              quota: formatQuota(result.added),
+            })}
+          </p>
+          {result.balance !== null && (
+            <p className='text-t-dim m-0 font-mono text-[13px]'>
+              {t('Current balance: {{balance}}', {
+                balance: formatQuota(result.balance),
               })}
             </p>
-            {result.balance !== null && (
-              <p className='text-muted-foreground text-sm'>
-                {t('Current balance: {{balance}}', {
-                  balance: formatQuota(result.balance),
-                })}
-              </p>
-            )}
-          </div>
+          )}
         </div>
-        <div className='flex flex-wrap gap-2'>
-          <Button render={<Link to='/keys' />}>{t('Create API Key')}</Button>
-          <Button variant='outline' render={<Link to='/wallet' />}>
+        <div className='flex flex-wrap gap-2.5'>
+          <Button className={TERM_BUTTON_PRIMARY} render={<Link to='/keys' />}>
+            {t('Create API Key')}
+          </Button>
+          <Button
+            variant='outline'
+            className={TERM_BUTTON}
+            render={<Link to='/wallet' />}
+          >
             {t('Go to wallet')}
           </Button>
-          <Button variant='ghost' onClick={activateAnother}>
+          <Button
+            variant='ghost'
+            className={TERM_BUTTON_GHOST}
+            onClick={activateAnother}
+          >
             {t('Activate another card')}
           </Button>
         </div>
@@ -158,14 +178,20 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
   } else {
     body = (
       <form
-        className='space-y-4'
+        noValidate
+        className='flex flex-col gap-4 px-5 pt-6 pb-5'
         onSubmit={(event) => {
           event.preventDefault()
-          if (user) void handleActivate()
+          if (user && !redeeming) void handleActivate()
         }}
       >
-        <div className='space-y-2'>
-          <Label htmlFor='redeem-code'>{t('Card code')}</Label>
+        <div className='flex flex-col gap-[7px]'>
+          <Label
+            htmlFor='redeem-code'
+            className='text-t-fg2 text-[13px] font-normal'
+          >
+            {t('Card code')}
+          </Label>
           <Input
             id='redeem-code'
             value={code}
@@ -176,35 +202,34 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
             placeholder={t('Paste your 32-character card code')}
             autoComplete='off'
             spellCheck={false}
-            className='h-10 font-mono'
+            className={cn(TERM_INPUT, 'font-mono')}
           />
         </div>
 
         {user ? (
-          <div className='space-y-3'>
-            <p className='text-muted-foreground text-sm'>
+          <div className='flex flex-col gap-3'>
+            <p className='text-t-dim m-0 text-[13.5px] leading-[1.7]'>
               {t('The balance goes to account {{username}}.', {
                 username: user.username,
               })}
             </p>
-            <Button
+            <SpinButton
               type='submit'
-              className='w-full'
-              disabled={redeeming || code.trim() === ''}
-            >
-              {redeeming && <Loader2 className='mr-2 size-4 animate-spin' />}
-              {t('Activate')}
-            </Button>
+              state={redeeming ? 'pending' : 'idle'}
+              label={t('Activate')}
+              pendingLabel={t('Redeeming…')}
+              disabled={!redeeming && code.trim() === ''}
+            />
           </div>
         ) : (
-          <div className='space-y-3'>
-            <p className='text-muted-foreground text-sm'>
+          <div className='flex flex-col gap-3'>
+            <p className='text-t-dim m-0 text-[13.5px] leading-[1.7]'>
               {t(
                 'Sign in to activate. The balance goes to the account you sign in with.'
               )}
             </p>
             <Button
-              className='w-full'
+              className={cn(TERM_BUTTON_PRIMARY, 'w-full py-3')}
               render={
                 <Link
                   to='/sign-in'
@@ -215,13 +240,13 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
             >
               {t('Sign in')}
             </Button>
-            <p className='text-muted-foreground text-center text-sm'>
+            <p className='text-t-dim m-0 text-center text-[13px]'>
               {t("Don't have an account?")}{' '}
               <Link
                 to='/sign-up'
                 search={{ redirect: REDEEM_RETURN_PATH }}
                 onClick={keepCodeForSignIn}
-                className='hover:text-primary font-medium underline underline-offset-4'
+                className='text-t-fg hover:text-t-accent'
               >
                 {t('Sign up')}
               </Link>
@@ -233,30 +258,32 @@ export function Redeem({ initialCode = '' }: RedeemProps) {
   }
 
   return (
-    <PublicLayout>
-      <div className='mx-auto w-full max-w-md space-y-6 py-10 sm:py-16'>
-        <header className='space-y-2'>
-          <div className='flex items-center gap-2'>
-            <Gift className='text-primary size-5' />
-            <h1 className='text-2xl font-semibold tracking-tight'>
-              {t('Activate recharge card')}
-            </h1>
-          </div>
-          <p className='text-muted-foreground text-sm'>
-            {t(
-              'Enter the card code you bought to add its balance to your account.'
-            )}
-          </p>
-        </header>
+    <div className='mx-auto flex w-full max-w-[560px] flex-col gap-6 pt-6'>
+      <ConsolePageHeader
+        title={t('Activate recharge card')}
+        description={t(
+          'Enter the card code you bought to add its balance to your account.'
+        )}
+      />
 
-        <div className='bg-card rounded-xl border p-5'>{body}</div>
+      <Pane
+        hero
+        title={
+          <>
+            <b>redeem</b>
+            {'　'}
+            {t('Card code')}
+          </>
+        }
+      >
+        {body}
+      </Pane>
 
-        <p className='text-muted-foreground text-xs'>
-          {t(
-            'Each card can be activated once. A card is not an API key and cannot call models.'
-          )}
-        </p>
-      </div>
-    </PublicLayout>
+      <p className='text-t-dim m-0 text-[12.5px] leading-[1.7]'>
+        {t(
+          'Each card can be activated once. A card is not an API key and cannot call models.'
+        )}
+      </p>
+    </div>
   )
 }

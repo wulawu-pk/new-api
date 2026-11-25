@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute, useLocation } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import { ConsoleShell } from '@/features/console/shell/console-shell'
 import { RedeemFromUrl } from '@/features/redeem'
 import { resolveAuthentication } from '@/lib/auth-session'
 
@@ -45,5 +46,10 @@ export const Route = createFileRoute('/redeem/')({
 function RouteComponent() {
   const { code } = Route.useSearch()
   const hash = useLocation({ select: (location) => location.hash })
-  return <RedeemFromUrl searchCode={code} hash={hash} />
+  // peroai v3: public page in the console shell, like /status.
+  return (
+    <ConsoleShell>
+      <RedeemFromUrl searchCode={code} hash={hash} />
+    </ConsoleShell>
+  )
 }

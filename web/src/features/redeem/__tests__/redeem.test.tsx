@@ -45,12 +45,6 @@ import {
   savePendingRedeemCode,
 } from '../lib/pending-code'
 
-// The public header needs status, notifications and a full route tree; the
-// page body is what this suite covers.
-vi.mock('@/components/layout', () => ({
-  PublicLayout: (props: { children?: unknown }) => props.children,
-}))
-
 const CODE = '0123456789abcdef0123456789abcdef'
 
 function renderRedeem(initialCode?: string, initialEntry = '/redeem') {
