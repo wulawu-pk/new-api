@@ -485,7 +485,7 @@ func GeminiChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.R
 		}
 		responseBody = claudeRespStr
 	case types.RelayFormatGemini:
-		break
+		responseBody = sanitizeNativeGeminiBody(responseBody)
 	}
 
 	service.IOCopyBytesGracefully(c, resp, responseBody)
