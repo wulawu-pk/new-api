@@ -192,14 +192,19 @@ export function ConsoleLogs() {
         title={t('Usage logs')}
         description={
           <>
-            {t('One row per request. Click a row for the billing breakdown.')}{' '}
-            <Link
-              to='/usage-logs/$section'
-              params={{ section: 'task' }}
-              className='text-t-fg border-t-faint border-b hover:border-(--t-accent)'
-            >
-              {t('Image and video tasks')}
-            </Link>
+            {t('One row per request. Click a row for the billing breakdown.')}
+            {isAdmin && (
+              <>
+                {' '}
+                <Link
+                  to='/usage-logs/$section'
+                  params={{ section: 'task' }}
+                  className='text-t-fg border-t-faint border-b hover:border-(--t-accent)'
+                >
+                  {t('Image and video tasks')}
+                </Link>
+              </>
+            )}
           </>
         }
         actions={

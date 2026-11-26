@@ -327,6 +327,30 @@ describe('billing basis in the detail', () => {
     expect(within(detail).getByText('/v1/messages')).toBeInTheDocument()
   })
 
+  it('shows the thinking effort the request asked for', async () => {
+    const detail = await openDetail(
+      {
+        billing_mode: 'ratio',
+        group_ratio: 0.25,
+        user_group_ratio: -1,
+        reasoning_effort: 'xhigh',
+      },
+      { model_name: 'gpt-6.2-astra', group: 'gpt-astra' }
+    )
+    expect(within(detail).getByText('Thinking effort')).toBeInTheDocument()
+    expect(within(detail).getByText('xhigh')).toBeInTheDocument()
+  })
+
+  it('leaves the thinking effort out when the request set none', async () => {
+    const detail = await openDetail(
+      { billing_mode: 'ratio', group_ratio: 0.65, user_group_ratio: -1 },
+      { model_name: 'deepseek-v4-pro', group: 'deepseek' }
+    )
+    expect(
+      within(detail).queryByText('Thinking effort')
+    ).not.toBeInTheDocument()
+  })
+
   it('leaves the endpoint out when the log did not record one', async () => {
     const detail = await openDetail(
       { billing_mode: 'ratio', group_ratio: 0.5, user_group_ratio: -1 },

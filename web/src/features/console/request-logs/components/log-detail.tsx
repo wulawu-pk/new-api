@@ -160,6 +160,10 @@ export function LogDetail(props: {
     )
   }
 
+  if (row.reasoningEffort) {
+    cells.push({ label: t('Thinking effort'), value: row.reasoningEffort })
+  }
+
   if (row.endpoint) {
     cells.push({ label: t('Endpoint'), value: row.endpoint })
   }

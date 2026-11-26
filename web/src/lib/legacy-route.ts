@@ -72,6 +72,15 @@ export function resolveLegacyRoute(rawHref: string): string | null {
   }
 
   const pathname = normalizeLegacyPath(source.pathname)
+  // peroai: upstream public pages that the new site does not offer. The
+  // rankings page published site-wide usage and the about page is empty;
+  // single-model pages are replaced by the model square.
+  if (pathname === '/rankings' || pathname === '/about') {
+    return '/'
+  }
+  if (pathname.startsWith('/pricing/')) {
+    return buildTargetHref('/pricing', source)
+  }
   if (pathname === '/login') {
     return buildTargetHref('/sign-in', source)
   }

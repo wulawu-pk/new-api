@@ -67,6 +67,8 @@ export type ConsoleLogRow = {
   isStream: boolean
   /** Request path the client called (e.g. /v1/messages); '' when unknown. */
   endpoint: string
+  /** Thinking effort the request asked for (low, high, max ...); '' when none. */
+  reasoningEffort: string
   other: LogOtherData | null
 }
 
@@ -108,6 +110,10 @@ export function toConsoleLogRow(log: UsageLog): ConsoleLogRow {
     billing: getLogBilling(other, tierPrices, groupRatio),
     isStream: log.is_stream,
     endpoint: typeof other?.request_path === 'string' ? other.request_path : '',
+    reasoningEffort:
+      typeof other?.reasoning_effort === 'string'
+        ? other.reasoning_effort.trim()
+        : '',
     other,
   }
 }

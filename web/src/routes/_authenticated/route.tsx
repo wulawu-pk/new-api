@@ -19,7 +19,9 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { AuthenticatedLayout } from '@/components/layout'
+import { customerConsoleRedirect } from '@/features/console/lib/windows'
 import { resolveAuthentication } from '@/lib/auth-session'
+import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 export const Route = createFileRoute('/_authenticated')({
@@ -37,6 +39,16 @@ export const Route = createFileRoute('/_authenticated')({
         to: '/sign-in',
         search: { redirect: location.href },
       })
+    }
+
+    // peroai: customers only get the console shell; the upstream pages with
+    // the old sidebar layout are for administrators.
+    const target = customerConsoleRedirect(
+      location.pathname,
+      (auth.user.role ?? 0) >= ROLE.ADMIN
+    )
+    if (target) {
+      throw redirect({ to: target, replace: true })
     }
   },
   component: AuthenticatedLayout,

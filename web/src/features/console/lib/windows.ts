@@ -90,6 +90,22 @@ export function isConsolePath(pathname: string): boolean {
   return findConsoleWindow(pathname) !== undefined || isAccountPath(pathname)
 }
 
+/**
+ * Where a signed-in customer lands when they open a page outside the console
+ * shell (the upstream dashboard, log sections, playground, chat, error
+ * routes). Those pages keep the old admin layout, which only administrators
+ * should see. Returns null when the path is fine as it is.
+ */
+export function customerConsoleRedirect(
+  pathname: string,
+  isAdmin: boolean
+): string | null {
+  if (isAdmin || isConsolePath(pathname)) return null
+  const path = normalize(pathname)
+  if (path.startsWith('/usage-logs')) return '/usage-logs'
+  return '/dashboard'
+}
+
 /** Keys typed into text fields or while a dialog is open are not shortcuts. */
 export function isShortcutTarget(event: KeyboardEvent): boolean {
   if (event.altKey || event.ctrlKey || event.metaKey) return false

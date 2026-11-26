@@ -6321,6 +6321,7 @@
     "These values come from the source index and are shown for review only. The gateway admits the plugin based on the metadata compiled from its source.": "这些值来自源索引，仅供审查参考。网关的准入判定只依据从源码编译出的真实元数据。",
     "Thinking Suffix Adapter": "思考后缀适配器",
     "Thinking to Content": "思维到内容",
+    "Thinking effort": "思考强度",
     "Thinking...": "思考中...",
     "Third-party": "第三方",
     "Third-party — use at your own risk": "第三方 — 风险自担",

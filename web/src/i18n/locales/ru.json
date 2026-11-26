@@ -6321,6 +6321,7 @@
     "These values come from the source index and are shown for review only. The gateway admits the plugin based on the metadata compiled from its source.": "Эти значения взяты из индекса источника и показаны только для проверки. Шлюз допускает плагин по метаданным, скомпилированным из его кода.",
     "Thinking Suffix Adapter": "Адаптер суффикса thinking",
     "Thinking to Content": "Мышление в контент",
+    "Thinking effort": "Уровень рассуждений",
     "Thinking...": "Размышление...",
     "Third-party": "Сторонний",
     "Third-party — use at your own risk": "Сторонний — на ваш риск",

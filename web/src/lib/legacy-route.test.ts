@@ -81,6 +81,17 @@ describe('legacy frontend route migration', () => {
     )
   })
 
+  test('sends retired public pages to the new site', () => {
+    expect(resolveLegacyRoute('/rankings?period=month')).toBe('/')
+    expect(resolveLegacyRoute('/about')).toBe('/')
+    expect(resolveLegacyRoute('/pricing/claude-opus-5-5')).toBe('/pricing')
+    expect(resolveLegacyRoute('/pricing/gpt-6.2-sol/?group=gpt-pro#api')).toBe(
+      '/pricing?group=gpt-pro#api'
+    )
+    expect(resolveLegacyRoute('/pricing')).toBe(null)
+    expect(resolveLegacyRoute('/pricing?group=gpt-pro')).toBe(null)
+  })
+
   test('safely redirects unknown console locations without touching new routes', () => {
     expect(resolveLegacyRoute('/console/removed?page=2#old')).toBe(
       '/dashboard?page=2#old'
