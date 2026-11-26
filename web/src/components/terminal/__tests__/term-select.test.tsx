@@ -69,4 +69,16 @@ describe('TermSelect', () => {
     expect(onChange).toHaveBeenCalledWith('USDC')
     expect(screen.getByLabelText('Coin')).toHaveTextContent('USDC')
   })
+
+  it('caps the open list so a long option list scrolls inside it', async () => {
+    const user = userEvent.setup()
+    render(<CoinField />)
+    await user.click(screen.getByLabelText('Coin'))
+    const list = screen
+      .getByRole('option', { name: 'USDT' })
+      .closest('[data-slot="select-content"]')
+    expect(list?.className).toContain(
+      'max-h-[min(var(--available-height),20rem)]'
+    )
+  })
 })

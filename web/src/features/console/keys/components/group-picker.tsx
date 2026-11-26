@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -23,6 +24,13 @@ import { cn } from '@/lib/utils'
 
 import type { UserGroup } from '../../hooks/use-user-groups'
 import { groupName, groupNote, ratioLabel } from '../../lib/groups'
+
+/**
+ * About five groups tall, then the list scrolls inside the dialog instead of
+ * stretching it (there are 10+ groups).
+ */
+export const GROUP_LIST_SCROLL =
+  'relative max-h-[min(22rem,45vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin]'
 
 type GroupPickerProps = {
   groups: UserGroup[]
@@ -40,13 +48,30 @@ type GroupPickerProps = {
  */
 export function GroupPicker(props: GroupPickerProps) {
   const { t } = useTranslation()
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // Editing a key whose group sits below the fold: bring it into view once.
+  useEffect(() => {
+    const list = listRef.current
+    const picked = list?.querySelector<HTMLElement>('[data-picked]')
+    if (!list || !picked) return
+    const top = picked.offsetTop
+    const bottom = top + picked.offsetHeight
+    if (top < list.scrollTop || bottom > list.scrollTop + list.clientHeight) {
+      list.scrollTop = top - (list.clientHeight - picked.offsetHeight) / 2
+    }
+    // Only on open; later picks are already visible where the user clicked.
+  }, [])
+
   return (
     <RadioGroup
+      ref={listRef}
       value={props.value}
       onValueChange={(value) => props.onChange(String(value))}
       aria-labelledby={props['aria-labelledby']}
       aria-invalid={props.invalid || undefined}
       className={cn(
+        GROUP_LIST_SCROLL,
         'border-t-faint gap-0 border',
         props.invalid && 'border-t-bad'
       )}
@@ -58,6 +83,7 @@ export function GroupPicker(props: GroupPickerProps) {
           <label
             key={group.key}
             htmlFor={id}
+            data-picked={checked || undefined}
             className={cn(
               'border-t-line grid cursor-pointer grid-cols-[18px_1fr_auto] items-baseline gap-x-2.5 px-3 py-2.5 text-sm [&+&]:border-t',
               checked && 'bg-t-bg3'

@@ -29,6 +29,13 @@ import { cn } from '@/lib/utils'
 
 export type TermSelectOption = { value: string; label: ReactNode }
 
+/**
+ * The open list stops at about eight rows (or the room left on screen) and
+ * scrolls inside, so a long option list never runs down the page.
+ */
+export const TERM_SELECT_LIST =
+  'bg-t-bg2 text-t-fg max-h-[min(var(--available-height),20rem)] [scrollbar-width:thin] rounded-(--t-radius) p-1 shadow-[var(--t-menu-shadow)] ring-(--t-line)'
+
 type TermSelectProps = {
   /** Lets a `<Label htmlFor>` name the trigger. */
   id?: string
@@ -78,7 +85,7 @@ export function TermSelect(props: TermSelectProps) {
       <SelectContent
         alignItemWithTrigger={false}
         sideOffset={6}
-        className='bg-t-bg2 text-t-fg rounded-(--t-radius) p-1 shadow-[var(--t-menu-shadow)] ring-(--t-line)'
+        className={TERM_SELECT_LIST}
       >
         {props.options.map((option) => (
           <SelectItem

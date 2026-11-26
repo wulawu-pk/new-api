@@ -65,6 +65,8 @@ export type ConsoleLogRow = {
   /** Billing basis when not credit-billed: per image, second, request or token. */
   billing: LogBilling
   isStream: boolean
+  /** Request path the client called (e.g. /v1/messages); '' when unknown. */
+  endpoint: string
   other: LogOtherData | null
 }
 
@@ -105,6 +107,7 @@ export function toConsoleLogRow(log: UsageLog): ConsoleLogRow {
     groupRatio,
     billing: getLogBilling(other, tierPrices, groupRatio),
     isStream: log.is_stream,
+    endpoint: typeof other?.request_path === 'string' ? other.request_path : '',
     other,
   }
 }

@@ -309,6 +309,32 @@ describe('billing basis in the detail', () => {
     expect(within(detail).getByText('286,357')).toBeInTheDocument()
   })
 
+  it('names the endpoint the request was sent to', async () => {
+    const detail = await openDetail(
+      {
+        billing_mode: 'tiered_expr',
+        matched_tier: 'credit',
+        credits: 0.0112255,
+        tier_prices: { unit: 'credit', per_unit: { credits: 0.25 } },
+        usage_semantic: 'anthropic',
+        group_ratio: 1.5,
+        user_group_ratio: -1,
+        request_path: '/v1/messages',
+      },
+      { model_name: 'claude-haiku-4-5', group: 'claude-kiro' }
+    )
+    expect(within(detail).getByText('Endpoint')).toBeInTheDocument()
+    expect(within(detail).getByText('/v1/messages')).toBeInTheDocument()
+  })
+
+  it('leaves the endpoint out when the log did not record one', async () => {
+    const detail = await openDetail(
+      { billing_mode: 'ratio', group_ratio: 0.5, user_group_ratio: -1 },
+      { model_name: 'gpt-6-astra', group: 'gpt-pro' }
+    )
+    expect(within(detail).queryByText('Endpoint')).not.toBeInTheDocument()
+  })
+
   it('a token-billed request without cache writes does not show the cache write', async () => {
     const detail = await openDetail(
       { cache_tokens: 7471, group_ratio: 0.5 },

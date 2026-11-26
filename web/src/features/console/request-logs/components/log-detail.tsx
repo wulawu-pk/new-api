@@ -160,6 +160,10 @@ export function LogDetail(props: {
     )
   }
 
+  if (row.endpoint) {
+    cells.push({ label: t('Endpoint'), value: row.endpoint })
+  }
+
   if (props.showChannel && row.channel > 0) {
     cells.push({
       label: t('Channel'),
@@ -175,7 +179,7 @@ export function LogDetail(props: {
         {cells.map((cell) => (
           <div key={cell.label}>
             <b className='text-t-dim block text-xs font-medium'>{cell.label}</b>
-            <span className='text-t-fg2 font-mono'>{cell.value}</span>
+            <span className='text-t-fg2 font-mono break-all'>{cell.value}</span>
           </div>
         ))}
       </div>
