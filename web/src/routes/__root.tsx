@@ -117,7 +117,14 @@ export const Route = createRootRouteWithContext<{
   beforeLoad: async ({ location }) => {
     const legacyTarget = resolveLegacyRoute(location.href)
     if (legacyTarget) {
-      throw redirect({ href: legacyTarget, replace: true })
+      // peroai: `/` is the static landing page served next to the SPA, so
+      // reaching it needs a full page load (the SPA's own `/` route is the
+      // stock home page).
+      throw redirect({
+        href: legacyTarget,
+        replace: true,
+        reloadDocument: legacyTarget === '/',
+      })
     }
 
     const pathname = location?.pathname || ''
