@@ -51,7 +51,7 @@ describe('api base url', () => {
 })
 
 describe('api address pane', () => {
-  it('shows both addresses and copies the one clicked', async () => {
+  it('shows the Gemini SDK and REST addresses and copies the one clicked', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     const user = userEvent.setup()
     Object.defineProperty(navigator, 'clipboard', {
@@ -63,6 +63,8 @@ describe('api address pane', () => {
     expect(
       await screen.findByText('https://api.peroai.cc/v1')
     ).toBeInTheDocument()
+    expect(screen.getByText('https://api.peroai.cc/v1beta')).toBeInTheDocument()
+    expect(screen.getByText('Recommended')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /^Copy Claude Code$/ }))
     expect(writeText).toHaveBeenLastCalledWith('https://api.peroai.cc')
@@ -71,5 +73,13 @@ describe('api address pane', () => {
       screen.getByRole('button', { name: /^Copy OpenAI compatible/ })
     )
     expect(writeText).toHaveBeenLastCalledWith('https://api.peroai.cc/v1')
+
+    await user.click(
+      screen.getByRole('button', { name: /^Copy Gemini SDK base URL$/ })
+    )
+    expect(writeText).toHaveBeenLastCalledWith('https://api.peroai.cc')
+
+    await user.click(screen.getByRole('button', { name: /^Copy Gemini REST/ }))
+    expect(writeText).toHaveBeenLastCalledWith('https://api.peroai.cc/v1beta')
   })
 })

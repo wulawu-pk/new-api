@@ -7700,6 +7700,8 @@
     "{{count}} API entries deleted. Click \"Save Settings\" to apply.": "Đã xóa {{count}} mục API. Nhấp \"Lưu cài đặt\" để áp dụng.",
     "{{count}} FAQs deleted. Click \"Save Settings\" to apply.": "Đã xóa {{count}} câu hỏi thường gặp. Nhấp \"Lưu cài đặt\" để áp dụng.",
     "{{count}} announcements deleted. Click \"Save Settings\" to apply.": "Đã xóa {{count}} thông báo. Nhấp \"Lưu cài đặt\" để áp dụng.",
-    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "Đã xóa {{count}} nhóm. Nhấp \"Lưu cài đặt\" để áp dụng."
+    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "Đã xóa {{count}} nhóm. Nhấp \"Lưu cài đặt\" để áp dụng.",
+    "Gemini SDK base URL": "URL gốc SDK Gemini",
+    "Gemini REST /v1beta": "Gemini REST /v1beta"
   }
 }

@@ -7700,6 +7700,8 @@
     "{{count}} API entries deleted. Click \"Save Settings\" to apply.": "已刪除 {{count}} 筆 API 資訊。點擊「儲存設定」以套用。",
     "{{count}} FAQs deleted. Click \"Save Settings\" to apply.": "已刪除 {{count}} 筆常見問答。點擊「儲存設定」以套用。",
     "{{count}} announcements deleted. Click \"Save Settings\" to apply.": "已刪除 {{count}} 則公告。點擊「儲存設定」以套用。",
-    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "已刪除 {{count}} 個分組。點擊「儲存設定」以套用。"
+    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "已刪除 {{count}} 個分組。點擊「儲存設定」以套用。",
+    "Gemini SDK base URL": "Gemini SDK 基礎位址",
+    "Gemini REST /v1beta": "Gemini REST /v1beta"
   }
 }

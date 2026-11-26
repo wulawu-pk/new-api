@@ -77,9 +77,10 @@ export function modelApis(model: PricingModel): string[] {
   const out: string[] = []
   if (types.includes('anthropic')) out.push('messages')
   if (
-    model.quota_type === 0 &&
-    /^(gpt|codex)/i.test(model.model_name) &&
-    types.includes('openai')
+    types.includes('openai-response') ||
+    (model.quota_type === 0 &&
+      /^(gpt|codex)/i.test(model.model_name) &&
+      types.includes('openai'))
   ) {
     out.push('responses')
   }

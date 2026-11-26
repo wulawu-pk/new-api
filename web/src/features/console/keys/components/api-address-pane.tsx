@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 
 import { Pane } from '@/components/terminal/pane'
 import { TERM_BUTTON_GHOST } from '@/components/terminal/styles'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useStatus } from '@/hooks/use-status'
@@ -48,6 +49,17 @@ export function ApiAddressPane() {
       label: 'Claude Code',
       value: base,
     },
+    {
+      id: 'gemini-sdk',
+      label: t('Gemini SDK base URL'),
+      value: base,
+    },
+    {
+      id: 'gemini-rest',
+      label: t('Gemini REST /v1beta'),
+      value: `${base}/v1beta`,
+      recommended: true,
+    },
   ]
 
   const copy = async (label: string, value: string) => {
@@ -64,7 +76,17 @@ export function ApiAddressPane() {
             key={row.id}
             className='max-lg:border-t-line grid min-w-0 grid-cols-[auto_1fr_auto] items-center gap-3 py-2 text-sm max-lg:border-t max-lg:first:border-t-0 max-sm:grid-cols-[1fr_auto]'
           >
-            <span className='text-t-dim max-sm:col-span-2'>{row.label}</span>
+            <span className='text-t-dim max-sm:col-span-2'>
+              {row.label}
+              {row.recommended && (
+                <Badge
+                  variant='secondary'
+                  className='ml-1.5 align-middle text-[10px]'
+                >
+                  {t('Recommended')}
+                </Badge>
+              )}
+            </span>
             <span className='min-w-0 font-mono break-all select-all'>
               {row.value}
             </span>

@@ -7700,6 +7700,8 @@
     "{{count}} API entries deleted. Click \"Save Settings\" to apply.": "Удалено записей API: {{count}}. Нажмите «Сохранить настройки», чтобы применить.",
     "{{count}} FAQs deleted. Click \"Save Settings\" to apply.": "Удалено вопросов: {{count}}. Нажмите «Сохранить настройки», чтобы применить.",
     "{{count}} announcements deleted. Click \"Save Settings\" to apply.": "Удалено объявлений: {{count}}. Нажмите «Сохранить настройки», чтобы применить.",
-    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "Удалено групп: {{count}}. Нажмите «Сохранить настройки», чтобы применить."
+    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "Удалено групп: {{count}}. Нажмите «Сохранить настройки», чтобы применить.",
+    "Gemini SDK base URL": "Базовый URL SDK Gemini",
+    "Gemini REST /v1beta": "Gemini REST /v1beta"
   }
 }

@@ -7700,6 +7700,8 @@
     "{{count}} API entries deleted. Click \"Save Settings\" to apply.": "{{count}} 件の API 情報を削除しました。「設定を保存」をクリックして適用してください。",
     "{{count}} FAQs deleted. Click \"Save Settings\" to apply.": "{{count}} 件の FAQ を削除しました。「設定を保存」をクリックして適用してください。",
     "{{count}} announcements deleted. Click \"Save Settings\" to apply.": "{{count}} 件のお知らせを削除しました。「設定を保存」をクリックして適用してください。",
-    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "{{count}} 件のグループを削除しました。「設定を保存」をクリックして適用してください。"
+    "{{count}} groups deleted. Click \"Save Settings\" to apply.": "{{count}} 件のグループを削除しました。「設定を保存」をクリックして適用してください。",
+    "Gemini SDK base URL": "Gemini SDK のベース URL",
+    "Gemini REST /v1beta": "Gemini REST /v1beta"
   }
 }

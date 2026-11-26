@@ -63,6 +63,19 @@ describe('price rows', () => {
     expect(row.api).toEqual(['responses', 'chat'])
   })
 
+  it('lists chat, responses and Gemini for a model with all three endpoints', () => {
+    const row = priceRow(
+      model({
+        model_name: 'gemini-3.8-flash',
+        enable_groups: ['gemini-ultra'],
+        supported_endpoint_types: ['openai', 'openai-response', 'gemini'],
+      }),
+      0.75,
+      'gemini-ultra'
+    )
+    expect(row.api).toEqual(['responses', 'chat', 'gemini'])
+  })
+
   it('quotes the kiro expression per credit in a credit group and by token elsewhere', () => {
     const kiro = model({
       model_name: 'claude-sonnet-5-5',
@@ -171,6 +184,28 @@ describe('console model plaza', () => {
     expect(
       screen.queryByRole('region', { name: 'GPT Enterprise' })
     ).not.toBeInTheDocument()
+  })
+
+  it('shows chat, responses and Gemini for every Gemini Ultra model', async () => {
+    vi.mocked(pricingApi.getPricing).mockResolvedValue({
+      success: true,
+      data: [
+        model({
+          model_name: 'gemini-3.8-flash',
+          enable_groups: ['gemini-ultra'],
+          supported_endpoint_types: ['openai', 'openai-response', 'gemini'],
+        }),
+      ],
+      vendors: [],
+      group_ratio: { 'gemini-ultra': 0.75 },
+      usable_group: { 'gemini-ultra': 'Gemini Ultra' },
+    } as never)
+    renderConsole(<ConsoleModels />)
+
+    const region = await screen.findByRole('region', { name: 'Gemini Ultra' })
+    expect(
+      within(region).getByText('responses · chat · gemini')
+    ).toBeInTheDocument()
   })
 
   it('a group passed from the link opens first and a pick is reported back', async () => {
