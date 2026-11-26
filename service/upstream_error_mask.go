@@ -42,6 +42,9 @@ func IsUpstreamError(err *types.NewAPIError) bool {
 	if err == nil || err.IsPublic() {
 		return false
 	}
+	if err.IsUpstream() {
+		return true
+	}
 	code := err.GetErrorCode()
 	if localErrorCodes[code] || strings.HasPrefix(string(code), "channel:") || IsViolationFeeCode(code) {
 		return false
@@ -66,7 +69,7 @@ var (
 // upstreamIdentityWords mark a message that talks about how the upstream is
 // operated rather than about the customer's request.
 var upstreamIdentityWords = []string{
-	"supergpt", "cloudflare", "origin web server", "cf-ray", "account", "channel", "group", "balance",
+	"supergpt", "sub2api", "cloudflare", "origin web server", "cf-ray", "account", "channel", "group", "balance",
 	"quota", "credit", "api key", "apikey", "api_key", "token is invalid", "subscription", "billing",
 	"proxy", "kiro", "ccmax", "账号", "账户", "帐号", "余额", "额度", "渠道", "分组", "号池", "上游", "密钥", "令牌",
 }
@@ -128,7 +131,11 @@ func PublicUpstreamError(c *gin.Context, err *types.NewAPIError) *types.NewAPIEr
 		status, message, kind = http.StatusGatewayTimeout, i18n.T(c, i18n.MsgRelayUpstreamTimeout), "api_error"
 	case status >= 400 && status < 500:
 		kind = "invalid_request_error"
-		if text, ok := scrubUpstreamText(original); ok {
+		gemini := err.GetErrorType() == types.ErrorTypeGeminiError || common.GetContextKeyInt(c, constant.ContextKeyChannelType) == constant.ChannelTypeGemini ||
+			(c.Request != nil && c.Request.URL != nil && strings.HasPrefix(c.Request.URL.Path, "/v1beta/models/"))
+		if gemini || err.GetErrorCode() == "gemini_upstream_error" || IsViolationFeeCode(err.GetErrorCode()) {
+			message = i18n.T(c, i18n.MsgRelayUpstreamInvalidRequest)
+		} else if text, ok := scrubUpstreamText(original); ok {
 			message = text
 		} else {
 			message = i18n.T(c, i18n.MsgRelayUpstreamInvalidRequest)

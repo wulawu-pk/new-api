@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,7 +12,9 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/tidwall/gjson"
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
@@ -92,6 +95,21 @@ func TestPublicUpstreamErrorKeepsUsefulRequestErrors(t *testing.T) {
 	assert.Equal(t, "Unsupported parameter: temperature. See", scrubbed.Error())
 }
 
+func TestGeminiOrdinaryBadRequestAndViolationFeeProvenance(t *testing.T) {
+	c := maskTestContext(t)
+	want := i18n.T(c, i18n.MsgRelayUpstreamInvalidRequest)
+	require.Equal(t, want, PublicUpstreamError(c, upstreamOpenAIError(400, "sub2api rejected value", "invalid", "value")).Error())
+	common.SetContextKey(c, constant.ContextKeyChannelType, constant.ChannelTypeGemini)
+	require.Equal(t, want, PublicUpstreamError(c, upstreamOpenAIError(400, "unexpected dialect", "invalid", "value")).Error())
+	for _, raw := range []*types.NewAPIError{upstreamOpenAIError(400, ContentViolatesUsageMarker, "invalid", "value"), upstreamOpenAIError(400, "private violation", "invalid", "violation_fee.other")} {
+		raw.MarkUpstream()
+		normalized := NormalizeViolationFeeError(NormalizeViolationFeeError(raw))
+		require.True(t, normalized.IsUpstream())
+		require.True(t, types.IsSkipRetryError(normalized))
+		require.Equal(t, want, PublicUpstreamError(c, normalized).Error())
+	}
+}
+
 func TestPublicUpstreamErrorLeavesLocalErrorsAlone(t *testing.T) {
 	c := maskTestContext(t)
 	for _, err := range []*types.NewAPIError{
@@ -134,7 +152,11 @@ func TestProcessChannelErrorLogsNeutralMessageForCustomers(t *testing.T) {
 	c := maskTestContext(t)
 	c.Set("id", user.Id)
 	apiErr := upstreamOpenAIError(403, "Insufficient account balance", "insufficient_quota", "insufficient_balance")
-	ProcessChannelError(c, types.ChannelError{ChannelId: 7, ChannelName: "supergpt-gpt"}, apiErr, nil)
+	const streamCause = "private stream detail at https://origin.invalid/connection"
+	status := relaycommon.NewStreamStatus()
+	status.SetEndReason(relaycommon.StreamEndReasonHandlerStop, errors.New(streamCause))
+	status.RecordError(streamCause)
+	ProcessChannelError(c, types.ChannelError{ChannelId: 7, ChannelName: "supergpt-gpt"}, apiErr, &relaycommon.RelayInfo{IsStream: true, StreamStatus: status})
 
 	var logs []*model.Log
 	require.NoError(t, database.Where("type = ?", model.LogTypeError).Find(&logs).Error)
@@ -149,8 +171,41 @@ func TestProcessChannelErrorLogsNeutralMessageForCustomers(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, customerLogs, 1)
 	customer := customerLogs[0]
+	require.Equal(t, streamCause, gjson.Get(row.Other, "admin_info.stream_status.end_error").String())
+	require.Equal(t, streamCause, gjson.Get(row.Other, "admin_info.stream_status.errors.0").String())
+	require.NotContains(t, gjson.Get(row.Other, "stream_status").Raw, streamCause)
+	require.Equal(t, "error", gjson.Get(customer.Other, "stream_status.status").String())
+	for _, secret := range []string{"end_error", `"errors"`, "private stream detail", "origin.invalid"} {
+		require.NotContains(t, customer.Other, secret)
+	}
+	legacy := `{"stream_status":{"status":"error","end_error":"private stream detail","errors":["https://origin.invalid/connection"]}}`
+	require.NoError(t, database.Model(&model.Log{}).Where("id = ?", row.Id).Update("other", legacy).Error)
+	old, _, err := model.GetUserLogs(user.Id, model.LogFilter{}, 0, 10)
+	require.NoError(t, err)
+	require.Len(t, old, 1)
+	require.JSONEq(t, `{"stream_status":{"status":"error"}}`, old[0].Other)
 	assert.NotContains(t, customer.Other, "balance")
 	assert.NotContains(t, customer.Content, "balance")
 	assert.True(t, strings.Contains(customer.Other, `"status_code":503`), customer.Other)
 	assert.Equal(t, 403, apiErr.StatusCode, "retry and auto-disable still see the upstream status")
+}
+
+// An upstream JSON error whose "code" collides with a local new-api ErrorCode
+// (for example "invalid_request" or "access_denied") must still be neutralised.
+func TestRelayErrorHandlerUpstreamCodeCollisionStillNeutralised(t *testing.T) {
+	c := maskTestContext(t)
+	for _, code := range []string{"invalid_request", "access_denied", "prompt_blocked", "channel:invalid_key"} {
+		body := `{"error":{"code":"` + code + `","type":"invalid_request_error","message":"supergpt group gemini-ultra balance exhausted"}}`
+		resp := &http.Response{
+			StatusCode: http.StatusForbidden,
+			Header:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(body)),
+		}
+		apiErr := RelayErrorHandler(c.Request.Context(), resp, false)
+		require.True(t, IsUpstreamError(apiErr), "code=%s must be treated as upstream", code)
+		public := PublicUpstreamError(c, apiErr)
+		assert.Equal(t, http.StatusServiceUnavailable, public.StatusCode)
+		assert.NotContains(t, public.Error(), "supergpt")
+		assert.NotContains(t, public.Error(), "balance")
+	}
 }

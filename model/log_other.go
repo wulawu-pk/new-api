@@ -23,6 +23,9 @@ var legacySensitiveLogOtherKeys = []string{
 	"channel_name",
 	"channel_type",
 	"reject_reason",
+	"violation_fee_marker",
+	"upstream_error_type",
+	"upstream_error_code",
 }
 
 // legacyPricingLogOtherKeys were written at the top level before they moved
@@ -253,6 +256,31 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 
 	changed := false
 	if visibility == logOtherVisibilityUser {
+		if _, fee := values["violation_fee"]; fee {
+			for _, key := range []string{"base_amount", "group_ratio", "violation_fee_code"} {
+				if _, ok := values[key]; ok {
+					delete(values, key)
+					changed = true
+				}
+			}
+		}
+		if raw, ok := values["stream_status"]; ok {
+			var status map[string]json.RawMessage
+			delete(values, "stream_status")
+			if common.Unmarshal(raw, &status) == nil && status != nil {
+				for key := range status {
+					switch key {
+					case "status", "end_reason", "response_status", "error_count", "received_frames", "sent_frames":
+					default:
+						delete(status, key)
+					}
+				}
+				if public, err := common.Marshal(status); err == nil {
+					values["stream_status"] = public
+				}
+			}
+			changed = true
+		}
 		for _, key := range []string{logOtherAdminInfoKey, logOtherRootInfoKey, logOtherAuditInfoKey} {
 			if _, exists := values[key]; exists {
 				delete(values, key)

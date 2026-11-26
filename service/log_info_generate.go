@@ -169,14 +169,17 @@ func appendStreamStatus(relayInfo *relaycommon.RelayInfo, other *model.LogOther)
 		status = "error"
 	}
 	streamInfo := map[string]any{
-		"status":     status,
-		"end_reason": string(ss.EndReason),
+		"status":          status,
+		"received_frames": relayInfo.ReceivedResponseCount,
+		"sent_frames":     relayInfo.SendResponseCount,
+		"end_reason":      string(ss.EndReason),
 	}
 	if outcome := ss.ResponseOutcome(); outcome != "" {
 		streamInfo["response_status"] = outcome
 	}
+	diagnostics := map[string]any{}
 	if ss.EndError != nil {
-		streamInfo["end_error"] = ss.EndError.Error()
+		diagnostics["end_error"] = ss.EndError.Error()
 	}
 	if ss.ErrorCount > 0 {
 		streamInfo["error_count"] = ss.ErrorCount
@@ -184,7 +187,10 @@ func appendStreamStatus(relayInfo *relaycommon.RelayInfo, other *model.LogOther)
 		for _, e := range ss.Errors {
 			messages = append(messages, e.Message)
 		}
-		streamInfo["errors"] = messages
+		diagnostics["errors"] = messages
+	}
+	if len(diagnostics) > 0 {
+		other.SetAdmin("stream_status", diagnostics)
 	}
 	other.SetPublic("stream_status", streamInfo)
 }

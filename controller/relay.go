@@ -99,7 +99,9 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 			upstreamURLs := common.UpstreamAddresses(c)
 			if relayFormat != types.RelayFormatOpenAIRealtime && c.Writer.Written() &&
 				strings.HasPrefix(c.Writer.Header().Get("Content-Type"), "text/event-stream") {
-				writeRelayStreamError(c, relayFormat, newAPIError)
+				if !common.GetContextKeyBool(c, constant.ContextKeyStreamFailureSent) {
+					writeRelayStreamError(c, relayFormat, newAPIError)
+				}
 				return
 			}
 			if relayFormat != types.RelayFormatOpenAIRealtime {
@@ -224,6 +226,9 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError = service.NormalizeViolationFeeError(newAPIError)
 		relayInfo.LastError = newAPIError
 
+		if newAPIError != nil && relayInfo.IsStream && relayInfo.SendResponseCount > 0 {
+			types.ErrOptionWithSkipRetry()(newAPIError)
+		}
 		decision := service.DecideRelayRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry())
 		service.RecordPolicyFailure(c, channel.Id, newAPIError, decision)
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError, relayInfo)

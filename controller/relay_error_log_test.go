@@ -1,16 +1,21 @@
 package controller
 
 import (
-	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/relay/channel/gemini"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/tidwall/gjson"
 
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
@@ -20,6 +25,7 @@ import (
 )
 
 func TestProcessChannelErrorUsesSnapshotWithoutLeakingChannelMetadata(t *testing.T) {
+	require.NoError(t, i18n.Init())
 	gin.SetMode(gin.TestMode)
 	previousDB, previousLogDB := model.DB, model.LOG_DB
 	previousRedisEnabled := common.RedisEnabled
@@ -67,9 +73,17 @@ func TestProcessChannelErrorUsesSnapshotWithoutLeakingChannelMetadata(t *testing
 		ChannelName: "snapshot-channel",
 		AutoBan:     false,
 	}
-	apiErr := types.NewOpenAIError(errors.New("upstream failed"), types.ErrorCodeBadResponseStatusCode, http.StatusBadGateway)
-
-	processChannelError(ctx, channelSnapshot, apiErr, nil)
+	previousTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = previousTimeout })
+	const cause = "private stream failure at https://origin.invalid/connection"
+	body := "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"hello\"}]}}]}\n\ndata: {\"error\":{\"code\":502,\"message\":\"" + cause + "\"}}\n\n"
+	info := &relaycommon.RelayInfo{IsStream: true, RelayFormat: types.RelayFormatOpenAIResponses, ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "gemini-test"}}
+	_, apiErr := gemini.GeminiResponsesStreamHandler(ctx, info, &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))})
+	require.NotNil(t, apiErr)
+	require.Contains(t, recorder.Body.String(), "response.failed")
+	require.NotContains(t, recorder.Body.String(), cause)
+	processChannelError(ctx, channelSnapshot, apiErr, info)
 
 	var stored model.Log
 	require.NoError(t, database.First(&stored).Error)
@@ -93,6 +107,11 @@ func TestProcessChannelErrorUsesSnapshotWithoutLeakingChannelMetadata(t *testing
 	assert.Empty(t, logs[0].ChannelName)
 	userOther, err := common.StrToMap(logs[0].Other)
 	require.NoError(t, err)
+	require.Contains(t, gjson.Get(stored.Other, "admin_info.stream_status.errors.0").String(), cause)
+	for _, private := range []string{"private stream failure", "origin.invalid", "end_error", `"errors"`} {
+		require.NotContains(t, logs[0].Other, private)
+		require.NotContains(t, logs[0].Content, private)
+	}
 	assert.NotContains(t, userOther, "admin_info")
 	for _, key := range []string{"channel_id", "channel_name", "channel_type"} {
 		assert.NotContains(t, userOther, key)

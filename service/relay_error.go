@@ -21,6 +21,9 @@ func DecideRelayRetry(c *gin.Context, err *types.NewAPIError, retryTimes int) Po
 	if err == nil {
 		return PolicyDecision{Action: "stop", Reason: "request_completed", Source: "system"}
 	}
+	if c != nil && c.Writer != nil && c.Writer.Written() && types.IsSkipRetryError(err) {
+		return PolicyDecision{Action: "stop", Reason: "response_started", Source: "system"}
+	}
 	if ShouldSkipRetryAfterChannelAffinityFailure(c) {
 		source := RequestPolicy(c).SessionModeSource
 		if source == "" {
@@ -95,6 +98,7 @@ func ProcessChannelError(c *gin.Context, channelError types.ChannelError, err *t
 		other.SetPublic("status_code", public.StatusCode)
 		AppendRelayLogAdminInfo(c, relayInfo, other)
 		AppendResponseModelLogInfo(relayInfo, other)
+		appendStreamStatus(relayInfo, other)
 		AppendTaskPluginContextAuditInfo(c, other)
 		startTime := common.GetContextKeyTime(c, constant.ContextKeyRequestStartTime)
 		if startTime.IsZero() {

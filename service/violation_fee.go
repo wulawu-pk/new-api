@@ -45,7 +45,11 @@ func WrapAsViolationFeeGrokCSAM(err *types.NewAPIError) *types.NewAPIError {
 	oai := err.ToOpenAIError()
 	oai.Type = string(types.ErrorCodeViolationFeeGrokCSAM)
 	oai.Code = string(types.ErrorCodeViolationFeeGrokCSAM)
-	return types.WithOpenAIError(oai, err.StatusCode, types.ErrOptionWithSkipRetry())
+	normalized := types.WithOpenAIError(oai, err.StatusCode, types.ErrOptionWithSkipRetry())
+	if err.IsUpstream() {
+		normalized.MarkUpstream()
+	}
+	return normalized
 }
 
 // NormalizeViolationFeeError ensures:
@@ -63,8 +67,8 @@ func NormalizeViolationFeeError(err *types.NewAPIError) *types.NewAPIError {
 	}
 
 	if IsViolationFeeCode(err.GetErrorCode()) {
-		oai := err.ToOpenAIError()
-		return types.WithOpenAIError(oai, err.StatusCode, types.ErrOptionWithSkipRetry())
+		types.ErrOptionWithSkipRetry()(err)
+		return err
 	}
 
 	return err
@@ -136,9 +140,10 @@ func ChargeViolationFeeIfNeeded(ctx *gin.Context, relayInfo *relaycommon.RelayIn
 
 	other := model.NewLogOther()
 	other.MergePublic(map[string]any{
-		"violation_fee":        true,
-		"violation_fee_code":   string(types.ErrorCodeViolationFeeGrokCSAM),
-		"fee_quota":            feeQuota,
+		"violation_fee": true,
+		"fee_quota":     feeQuota,
+	})
+	other.SetAdmin("violation_fee_details", map[string]any{
 		"base_amount":          settings.ViolationDeductionAmount,
 		"group_ratio":          groupRatio,
 		"status_code":          apiErr.StatusCode,

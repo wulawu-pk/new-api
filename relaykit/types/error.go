@@ -99,6 +99,10 @@ type NewAPIError struct {
 	// public marks an error already rewritten for customers (peroai fork),
 	// so the customer-facing exits do not rewrite it twice.
 	public bool
+	// upstream marks an error constructed from an upstream HTTP response
+	// (peroai fork), so an upstream error.code colliding with a local code
+	// (such as "invalid_request") cannot bypass neutralisation.
+	upstream bool
 }
 
 // MarkPublic records that the error text is safe to show to customers.
@@ -111,6 +115,18 @@ func (e *NewAPIError) MarkPublic() {
 // IsPublic reports whether MarkPublic was called.
 func (e *NewAPIError) IsPublic() bool {
 	return e != nil && e.public
+}
+
+// MarkUpstream records that the error came from an upstream response.
+func (e *NewAPIError) MarkUpstream() {
+	if e != nil {
+		e.upstream = true
+	}
+}
+
+// IsUpstream reports whether MarkUpstream was called.
+func (e *NewAPIError) IsUpstream() bool {
+	return e != nil && e.upstream
 }
 
 // Unwrap enables errors.Is / errors.As to work with NewAPIError by exposing the underlying error.

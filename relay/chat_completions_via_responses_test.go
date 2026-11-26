@@ -75,6 +75,37 @@ func TestPrepareResponsesRequestRetainsConvertedAdaptor(t *testing.T) {
 	assert.Equal(t, []relaytypes.RelayFormat{relaytypes.RelayFormatOpenAIResponses, relaytypes.RelayFormatOpenAI}, info.RequestConversionChain)
 }
 
+func TestGeminiResponsesFirstFrameFailureRefundsReservation(t *testing.T) {
+	previousTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = previousTimeout })
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "data: {\"error\":{\"code\":400,\"message\":\"private dialect\"}}\n\n")
+	}))
+	defer server.Close()
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	common.SetContextKey(c, constant.ContextKeyChannelType, constant.ChannelTypeGemini)
+	common.SetContextKey(c, constant.ContextKeyChannelBaseUrl, server.URL)
+	common.SetContextKey(c, constant.ContextKeyOriginalModel, "gemini-test")
+	common.SetContextKey(c, constant.ContextKeyChannelKey, "test-key")
+	stream := true
+	request := &dto.OpenAIResponsesRequest{Model: "gemini-test", Input: []byte(`"hello"`), Stream: &stream}
+	info := relaycommon.GenRelayInfoResponses(c, request)
+	info.SetEstimatePromptTokens(900)
+	reservation := &recordedSettlement{}
+	info.Billing = reservation
+	apiErr := ResponsesHelper(c, info)
+	require.NotNil(t, apiErr)
+	require.Contains(t, apiErr.Error(), "private dialect")
+	require.True(t, apiErr.IsUpstream())
+	require.False(t, c.Writer.Written())
+	require.True(t, RefundFailedRequestBilling(c, info, apiErr).IsUpstream())
+	require.True(t, reservation.refunded)
+	require.Empty(t, reservation.settled)
+}
+
 func TestIsResponsesEventStreamContentType(t *testing.T) {
 	tests := []struct {
 		name        string

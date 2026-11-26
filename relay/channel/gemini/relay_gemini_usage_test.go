@@ -59,7 +59,7 @@ func TestStreamResponseGeminiChat2OpenAIAttachesUsageMetadata(t *testing.T) {
 	require.Nil(t, withoutUsage.Usage)
 }
 
-func TestGeminiChatStreamHandlerClaudeFirstFrameUsesUpstreamUsage(t *testing.T) {
+func TestGeminiChatStreamHandlerClaudeFinalUsage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	recorder := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(recorder)
@@ -96,14 +96,17 @@ func TestGeminiChatStreamHandlerClaudeFirstFrameUsesUpstreamUsage(t *testing.T) 
 		},
 	})
 	require.NoError(t, err)
+	last := `{"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[{"text":"world"}]}}],"usageMetadata":{"promptTokenCount":4000,"candidatesTokenCount":12,"totalTokenCount":4012}}`
 	resp := &http.Response{
-		Body: io.NopCloser(bytes.NewReader([]byte("data: " + string(chunkData) + "\n" + "data: [DONE]\n"))),
+		Body: io.NopCloser(strings.NewReader("data: " + string(chunkData) + "\ndata: " + last + "\ndata: [DONE]\n")),
 	}
 
 	usage, newAPIError := GeminiChatStreamHandler(c, info, resp)
 	require.Nil(t, newAPIError)
 	require.NotNil(t, usage)
-	require.Equal(t, 3868, usage.PromptTokens)
+	require.Equal(t, 4000, usage.PromptTokens)
+	require.NotContains(t, recorder.Body.String(), "3868")
+	require.Equal(t, 1, strings.Count(recorder.Body.String(), `"type":"message_delta"`))
 
 	var startUsage, deltaUsage *dto.ClaudeUsage
 	for line := range strings.SplitSeq(recorder.Body.String(), "\n") {
@@ -126,21 +129,33 @@ func TestGeminiChatStreamHandlerClaudeFirstFrameUsesUpstreamUsage(t *testing.T) 
 	}
 
 	require.NotNil(t, startUsage)
-	require.Equal(t, 3868, startUsage.InputTokens)
-	require.NotNil(t, startUsage.BillingUsage)
-	require.Equal(t, dto.BillingUsageSourceGeminiChat, startUsage.BillingUsage.Source)
-	require.Equal(t, dto.BillingUsageSemanticGemini, startUsage.BillingUsage.Semantic)
-	require.NotNil(t, startUsage.BillingUsage.GeminiUsageMetadata)
-	require.Equal(t, 3868, startUsage.BillingUsage.GeminiUsageMetadata.PromptTokenCount)
-	require.False(t, startUsage.BillingUsage.Estimated)
+	require.Zero(t, startUsage.InputTokens)
+	require.Zero(t, startUsage.OutputTokens)
+	for _, private := range []string{"billing_usage", "text_tokens", "gemini_usage_metadata", "usage_source", "usage_semantic"} {
+		require.NotContains(t, recorder.Body.String(), private)
+	}
+	require.NotContains(t, recorder.Body.String(), "promptTokensDetails")
 
 	require.NotNil(t, deltaUsage)
-	require.Equal(t, 3868, deltaUsage.InputTokens)
-	require.NotNil(t, deltaUsage.BillingUsage)
-	require.Equal(t, dto.BillingUsageSourceGeminiChat, deltaUsage.BillingUsage.Source)
-	require.Equal(t, dto.BillingUsageSemanticGemini, deltaUsage.BillingUsage.Semantic)
-	require.NotNil(t, deltaUsage.BillingUsage.GeminiUsageMetadata)
-	require.Equal(t, 3868, deltaUsage.BillingUsage.GeminiUsageMetadata.PromptTokenCount)
+	require.Equal(t, 4000, deltaUsage.InputTokens)
+	require.Equal(t, 12, deltaUsage.OutputTokens)
+
+	require.NotNil(t, usage.BillingUsage)
+	require.Equal(t, dto.BillingUsageSourceGeminiChat, usage.BillingUsage.Source)
+	require.Equal(t, 4000, usage.BillingUsage.GeminiUsageMetadata.PromptTokenCount)
+
+	c, recorder = nativeTestContext(t, "/v1/messages")
+	usage, newAPIError = GeminiChatHandler(c, info, &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(last))})
+	require.Nil(t, newAPIError)
+	require.NotNil(t, usage.BillingUsage)
+	var message dto.ClaudeResponse
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &message))
+	require.NotNil(t, message.Usage)
+	require.Equal(t, 4000, message.Usage.InputTokens)
+	require.Equal(t, 12, message.Usage.OutputTokens)
+	for _, private := range []string{"billing_usage", "text_tokens", "gemini_usage_metadata", "usage_source", "usage_semantic"} {
+		require.NotContains(t, recorder.Body.String(), private)
+	}
 }
 
 func TestGeminiChatHandlerCompletionTokensExcludeToolUsePromptTokens(t *testing.T) {

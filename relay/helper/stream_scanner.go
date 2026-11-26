@@ -2,6 +2,7 @@ package helper
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -119,6 +120,15 @@ func (w *streamResponseWriter) Unwrap() http.ResponseWriter {
 
 func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo, dataHandler func(data string, sr *StreamResult)) {
 
+	scanResponseStream(c, resp, info, dataHandler, false)
+}
+
+// Gemini endpoints can return a JSON error document even on an SSE request.
+func GeminiStreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo, dataHandler func(string, *StreamResult)) {
+	scanResponseStream(c, resp, info, dataHandler, true)
+}
+
+func scanResponseStream(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo, dataHandler func(string, *StreamResult), acceptJSON bool) {
 	if resp == nil || dataHandler == nil {
 		return
 	}
@@ -190,6 +200,19 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 	defer cleanup()
 
 	scanner.Split(bufio.ScanLines)
+	if acceptJSON {
+		// A bare JSON document can span lines. Keep the normal scanner size
+		// limit and timeout while waiting for the upstream to finish it.
+		scanner.Split(func(data []byte, atEOF bool) (int, []byte, error) {
+			if bytes.HasPrefix(bytes.TrimLeft(data, " \t\r\n"), []byte("{")) {
+				if !atEOF {
+					return 0, nil, nil
+				}
+				return len(data), data, nil
+			}
+			return bufio.ScanLines(data, atEOF)
+		})
+	}
 	copyCodexSSEHeaders(c, resp)
 	SetEventStreamHeaders(c)
 
@@ -300,7 +323,7 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 
 			data, hasDataPrefix := strings.CutPrefix(data, "data:")
 			data = strings.TrimSpace(data)
-			if !hasDataPrefix && data != "[DONE]" {
+			if !hasDataPrefix && data != "[DONE]" && !(acceptJSON && strings.HasPrefix(data, "{")) {
 				continue
 			}
 			if data == "" {

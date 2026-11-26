@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 func GeminiTextGenerationHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
@@ -28,6 +29,10 @@ func GeminiTextGenerationHandler(c *gin.Context, info *relaycommon.RelayInfo, re
 	}
 
 	logger.LogDebug(c, "Gemini native response body: %s", responseBody)
+	responseBody, envelopeErr := prepareGeminiDocument(responseBody)
+	if envelopeErr != nil {
+		return nil, envelopeErr
+	}
 
 	// 解析为 Gemini 原生响应格式
 	var geminiResponse dto.GeminiChatResponse
@@ -63,6 +68,9 @@ func NativeGeminiEmbeddingHandler(c *gin.Context, resp *http.Response, info *rel
 	}
 
 	logger.LogDebug(c, "Gemini native embedding response body: %s", responseBody)
+	if envelopeErr := geminiEmbeddingError(responseBody, info.IsGeminiBatchEmbedding); envelopeErr != nil {
+		return nil, envelopeErr
+	}
 
 	usage := service.ResponseText2Usage(c, "", info.UpstreamModelName, info.GetEstimatePromptTokens())
 
@@ -80,7 +88,7 @@ func NativeGeminiEmbeddingHandler(c *gin.Context, resp *http.Response, info *rel
 		}
 	}
 
-	service.IOCopyBytesGracefully(c, resp, responseBody)
+	service.IOCopyBytesGracefully(c, resp, sanitizeNativeGeminiEmbeddingBody(responseBody))
 
 	return usage, nil
 }
@@ -88,13 +96,52 @@ func NativeGeminiEmbeddingHandler(c *gin.Context, resp *http.Response, info *rel
 func GeminiTextGenerationStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
 	helper.SetEventStreamHeaders(c)
 
-	return geminiStreamHandler(c, info, resp, func(data string, geminiResponse *dto.GeminiChatResponse) bool {
-		err := helper.StringData(c, sanitizeNativeGeminiString(data))
-		if err != nil {
-			logger.LogError(c, common.LogText("failed to write stream data: %s", err.Error()))
-			return false
+	var pending string
+	var counts map[string]int64
+	write := func(frame string) error {
+		if err := helper.StringData(c, frame); err != nil {
+			return err
 		}
 		info.SendResponseCount++
+		return nil
+	}
+	usage, apiErr := geminiStreamHandler(c, info, resp, func(data string, _ *dto.GeminiChatResponse) bool {
+		if pending != "" {
+			if err := write(pending); err != nil {
+				pending = ""
+				return false
+			}
+		}
+		pending = string(sanitizeNativeGemini([]byte(data), false))
+		if metadata := gjson.Get(data, "usageMetadata"); metadata.IsObject() {
+			if counts == nil {
+				counts = make(map[string]int64)
+			}
+			for name := range geminiUsageKeys {
+				if value := metadata.Get(name); value.Type == gjson.Number {
+					counts[name] = value.Int()
+				}
+			}
+		}
 		return true
 	})
+	if pending != "" && !isGeminiDownstreamStop(c, info) {
+		if apiErr == nil && counts != nil {
+			encoded, err := common.Marshal(counts)
+			if err != nil {
+				return usage, types.NewError(err, types.ErrorCodeJsonMarshalFailed)
+			}
+			pending, err = sjson.SetRaw(pending, "usageMetadata", string(encoded))
+			if err != nil {
+				return usage, types.NewError(err, types.ErrorCodeJsonMarshalFailed)
+			}
+		}
+		if err := write(pending); err != nil && apiErr == nil {
+			apiErr = types.NewError(err, types.ErrorCodeBadResponseBody)
+		}
+	}
+	if apiErr != nil && c.Writer.Written() {
+		types.ErrOptionWithSkipRetry()(apiErr)
+	}
+	return usage, apiErr
 }
