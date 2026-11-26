@@ -7622,6 +7622,8 @@
     "Billed per credit at $0.25; credits are not proportional to tokens. Works with any client.": "按 credit 计费，每 credit $0.25，credit 和 token 数不成固定比例。任意客户端都能用。",
     "Claude ccmax": "Claude ccmax",
     "Only accepts requests sent by Claude Code; other clients get 502.": "只接受 Claude Code 发出的请求，其它客户端会返回 502。",
+    "Gemini Ultra": "Gemini Ultra",
+    "Gemini 3.1 Pro / 3.6–3.8 Flash / Gemini 4 series, billed per token.": "Gemini 3.1 Pro / 3.6–3.8 Flash / Gemini 4 系列，按 token 计费。",
     "Grok Ultra": "Grok Ultra",
     "Context over 200K is billed at the long-context price.": "超过 200K 上下文按长上下文价计费。",
     "Weekdays 9–12 and 14–18 Beijing time cost ×2; off-peak prices are shown. Chat API only.": "工作日北京时间 9–12、14–18 点价格 ×2，这里显示平时价。只支持 Chat 接口。",

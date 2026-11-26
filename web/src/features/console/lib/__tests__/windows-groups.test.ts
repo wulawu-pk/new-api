@@ -87,8 +87,8 @@ describe('console windows', () => {
 describe('groups', () => {
   it('orders known groups first and unknown groups alphabetically after them', () => {
     expect(
-      sortGroups(['zeta', 'deepseek', 'gpt-pro', 'alpha', 'gpt-special'])
-    ).toEqual(['gpt-special', 'gpt-pro', 'deepseek', 'alpha', 'zeta'])
+      sortGroups(['zeta', 'deepseek', 'gpt-pro', 'alpha', 'gemini-ultra'])
+    ).toEqual(['gpt-pro', 'gemini-ultra', 'deepseek', 'alpha', 'zeta'])
   })
 
   it('quotes credit groups per credit and others by ratio', () => {

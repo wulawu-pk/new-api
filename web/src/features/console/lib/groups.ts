@@ -25,10 +25,6 @@ For commercial licensing, please contact support@quantumnous.com
 export type GroupMeta = { nameKey: string; noteKey: string }
 
 export const GROUP_META: Record<string, GroupMeta> = {
-  'gpt-special': {
-    nameKey: 'GPT Special',
-    noteKey: 'The cheapest GPT group on this site, including gpt-6.2.',
-  },
   'gpt-pro': {
     nameKey: 'GPT Enterprise',
     noteKey: 'The stable GPT group.',
@@ -54,6 +50,11 @@ export const GROUP_META: Record<string, GroupMeta> = {
     nameKey: 'Claude ccmax',
     noteKey:
       'Only accepts requests sent by Claude Code; other clients get 502.',
+  },
+  'gemini-ultra': {
+    nameKey: 'Gemini Ultra',
+    noteKey:
+      'Gemini 3.1 Pro / 3.6–3.8 Flash / Gemini 4 series, billed per token.',
   },
   'grok-ultra': {
     nameKey: 'Grok Ultra',
