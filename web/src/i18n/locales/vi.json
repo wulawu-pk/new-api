@@ -7614,6 +7614,8 @@
     "The stable GPT group.": "The stable GPT group.",
     "GPT ProMax": "GPT ProMax",
     "The fastest GPT group.": "The fastest GPT group.",
+    "Astra Only": "Astra Only",
+    "Low price; tuned for the Astra models.": "Low price; tuned for the Astra models.",
     "GPT Main": "GPT Main",
     "Low price; every request carries about 20K extra tokens of system prompt.": "Low price; every request carries about 20K extra tokens of system prompt.",
     "Claude kiro": "Claude kiro",

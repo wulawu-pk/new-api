@@ -37,6 +37,10 @@ export const GROUP_META: Record<string, GroupMeta> = {
     nameKey: 'GPT ProMax',
     noteKey: 'The fastest GPT group.',
   },
+  'gpt-astra': {
+    nameKey: 'Astra Only',
+    noteKey: 'Low price; tuned for the Astra models.',
+  },
   'gpt-test': {
     nameKey: 'GPT Main',
     noteKey: 'Low price; every request carries about 20K extra tokens of system prompt.',
