@@ -21,5 +21,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import { GeneralError } from '@/features/errors/general-error'
 
 export const Route = createFileRoute('/(errors)/500')({
-  component: GeneralError,
+  component: Error500Page,
 })
+
+// The query client navigates here after a real 500; there is no error object
+// to read, so the page states the status code it is showing.
+export function Error500Page() {
+  return <GeneralError statusCode={500} />
+}

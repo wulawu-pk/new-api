@@ -50,8 +50,8 @@ const legacySettingsTabs: Record<string, string> = {
 }
 
 function normalizeLegacyPath(pathname: string): string {
-  if (pathname === '/') return pathname
-  return pathname.replace(/\/+$/, '')
+  const trimmed = pathname.replace(/\/+$/, '')
+  return trimmed || '/'
 }
 
 function buildTargetHref(targetPath: string, source: URL): string {
@@ -72,40 +72,47 @@ export function resolveLegacyRoute(rawHref: string): string | null {
   }
 
   const pathname = normalizeLegacyPath(source.pathname)
+  // Route matching is case-insensitive, so the legacy checks must be too.
+  // Dynamic segments are still read from `pathname` to keep their casing.
+  const lowerPath = pathname.toLowerCase()
   // peroai: upstream public pages that the new site does not offer. The
   // rankings page published site-wide usage and the about page is empty;
   // single-model pages are replaced by the model square.
-  if (pathname === '/rankings' || pathname === '/about') {
+  if (lowerPath === '/rankings' || lowerPath === '/about') {
     return '/'
   }
-  if (pathname.startsWith('/pricing/')) {
+  if (lowerPath.startsWith('/pricing/')) {
     return buildTargetHref('/pricing', source)
   }
-  if (pathname === '/login') {
+  if (lowerPath === '/login') {
     return buildTargetHref('/sign-in', source)
   }
-  if (pathname === '/forbidden') {
+  if (lowerPath === '/forbidden') {
     return buildTargetHref('/403', source)
   }
-  if (pathname === '/console/topup') {
+  if (lowerPath === '/console/topup') {
     return buildTargetHref('/wallet', source)
   }
-  if (pathname === '/console/setting') {
-    const tab = source.searchParams.get('tab') ?? ''
-    const target = legacySettingsTabs[tab] ?? '/system-settings'
+  if (lowerPath === '/console/setting') {
+    const tab = (source.searchParams.get('tab') ?? '').toLowerCase()
+    // A plain object lookup would accept inherited names such as
+    // `constructor` and send the user to a nonexistent page.
+    const target = Object.hasOwn(legacySettingsTabs, tab)
+      ? legacySettingsTabs[tab]
+      : '/system-settings'
     return buildTargetHref(target, source)
   }
-  if (pathname === '/console/chat') {
+  if (lowerPath === '/console/chat') {
     return buildTargetHref('/dashboard', source)
   }
-  if (pathname.startsWith('/console/chat/')) {
+  if (lowerPath.startsWith('/console/chat/')) {
     const chatID = pathname.slice('/console/chat/'.length)
     return buildTargetHref(chatID ? `/chat/${chatID}` : '/dashboard', source)
   }
 
-  const target = legacyConsoleRoutes[pathname]
+  const target = legacyConsoleRoutes[lowerPath]
   if (target) return buildTargetHref(target, source)
-  if (pathname.startsWith('/console/')) {
+  if (lowerPath.startsWith('/console/')) {
     return buildTargetHref('/dashboard', source)
   }
 

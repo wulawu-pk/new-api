@@ -24,6 +24,8 @@ import { TermErrorPage } from './term-error-page'
 type GeneralErrorProps = React.HTMLAttributes<HTMLDivElement> & {
   minimal?: boolean
   error?: unknown
+  /** Display-only status code for a standalone route with no HTTP error. */
+  statusCode?: number
 }
 
 function getHttpStatus(error: unknown): number | undefined {
@@ -38,8 +40,9 @@ export function GeneralError({
   className,
   minimal = false,
   error,
+  statusCode,
 }: GeneralErrorProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   useEffect(() => {
     if (
       !(error instanceof Error) ||
@@ -62,7 +65,7 @@ export function GeneralError({
     window.location.reload()
   }, [error])
 
-  const status = getHttpStatus(error)
+  const status = getHttpStatus(error) ?? statusCode
   const isRateLimited = status === 429
   const title = isRateLimited
     ? t('Too many requests')
@@ -70,12 +73,16 @@ export function GeneralError({
   const description = isRateLimited
     ? t('Please wait a moment before trying again.')
     : t('Please try again later.')
+  // Chinese sentences end in full-width punctuation; a space between them
+  // reads as a typo. Other languages keep the separator.
+  const language = i18n.resolvedLanguage ?? i18n.language ?? ''
+  const separator = language.startsWith('zh') ? '' : ' '
 
   return (
     <TermErrorPage
       code={status !== undefined ? String(status) : undefined}
       title={title}
-      description={`${t('We apologize for the inconvenience.')} ${description}`}
+      description={`${t('We apologize for the inconvenience.')}${separator}${description}`}
       className={className}
       minimal={minimal}
     />

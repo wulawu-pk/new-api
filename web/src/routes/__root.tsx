@@ -42,6 +42,7 @@ import {
 } from '@/lib/auth-session'
 import { subscribeAuthSessionEvents } from '@/lib/auth-session-sync'
 import { resolveLegacyRoute } from '@/lib/legacy-route'
+import { shouldReloadStaticHome } from '@/lib/static-home'
 import { useAuthStore } from '@/stores/auth-store'
 
 function RootComponent() {
@@ -116,15 +117,19 @@ export const Route = createRootRouteWithContext<{
   // 应用初始化与路由解析前统一校验会话
   beforeLoad: async ({ location }) => {
     const legacyTarget = resolveLegacyRoute(location.href)
-    if (legacyTarget) {
+    if (legacyTarget === '/') {
       // peroai: `/` is the static landing page served next to the SPA, so
-      // reaching it needs a full page load (the SPA's own `/` route is the
-      // stock home page).
+      // reaching it needs a full document load. A document that itself
+      // booted at `/` must not reload; the `/` route falls back to the
+      // stock home page in that case.
       throw redirect({
-        href: legacyTarget,
+        to: '/',
         replace: true,
-        reloadDocument: legacyTarget === '/',
+        reloadDocument: shouldReloadStaticHome(),
       })
+    }
+    if (legacyTarget) {
+      throw redirect({ href: legacyTarget, replace: true })
     }
 
     const pathname = location?.pathname || ''

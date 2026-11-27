@@ -56,6 +56,14 @@ describe('console windows', () => {
     expect(isConsolePath('/channels')).toBe(false)
   })
 
+  it('matches console paths regardless of case and trailing slashes', () => {
+    expect(findConsoleWindow('/Dashboard')?.key).toBe('dash')
+    expect(isConsolePath('/DASHBOARD/')).toBe(true)
+    expect(isConsolePath('/Pricing/')).toBe(true)
+    expect(isAccountPath('/PROFILE/')).toBe(true)
+    expect(isConsolePath('/Pricing/gpt-6')).toBe(false)
+  })
+
   it('ignores shortcuts typed into inputs or while a dialog is open', () => {
     const input = document.createElement('input')
     document.body.append(input)

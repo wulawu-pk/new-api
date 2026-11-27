@@ -26,6 +26,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { act, render, screen, waitFor } from '@testing-library/react'
+import i18next from 'i18next'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
 import { GeneralError } from '../general-error'
@@ -51,10 +52,15 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function createTestRouter(error: Error | { response: { status: number } }) {
+function createTestRouter(
+  error: Error | { response: { status: number } },
+  statusCode?: number
+) {
   const root = createRootRoute({
     component: Outlet,
-    errorComponent: GeneralError,
+    errorComponent: (props) => (
+      <GeneralError error={props.error} statusCode={statusCode} />
+    ),
   })
   const home = createRoute({
     getParentRoute: () => root,
@@ -165,4 +171,53 @@ test('a chunk failure with blocked session storage shows the error without riski
   expect(await screen.findByText(/Oops! Something went wrong/)).toBeVisible()
   expect(screen.queryByText('500')).not.toBeInTheDocument()
   expect(reload).not.toHaveBeenCalled()
+})
+
+test('a standalone route supplies its own display status code', async () => {
+  const router = createTestRouter(new Error('Render failed'), 500)
+  render(<RouterProvider router={router} />)
+  await screen.findByText('Current page')
+  await act(() => router.navigate({ to: '/wallet' }))
+  expect(await screen.findByRole('heading', { name: '500' })).toBeVisible()
+  expect(screen.getByText(/peroai: \/wallet: 500/)).toBeVisible()
+  expect(reload).not.toHaveBeenCalled()
+})
+
+test('the real HTTP status wins over the display status code', async () => {
+  const router = createTestRouter({ response: { status: 429 } }, 500)
+  render(<RouterProvider router={router} />)
+  await screen.findByText('Current page')
+  await act(() => router.navigate({ to: '/wallet' }))
+  expect(await screen.findByRole('heading', { name: '429' })).toBeVisible()
+  expect(screen.getByText('Too many requests')).toBeVisible()
+})
+
+test('Chinese copy joins both sentences without a space', async () => {
+  i18next.addResourceBundle(
+    'zhCN',
+    'translation',
+    {
+      'Oops! Something went wrong': '糟糕！出错了',
+      'We apologize for the inconvenience.':
+        '对于由此造成的不便，我们深表歉意。',
+      'Please try again later.': '请稍后再试。',
+    },
+    true,
+    true
+  )
+  await act(() => i18next.changeLanguage('zhCN'))
+  try {
+    const router = createTestRouter(new Error('Render failed'), 500)
+    render(<RouterProvider router={router} />)
+    await screen.findByText('Current page')
+    await act(() => router.navigate({ to: '/wallet' }))
+    await screen.findByRole('heading', { name: '500' })
+    const line = screen.getByText(/对于由此造成的不便，我们深表歉意。/)
+    expect(line.textContent).toContain(
+      '对于由此造成的不便，我们深表歉意。请稍后再试。'
+    )
+    expect(line.textContent).not.toContain('。 ')
+  } finally {
+    await act(() => i18next.changeLanguage('en'))
+  }
 })
