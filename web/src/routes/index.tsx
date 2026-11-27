@@ -28,20 +28,28 @@ export const Route = createFileRoute('/')({
     if (!shouldReloadStaticHome()) return
     // `/` is the static landing page next to the SPA. Leaving through a full
     // document load is the only way to reach it; keep any search and hash.
-    const hash = location.hash ? `#${location.hash}` : ''
-    const target = `/${location.searchStr}${hash}`
+    // `location.href` carries the encoded query and fragment, unlike the
+    // decoded `location.hash`.
+    const target = new URL(location.href, 'https://static-landing.invalid')
+    target.pathname = '/'
+    const targetHref = `${target.pathname}${target.search}${target.hash}`
     // The router commits the target to the address bar before this hook runs.
-    // For the same URL with a fragment, Chrome treats `location.replace` as a
-    // fragment change and never requests the static document, so reload the
-    // current document explicitly instead.
-    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
-    if (current === target) {
+    // A same-URL `location.replace` only moves the fragment in Chrome and
+    // never requests the static document, so align the fragment and reload
+    // the current document instead.
+    if (
+      window.location.pathname === target.pathname &&
+      window.location.search === target.search
+    ) {
+      if (window.location.hash !== target.hash) {
+        window.history.replaceState(window.history.state, '', targetHref)
+      }
       window.location.reload()
       // Stay pending until the browser unloads this document.
       return new Promise<void>(() => undefined)
     }
     throw redirect({
-      href: target,
+      href: targetHref,
       replace: true,
       reloadDocument: true,
     })

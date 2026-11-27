@@ -24,9 +24,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // seconds when the full suite runs in parallel.
 vi.setConfig({ testTimeout: 60_000 })
 
+// The stock home page pulls its own content and layout; the routing contract
+// only needs a visible marker that the fallback route rendered.
+vi.mock('@/features/home', () => ({
+  Home: () => <p>stock home page</p>,
+}))
+
 const replace = vi.fn()
 const reload = vi.fn()
 const realWindow = window
+let activeQueryClient = new QueryClient()
 
 vi.mock('@/features/setup/api', () => ({
   getSetupStatus: vi.fn(async () => ({
@@ -104,13 +111,12 @@ async function loadRouteAt(entry: string, signedIn = false) {
     await import('@tanstack/react-router')
   const { routeTree } = await import('@/routeTree.gen')
 
+  activeQueryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
   const router = createRouter({
     routeTree,
-    context: {
-      queryClient: new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      }),
-    },
+    context: { queryClient: activeQueryClient },
     history: createMemoryHistory({ initialEntries: [entry] }),
   })
 
@@ -214,14 +220,38 @@ describe('landing page handoff', () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
+  it('reloads when only the encoded fragment differs', async () => {
+    const router = await loadRouteAt('/status')
+    realWindow.history.replaceState({}, '', '/?aff=demo#plan%20details')
+
+    void router.navigate({
+      to: '/',
+      search: { aff: 'demo' },
+      hash: 'plan details',
+    })
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
+    expect(replace).not.toHaveBeenCalled()
+  })
+
   it('renders the fallback page when the document booted at the landing page', async () => {
     const router = await loadRouteAt('/')
+    // Modules are reset per case to re-capture the boot path, so use the
+    // renderer and router from the same module generation.
+    const { RouterProvider } = await import('@tanstack/react-router')
+    const { QueryClientProvider } = await import('@tanstack/react-query')
+    const { render, screen } = await import('@testing-library/react')
 
+    const view = render(
+      <QueryClientProvider client={activeQueryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    )
+
+    expect(await screen.findByText('stock home page')).toBeVisible()
     expect(replace).not.toHaveBeenCalled()
-    expect(router.state.location.pathname).toBe('/')
-    expect(
-      router.state.matches.find((match) => match.routeId === '/')?.status
-    ).toBe('success')
+    expect(reload).not.toHaveBeenCalled()
+    view.unmount()
   })
 
   it('does not leave the page on hover preload', async () => {
