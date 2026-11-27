@@ -34,6 +34,7 @@ async function loadStaticHome(entryPath: string) {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   realWindow.history.replaceState({}, '', '/')
 })
 
@@ -60,6 +61,16 @@ describe('static landing handoff', () => {
       expect(shouldReloadStaticHome()).toBe(false)
     }
   )
+
+  it('falls back to the landing path when browser APIs are unavailable', async () => {
+    vi.stubGlobal('window', undefined)
+    vi.stubGlobal('performance', undefined)
+    vi.resetModules()
+
+    const { shouldReloadStaticHome } = await import('../static-home')
+
+    expect(shouldReloadStaticHome()).toBe(false)
+  })
 
   it('falls back to the boot path when no navigation entry exists', async () => {
     mockNavigationEntry(undefined)

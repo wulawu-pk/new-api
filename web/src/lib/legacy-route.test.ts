@@ -121,6 +121,9 @@ describe('legacy frontend route migration', () => {
     expect(resolveLegacyRoute('/CONSOLE/SETTING?tab=RATIO')).toBe(
       '/system-settings/billing/model-pricing?tab=RATIO'
     )
+    expect(resolveLegacyRoute('/CONSOLE/SETTING?tab=Constructor')).toBe(
+      '/system-settings?tab=Constructor'
+    )
     expect(resolveLegacyRoute('/CONSOLE/CHAT/AbC')).toBe('/chat/AbC')
   })
 })

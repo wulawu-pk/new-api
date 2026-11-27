@@ -95,7 +95,11 @@ export function resolveLegacyRoute(rawHref: string): string | null {
   }
   if (lowerPath === '/console/setting') {
     const tab = (source.searchParams.get('tab') ?? '').toLowerCase()
-    const target = legacySettingsTabs[tab] ?? '/system-settings'
+    // A plain object lookup would accept inherited names such as
+    // `constructor` and send the user to a nonexistent page.
+    const target = Object.hasOwn(legacySettingsTabs, tab)
+      ? legacySettingsTabs[tab]
+      : '/system-settings'
     return buildTargetHref(target, source)
   }
   if (lowerPath === '/console/chat') {

@@ -25,6 +25,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.setConfig({ testTimeout: 60_000 })
 
 const replace = vi.fn()
+const reload = vi.fn()
 const realWindow = window
 
 vi.mock('@/features/setup/api', () => ({
@@ -70,6 +71,7 @@ function stubWindowWithLocationReplace() {
       return realWindow.location.origin
     },
     replace,
+    reload,
     assign: vi.fn(),
   }
   vi.stubGlobal(
@@ -98,7 +100,7 @@ async function loadRouteAt(entry: string, signedIn = false) {
     }))
   }
 
-  const { createMemoryHistory, createRouter } =
+  const { createMemoryHistory, createRouter, isRedirect } =
     await import('@tanstack/react-router')
   const { routeTree } = await import('@/routeTree.gen')
 
@@ -114,19 +116,22 @@ async function loadRouteAt(entry: string, signedIn = false) {
 
   try {
     await router.load()
-  } catch {
-    // A redirect is navigation, not a failed load; assertions below decide.
+  } catch (error) {
+    // A redirect is navigation, not a failed load; anything else must fail.
+    if (!isRedirect(error)) throw error
   }
   return router
 }
 
 beforeEach(() => {
   replace.mockClear()
+  reload.mockClear()
   stubWindowWithLocationReplace()
 })
 
 afterEach(() => {
   replace.mockClear()
+  reload.mockClear()
   vi.unstubAllGlobals()
   realWindow.history.replaceState({}, '', '/')
 })
@@ -197,11 +202,26 @@ describe('landing page handoff', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/?aff=demo#top'))
   })
 
+  it('reloads the document when the address bar already holds the hash target', async () => {
+    const router = await loadRouteAt('/status')
+    // Browsers commit the router's target (search and hash included) before
+    // the hook runs; replacing that same URL would only move the fragment.
+    realWindow.history.replaceState({}, '', '/?aff=demo#top')
+
+    void router.navigate({ to: '/', search: { aff: 'demo' }, hash: 'top' })
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1))
+    expect(replace).not.toHaveBeenCalled()
+  })
+
   it('renders the fallback page when the document booted at the landing page', async () => {
     const router = await loadRouteAt('/')
 
     expect(replace).not.toHaveBeenCalled()
     expect(router.state.location.pathname).toBe('/')
+    expect(
+      router.state.matches.find((match) => match.routeId === '/')?.status
+    ).toBe('success')
   })
 
   it('does not leave the page on hover preload', async () => {

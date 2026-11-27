@@ -59,7 +59,13 @@ describe('top navigation links', () => {
     expect(hrefs).not.toContain('/rankings')
     expect(hrefs).not.toContain('/about')
     expect(hrefs).toEqual(
-      expect.arrayContaining(['/', '/dashboard', '/pricing', '/status'])
+      expect.arrayContaining([
+        '/',
+        '/dashboard',
+        '/pricing',
+        '/status',
+        '/docs',
+      ])
     )
   })
 })
