@@ -45,6 +45,12 @@ describe('customer console redirect', () => {
     expect(customerConsoleRedirect('/usage-logs/common', false)).toBe(
       '/usage-logs'
     )
+    expect(customerConsoleRedirect('/Usage-Logs/Common', false)).toBe(
+      '/usage-logs'
+    )
+    expect(customerConsoleRedirect('/DASHBOARD/Overview', false)).toBe(
+      '/dashboard'
+    )
     expect(customerConsoleRedirect('/usage-logs/task', false)).toBe(
       '/usage-logs'
     )

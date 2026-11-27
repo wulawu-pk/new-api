@@ -16,10 +16,24 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { Home } from '@/features/home'
+import { shouldReloadStaticHome } from '@/lib/static-home'
 
 export const Route = createFileRoute('/')({
+  beforeLoad: ({ location, preload }) => {
+    // Hovering a `<Link to='/'>` only preloads; it must not take the user away.
+    if (preload) return
+    if (!shouldReloadStaticHome()) return
+    // `/` is the static landing page next to the SPA. Leaving through a full
+    // document load is the only way to reach it; keep any search and hash.
+    const hash = location.hash ? `#${location.hash}` : ''
+    throw redirect({
+      href: `/${location.searchStr}${hash}`,
+      replace: true,
+      reloadDocument: true,
+    })
+  },
   component: Home,
 })

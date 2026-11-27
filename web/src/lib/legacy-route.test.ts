@@ -99,4 +99,28 @@ describe('legacy frontend route migration', () => {
     expect(resolveLegacyRoute('/dashboard')).toBe(null)
     expect(resolveLegacyRoute('/api/status')).toBe(null)
   })
+
+  test('matches legacy paths regardless of case and trailing slashes', () => {
+    expect(resolveLegacyRoute('/About')).toBe('/')
+    expect(resolveLegacyRoute('/ABOUT')).toBe('/')
+    expect(resolveLegacyRoute('/About/')).toBe('/')
+    expect(resolveLegacyRoute('/about///')).toBe('/')
+    expect(resolveLegacyRoute('/Rankings?period=month')).toBe('/')
+    expect(resolveLegacyRoute('/RANKINGS/')).toBe('/')
+    expect(resolveLegacyRoute('/Pricing/gpt-6.2-sol')).toBe('/pricing')
+    expect(resolveLegacyRoute('/PRICING/xxx/?group=gpt-pro#api')).toBe(
+      '/pricing?group=gpt-pro#api'
+    )
+    expect(resolveLegacyRoute('/pricing')).toBe(null)
+    expect(resolveLegacyRoute('/PRICING')).toBe(null)
+    expect(resolveLegacyRoute('/PRICING/')).toBe(null)
+    expect(resolveLegacyRoute('/Login?redirect=%2Fkeys#continue')).toBe(
+      '/sign-in?redirect=%2Fkeys#continue'
+    )
+    expect(resolveLegacyRoute('/CONSOLE/TOKEN')).toBe('/keys')
+    expect(resolveLegacyRoute('/CONSOLE/SETTING?tab=RATIO')).toBe(
+      '/system-settings/billing/model-pricing?tab=RATIO'
+    )
+    expect(resolveLegacyRoute('/CONSOLE/CHAT/AbC')).toBe('/chat/AbC')
+  })
 })

@@ -60,17 +60,17 @@ export const LEGAL_PAGES = [
 export type LegalPageKey = (typeof LEGAL_PAGES)[number]['key']
 
 function normalize(pathname: string): string {
-  if (pathname.length > 1 && pathname.endsWith('/')) {
-    return pathname.slice(0, -1)
-  }
-  return pathname
+  // Route matching ignores case and trailing slashes; window detection must
+  // agree or a `/Dashboard` visit would be treated as a non-console page.
+  const trimmed = pathname.replace(/\/+$/, '')
+  return (trimmed || '/').toLowerCase()
 }
 
 /** The window a path belongs to, or undefined for non-console pages. */
 export function findConsoleWindow(pathname: string): ConsoleWindow | undefined {
   const path = normalize(pathname)
   return CONSOLE_WINDOWS.find((win) =>
-    win.match ? win.match(pathname) : path === win.path
+    win.match ? win.match(path) : path === win.path
   )
 }
 

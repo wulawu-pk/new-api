@@ -16,4 +16,22 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-export * from './format'
+import { screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+
+import { renderConsole } from '@/features/console/__tests__/render-console'
+
+import { Error500Page } from '../../routes/(errors)/500'
+
+describe('standalone 500 route', () => {
+  it('states the status code it is showing', async () => {
+    renderConsole(<Error500Page />, '/500')
+
+    expect(
+      await screen.findByRole('heading', { name: '500' })
+    ).toBeInTheDocument()
+    expect(screen.getByText(/peroai: \/500: 500/)).toBeInTheDocument()
+    expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument()
+    expect(screen.queryByText(/peroai: \/500: error/)).not.toBeInTheDocument()
+  })
+})
