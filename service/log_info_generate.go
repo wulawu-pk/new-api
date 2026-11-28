@@ -64,6 +64,32 @@ func appendRequestPath(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, other
 	}
 }
 
+// loggedUserAgentMaxBytes bounds the recorded User-Agent. Some clients append
+// very long version strings; a couple of hundred bytes is enough to tell them
+// apart in the log details.
+const loggedUserAgentMaxBytes = 256
+
+// appendUserAgent records the client's User-Agent in the admin-only scope, so a
+// log row can be traced back to the client that sent it (the console shows it
+// in the details next to the endpoint and the channel). It is not public: the
+// customer's own request is already theirs, and the row stays small.
+func appendUserAgent(ctx *gin.Context, other *model.LogOther) {
+	if other == nil || ctx == nil || ctx.Request == nil {
+		return
+	}
+	userAgent := strings.TrimSpace(ctx.Request.UserAgent())
+	if userAgent == "" {
+		return
+	}
+	if len(userAgent) > loggedUserAgentMaxBytes {
+		userAgent = strings.TrimSpace(strings.ToValidUTF8(userAgent[:loggedUserAgentMaxBytes], ""))
+	}
+	if userAgent == "" {
+		return
+	}
+	other.SetAdmin("user_agent", userAgent)
+}
+
 // AppendRelayLogAdminInfo records relay routing and conversion diagnostics in
 // the admin-only scope shared by successful and failed request logs.
 func AppendRelayLogAdminInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, other *model.LogOther) {
@@ -71,6 +97,7 @@ func AppendRelayLogAdminInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 		return
 	}
 	other.SetAdmin("use_channel", ctx.GetStringSlice("use_channel"))
+	appendUserAgent(ctx, other)
 	if relayInfo != nil {
 		if billingModel := relayInfo.GetBillingModelName(); billingModel != "" && billingModel != relayInfo.OriginModelName {
 			other.SetAdmin("billing_model", billingModel)
