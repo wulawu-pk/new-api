@@ -49,6 +49,7 @@ relay.upstream_model_unavailable: "该分组的模型 {{.Model}} 暂时不可用
 relay.upstream_rate_limited: "请求过多，请稍后再试"
 relay.upstream_timeout: "请求超时，请稍后再试"
 relay.upstream_invalid_request: "请求被拒绝，请检查请求参数后重试"
+relay.count_tokens_unavailable: "模型 {{.Model}} 不支持计算 token 数，请直接发送请求"
 
 # Public reasons of failed video / image tasks (peroai)
 task.fail.content_policy: "内容审核未通过，请调整内容后重试"

@@ -89,6 +89,22 @@ func TestListModelsSupportsOpenAIAndGeminiAuthentication(t *testing.T) {
 	}
 }
 
+// The token-counting endpoint has to stay registered: Claude Code and the
+// third-party checks call it before a long prompt instead of guessing its size.
+func TestRelayRouterRegistersClaudeTokenCountingEndpoint(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	engine := gin.New()
+	SetRelayRouter(engine)
+
+	for _, route := range engine.Routes() {
+		if route.Method == http.MethodPost && route.Path == "/v1/messages/count_tokens" {
+			return
+		}
+	}
+
+	t.Fatal("POST /v1/messages/count_tokens route is not registered")
+}
+
 func setupRelayRouterTestDB(t *testing.T) {
 	t.Helper()
 

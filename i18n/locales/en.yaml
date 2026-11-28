@@ -48,6 +48,7 @@ relay.upstream_model_unavailable: "Model {{.Model}} is temporarily unavailable i
 relay.upstream_rate_limited: "Too many requests. Please try again later"
 relay.upstream_timeout: "The request timed out. Please try again later"
 relay.upstream_invalid_request: "The request was rejected. Check the request parameters and try again"
+relay.count_tokens_unavailable: "Token counting is not available for model {{.Model}}"
 
 # Public reasons of failed video / image tasks (peroai)
 task.fail.content_policy: "Content moderation failed. Please adjust the content and try again."

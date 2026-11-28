@@ -264,7 +264,8 @@ func writeRelayStreamError(c *gin.Context, format types.RelayFormat, apiError *t
 
 // CountClaudeTokens implements Anthropic's token-counting utility endpoint.
 // It deliberately skips upstream generation and billing; callers use this
-// endpoint to size prompts before creating a Message.
+// endpoint to size prompts before creating a Message. The count itself comes
+// from the channel that would serve the prompt, so it matches the bill.
 func CountClaudeTokens(c *gin.Context) {
 	request, err := helper.GetAndValidateClaudeRequest(c)
 	if err != nil {
@@ -279,19 +280,21 @@ func CountClaudeTokens(c *gin.Context) {
 	}
 
 	info := relaycommon.GenRelayInfoClaude(c, request)
-	inputTokens, err := service.CountRequestToken(c, request.GetTokenCountMeta(), info)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"type": "error",
-			"error": gin.H{
-				"type":    "api_error",
-				"message": common.MessageWithRequestId(err.Error(), c.GetString(common.RequestIdKey)),
-			},
-		})
+	apiErr := relay.ClaudeCountTokensHelper(c, info)
+	if apiErr == nil {
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"input_tokens": inputTokens})
+	// Nothing is charged and no channel is at fault, so there is no billing to
+	// settle and no auto-disable to run: the error only needs masking.
+	service.RecordRequestPolicyTermination(c, apiErr)
+	logger.LogError(c, common.LogText("count tokens error: %s", common.LocalLogPreview(apiErr.Error())))
+	apiErr = service.PublicUpstreamError(c, apiErr)
+	apiErr.SetMessage(common.MessageWithRequestId(apiErr.Error(), c.GetString(common.RequestIdKey)))
+	c.Header("Content-Type", "application/json; charset=utf-8")
+	c.JSON(apiErr.StatusCode, gin.H{
+		"type":  "error",
+		"error": apiErr.ToClaudeError(common.UpstreamAddresses(c)...),
+	})
 }
 
 var upgrader = websocket.Upgrader{

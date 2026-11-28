@@ -60,6 +60,7 @@ const (
 	MsgRelayUpstreamRateLimited          = "relay.upstream_rate_limited"
 	MsgRelayUpstreamTimeout              = "relay.upstream_timeout"
 	MsgRelayUpstreamInvalidRequest       = "relay.upstream_invalid_request"
+	MsgRelayCountTokensUnavailable       = "relay.count_tokens_unavailable"
 
 	// peroai: public reasons of failed video / image tasks
 	MsgTaskFailContentPolicy = "task.fail.content_policy"
