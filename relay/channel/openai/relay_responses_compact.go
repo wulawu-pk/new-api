@@ -28,7 +28,9 @@ func OaiResponsesCompactionHandler(c *gin.Context, resp *http.Response) (*dto.Us
 		return nil, types.WithOpenAIError(*oaiError, resp.StatusCode)
 	}
 
-	service.IOCopyBytesGracefully(c, resp, responseBody)
+	// usage keeps only the fields OpenAI publishes; billing reads compactResp,
+	// parsed from the upstream bytes above.
+	service.IOCopyBytesGracefully(c, resp, SanitizeResponsesResponseUsage(responseBody))
 
 	usage := dto.Usage{}
 	if compactResp.Usage != nil {
