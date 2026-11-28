@@ -2268,6 +2268,7 @@
     "End weekday": "End weekday",
     "End-user identifier for abuse monitoring": "End-user identifier for abuse monitoring",
     "Endpoint": "Endpoint",
+    "UserAgent": "User-Agent",
     "Endpoint config": "Endpoint config",
     "Endpoint Configuration": "Endpoint Configuration",
     "Endpoint Type": "Endpoint Type",

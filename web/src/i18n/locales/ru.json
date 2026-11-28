@@ -2268,6 +2268,7 @@
     "End weekday": "Конечный день недели",
     "End-user identifier for abuse monitoring": "Идентификатор конечного пользователя для мониторинга злоупотреблений",
     "Endpoint": "Точка доступа",
+    "UserAgent": "User-Agent",
     "Endpoint config": "Конфигурация конечной точки",
     "Endpoint Configuration": "Конфигурация конечной точки",
     "Endpoint Type": "Тип конечной точки",

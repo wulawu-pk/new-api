@@ -2268,6 +2268,7 @@
     "End weekday": "Ngày kết thúc",
     "End-user identifier for abuse monitoring": "Định danh người dùng cuối để giám sát lạm dụng",
     "Endpoint": "Endpoint",
+    "UserAgent": "User-Agent",
     "Endpoint config": "Cấu hình điểm cuối",
     "Endpoint Configuration": "Cấu hình điểm cuối",
     "Endpoint Type": "Loại điểm cuối",

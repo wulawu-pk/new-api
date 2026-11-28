@@ -69,6 +69,8 @@ export type ConsoleLogRow = {
   endpoint: string
   /** Thinking effort the request asked for (low, high, max ...); '' when none. */
   reasoningEffort: string
+  /** Client that sent the request, from its User-Agent header; '' when unknown. */
+  userAgent: string
   other: LogOtherData | null
 }
 
@@ -113,6 +115,10 @@ export function toConsoleLogRow(log: UsageLog): ConsoleLogRow {
     reasoningEffort:
       typeof other?.reasoning_effort === 'string'
         ? other.reasoning_effort.trim()
+        : '',
+    userAgent:
+      typeof other?.admin_info?.user_agent === 'string'
+        ? other.admin_info.user_agent.trim()
         : '',
     other,
   }

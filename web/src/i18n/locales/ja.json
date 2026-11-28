@@ -2268,6 +2268,7 @@
     "End weekday": "終了曜日",
     "End-user identifier for abuse monitoring": "悪用検知用のエンドユーザー識別子",
     "Endpoint": "エンドポイント",
+    "UserAgent": "User-Agent",
     "Endpoint config": "エンドポイント設定",
     "Endpoint Configuration": "エンドポイント設定",
     "Endpoint Type": "エンドポイントタイプ",

@@ -146,6 +146,8 @@ export interface LogOtherData {
     local_count_tokens?: boolean
     usage_billing_path?: UsageBillingPath | string
     channel_affinity?: ChannelAffinityInfo
+    // Client that sent the request, as its User-Agent header said (admin only)
+    user_agent?: string
     // Top-up audit fields (type=1, admin only)
     payment_method?: string
     callback_payment_method?: string

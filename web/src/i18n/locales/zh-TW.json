@@ -2268,6 +2268,7 @@
     "End weekday": "結束星期",
     "End-user identifier for abuse monitoring": "用於風險審計的終端用戶標識",
     "Endpoint": "端點",
+    "UserAgent": "User-Agent",
     "Endpoint config": "端點設定",
     "Endpoint Configuration": "端點設定",
     "Endpoint Type": "端點類型",

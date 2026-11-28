@@ -2268,6 +2268,7 @@
     "End weekday": "Jour de fin",
     "End-user identifier for abuse monitoring": "Identifiant d'utilisateur final pour la surveillance des abus",
     "Endpoint": "Point d'accès",
+    "UserAgent": "User-Agent",
     "Endpoint config": "Configuration de l'endpoint",
     "Endpoint Configuration": "Configuration du point de terminaison",
     "Endpoint Type": "Type de point de terminaison",

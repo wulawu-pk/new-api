@@ -32,7 +32,8 @@ function usd(value: number): string {
 
 /**
  * Billing breakdown shown when a log row is expanded. `showChannel` (the
- * admin all-users view) adds the channel that served the request.
+ * admin all-users view) adds the diagnostics that stay admin-only: the client's
+ * User-Agent and the channel that served the request.
  */
 export function LogDetail(props: {
   row: ConsoleLogRow
@@ -166,6 +167,12 @@ export function LogDetail(props: {
 
   if (row.endpoint) {
     cells.push({ label: t('Endpoint'), value: row.endpoint })
+  }
+
+  // Admin-only, like the channel: the backend records the User-Agent in
+  // admin_info, so an ordinary customer's own view never carries it.
+  if (props.showChannel && row.userAgent) {
+    cells.push({ label: t('UserAgent'), value: row.userAgent })
   }
 
   if (props.showChannel && row.channel > 0) {

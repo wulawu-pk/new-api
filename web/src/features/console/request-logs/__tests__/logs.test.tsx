@@ -351,6 +351,19 @@ describe('billing basis in the detail', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('leaves the User-Agent out of a customer’s own view', async () => {
+    const detail = await openDetail(
+      {
+        billing_mode: 'ratio',
+        group_ratio: 0.5,
+        user_group_ratio: -1,
+        admin_info: { user_agent: 'codex_cli_rs/0.160.0 (Mac OS 15.6)' },
+      },
+      { model_name: 'gpt-6-astra', group: 'gpt-pro' }
+    )
+    expect(within(detail).queryByText('UserAgent')).not.toBeInTheDocument()
+  })
+
   it('leaves the endpoint out when the log did not record one', async () => {
     const detail = await openDetail(
       { billing_mode: 'ratio', group_ratio: 0.5, user_group_ratio: -1 },
@@ -581,6 +594,33 @@ describe('console logs page for admins', () => {
     expect(
       screen.queryByRole('columnheader', { name: 'User' })
     ).not.toBeInTheDocument()
+  })
+
+  it('shows the client’s User-Agent in the details of a request', async () => {
+    vi.mocked(logsApi.getAllLogs).mockResolvedValue(
+      PAGE(
+        [
+          log({
+            other: JSON.stringify({
+              group_ratio: 0.5,
+              admin_info: { user_agent: 'claude-cli/2.1.98 (external, cli)' },
+            }),
+          }),
+        ],
+        1
+      )
+    )
+    const user = userEvent.setup()
+    renderConsole(<ConsoleLogs />)
+    const row = (await screen.findByText('gpt-6-astra')).closest(
+      'tr'
+    ) as HTMLElement
+    await user.click(row)
+    const detail = row.nextElementSibling as HTMLElement
+    expect(within(detail).getByText('UserAgent')).toBeInTheDocument()
+    expect(
+      within(detail).getByText('claude-cli/2.1.98 (external, cli)')
+    ).toBeInTheDocument()
   })
 
   it('a non-admin has no user switch and reads only their own logs', async () => {
