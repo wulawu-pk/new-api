@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
+	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/service"
@@ -30,7 +31,7 @@ func OaiResponsesCompactionHandler(c *gin.Context, resp *http.Response) (*dto.Us
 
 	// usage keeps only the fields OpenAI publishes; billing reads compactResp,
 	// parsed from the upstream bytes above.
-	service.IOCopyBytesGracefully(c, resp, SanitizeResponsesResponseUsage(responseBody))
+	service.IOCopyBytesGracefully(c, resp, SanitizeResponsesCompactionResponse(responseBody, relaycommon.GetResponsesSanitizeAudit(c)))
 
 	usage := dto.Usage{}
 	if compactResp.Usage != nil {

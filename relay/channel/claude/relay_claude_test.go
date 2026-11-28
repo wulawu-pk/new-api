@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 )
 
 func commonPointer[T any](value T) *T {
@@ -303,6 +304,56 @@ func TestClaudeStreamFallbackCountsInterruptedToolUse(t *testing.T) {
 	// Text estimate plus the per-tool_use framing the upstream bills.
 	assert.Equal(t, tokenkit.Estimate("claude-sonnet-5", `read_file{"path":"main.go"}`)+40, claudeInfo.Usage.CompletionTokens)
 	assert.Equal(t, 100, claudeInfo.Usage.PromptTokens)
+}
+
+func TestClaudeWireUsageKeepsBillingFacts(t *testing.T) {
+	const counts = `{"input_tokens":11,"output_tokens":2,"cache_read_input_tokens":3,"cache_creation_input_tokens":7,"cache_creation":{"ephemeral_5m_input_tokens":4,"ephemeral_1h_input_tokens":3}}`
+	for _, tc := range []struct {
+		name   string
+		format types.RelayFormat
+		stream bool
+	}{{"chat", types.RelayFormatOpenAI, false}, {"chat final frame", types.RelayFormatOpenAI, true}, {"responses", types.RelayFormatOpenAIResponses, false}} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("POST", "/v1/chat/completions", nil)
+			info := &relaycommon.RelayInfo{RelayFormat: tc.format, ShouldIncludeUsage: true, ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "claude-sonnet"}}
+			state := &ClaudeResponseInfo{Usage: &dto.Usage{}}
+			body := `{"id":"msg1","model":"claude-sonnet","type":"message","role":"assistant","content":[{"type":"text","text":"ok"}],"stop_reason":"end_turn","usage":` + counts + `}`
+			if tc.stream {
+				require.Nil(t, HandleStreamResponseData(c, info, state, `{"type":"message_start","message":`+body+`}`))
+				HandleStreamFinalResponse(c, info, state)
+			} else {
+				require.Nil(t, HandleClaudeResponseData(c, info, state, &http.Response{Header: http.Header{}, StatusCode: 200}, []byte(body)))
+			}
+			wire := w.Body.String()
+			if tc.stream {
+				for line := range strings.SplitSeq(wire, "\n") {
+					data := strings.TrimPrefix(line, "data: ")
+					if gjson.Get(data, "usage").IsObject() {
+						wire = data
+						break
+					}
+				}
+			}
+			u := gjson.Get(wire, "usage")
+			require.True(t, u.IsObject(), wire)
+			for _, key := range []string{"billing_usage", "usage_semantic", "usage_source", "claude_cache_creation_5_m_tokens", "claude_cache_creation_1_h_tokens"} {
+				require.False(t, u.Get(key).Exists(), key)
+			}
+			prefix := "prompt_tokens_details"
+			if tc.format == types.RelayFormatOpenAIResponses {
+				prefix = "input_tokens_details"
+			} else {
+				require.False(t, u.Get("input_tokens").Exists())
+			}
+			require.Equal(t, "3", u.Get(prefix+".cached_tokens").Raw)
+			require.Equal(t, "7", u.Get(prefix+".cached_creation_tokens").Raw)
+			require.NotNil(t, state.Usage.BillingUsage)
+			require.Equal(t, 4, state.Usage.ClaudeCacheCreation5mTokens)
+			require.Equal(t, 3, state.Usage.ClaudeCacheCreation1hTokens)
+		})
+	}
 }
 
 func TestBuildOpenAIStyleUsageFromClaudeUsage(t *testing.T) {

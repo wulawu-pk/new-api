@@ -23,7 +23,7 @@ func TestOaiResponsesCompactionHandlerForwardsOnlyPublicUsage(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	body := `{"id":"resp_compact","object":"response.compaction","created_at":1764300000,` +
-		`"output":[],"usage":` + upstreamAttributionUsage + `}`
+		`"instructions":"private","output":[{"type":"compaction","encrypted_content":"abc\u0041","phase":"final"}],"usage":` + upstreamAttributionUsage + `}`
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -48,7 +48,12 @@ func TestOaiResponsesCompactionHandlerForwardsOnlyPublicUsage(t *testing.T) {
 	assert.Equal(t, publicAttributionUsage, gjson.GetBytes(sent, "usage").Raw,
 		"usage keeps exactly the public fields and the upstream numbers")
 
-	// Everything outside usage is the upstream payload, unchanged.
+	for _, path := range []string{"instructions", "output.0.phase"} {
+		require.False(t, gjson.GetBytes(sent, path).Exists(), path)
+	}
+	for _, path := range []string{"id", "object", "created_at", "output.0.encrypted_content"} {
+		require.Equal(t, gjson.Get(body, path).Raw, gjson.GetBytes(sent, path).Raw, path)
+	}
 	assert.Equal(t, "resp_compact", gjson.GetBytes(sent, "id").String())
 	assert.Equal(t, "response.compaction", gjson.GetBytes(sent, "object").String())
 	assert.Equal(t, int64(1764300000), gjson.GetBytes(sent, "created_at").Int())

@@ -51,6 +51,9 @@ func OaiResponsesToChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 		return nil, types.NewOpenAIError(err, types.ErrorCodeJsonMarshalFailed, http.StatusInternalServerError)
 	}
 
+	if info.RelayFormat == types.RelayFormatOpenAI {
+		responseBody = helper.SanitizeChatUsageBytes(responseBody)
+	}
 	service.IOCopyBytesGracefully(c, resp, responseBody)
 	return usage, nil
 }
@@ -143,6 +146,9 @@ func OaiResponsesToChatBufferedStreamHandler(c *gin.Context, info *relaycommon.R
 		return nil, types.NewOpenAIError(err, types.ErrorCodeJsonMarshalFailed, http.StatusInternalServerError)
 	}
 
+	if info.RelayFormat == types.RelayFormatOpenAI {
+		responseBody = helper.SanitizeChatUsageBytes(responseBody)
+	}
 	service.IOCopyBytesGracefully(c, resp, responseBody)
 	return usage, nil
 }
@@ -222,13 +228,23 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 		return true
 	}
 
+	sendChatData := func(value any) error {
+		if info.RelayFormat != types.RelayFormatOpenAI {
+			return helper.ObjectData(c, value)
+		}
+		data, err := common.Marshal(value)
+		if err != nil {
+			return err
+		}
+		return helper.StringData(c, string(helper.SanitizeChatUsageBytes(data)))
+	}
 	sendStreamResult := func(result relayconvert.ResponseResult) bool {
 		switch value := result.Value.(type) {
 		case dto.ChatCompletionsStreamResponse:
 			if len(value.Choices) == 0 && value.Usage == nil {
 				return true
 			}
-			if err := helper.ObjectData(c, &value); err != nil {
+			if err := sendChatData(&value); err != nil {
 				return writeFailed(err)
 			}
 			return true
@@ -236,7 +252,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 			if value == nil || (len(value.Choices) == 0 && value.Usage == nil) {
 				return true
 			}
-			if err := helper.ObjectData(c, value); err != nil {
+			if err := sendChatData(value); err != nil {
 				return writeFailed(err)
 			}
 			return true
@@ -373,7 +389,7 @@ func OaiResponsesToChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo
 		}
 	}
 	if info.RelayFormat == types.RelayFormatOpenAI && info.ShouldIncludeUsage && usage != nil {
-		if err := helper.ObjectData(c, helper.GenerateFinalUsageResponse(responseId, createAt, info.UpstreamModelName, *usage)); err != nil {
+		if err := sendChatData(helper.GenerateFinalUsageResponse(responseId, createAt, info.UpstreamModelName, *usage)); err != nil {
 			writeFailed(err)
 			if streamErr != nil {
 				return nil, streamErr

@@ -40,7 +40,8 @@ func TestPrepareResponsesRequestRetainsConvertedAdaptor(t *testing.T) {
 	}))
 	defer server.Close()
 
-	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
 	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
 	c.Request.Header.Set("Content-Type", "application/json")
 	common.SetContextKey(c, constant.ContextKeyOriginalModel, "gpt-4o")
@@ -65,6 +66,14 @@ func TestPrepareResponsesRequestRetainsConvertedAdaptor(t *testing.T) {
 	require.Nil(t, apiErr)
 	require.IsType(t, &dto.Usage{}, usage)
 	assert.Equal(t, 5, usage.(*dto.Usage).TotalTokens)
+	var wire struct {
+		Usage map[string]common.RawMessage `json:"usage"`
+	}
+	require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &wire))
+	require.Equal(t, "5", string(wire.Usage["total_tokens"]))
+	for _, name := range []string{"prompt_tokens", "completion_tokens", "billing_usage", "usage_source", "usage_semantic"} {
+		require.NotContains(t, wire.Usage, name)
+	}
 
 	upstream := <-captured
 	assert.Equal(t, "/v1/chat/completions", upstream.path)

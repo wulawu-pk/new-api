@@ -382,7 +382,10 @@ func HandleStreamFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, clau
 		if info.ShouldIncludeUsage {
 			openAIUsage := buildOpenAIStyleUsageFromClaudeUsage(claudeInfo.Usage)
 			response := helper.GenerateFinalUsageResponse(claudeInfo.ResponseId, claudeInfo.Created, info.UpstreamModelName, openAIUsage)
-			err := helper.ObjectData(c, response)
+			data, err := common.Marshal(response)
+			if err == nil {
+				err = helper.StringData(c, string(helper.SanitizeChatUsageBytes(data)))
+			}
 			if err != nil {
 				common.SysLog(common.LogText("send final response failed: %s", err.Error()))
 			}
@@ -467,6 +470,7 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeBadResponseBody)
 		}
+		responseData = helper.SanitizeChatUsageBytes(responseData)
 	case types.RelayFormatOpenAIResponses:
 		convertResult, err := service.ConvertResponse(c, info, types.RelayFormatOpenAIResponses, &claudeResponse)
 		if err != nil {
@@ -483,6 +487,7 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeBadResponseBody)
 		}
+		responseData = helper.SanitizeResponsesUsageAt(responseData, "usage")
 	case types.RelayFormatClaude:
 		// provider_usage was captured above for billing; it must not reach
 		// the client.

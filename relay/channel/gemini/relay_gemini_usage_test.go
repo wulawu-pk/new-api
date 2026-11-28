@@ -19,6 +19,33 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestGeminiToResponsesWireUsage(t *testing.T) {
+	previous := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = previous })
+	const input = `{"candidates":[{"content":{"role":"model","parts":[{"text":"ok"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":2,"candidatesTokenCount":3,"totalTokenCount":5}}`
+	for _, stream := range []bool{false, true} {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+		info := newGeminiResponsesRelayInfo(stream)
+		body := input
+		handle := GeminiResponsesHandler
+		if stream {
+			body = "data: " + input + "\n\ndata: [DONE]\n\n"
+			handle = GeminiResponsesStreamHandler
+		}
+		usage, e := handle(c, info, &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body))})
+		require.Nil(t, e)
+		require.Equal(t, 5, usage.TotalTokens)
+		out := w.Body.String()
+		for _, key := range []string{"billing_usage", "usage_semantic", "usage_source", "prompt_tokens", "completion_tokens"} {
+			require.NotContains(t, out, `"`+key+`"`)
+		}
+		require.Contains(t, out, `"total_tokens":5`)
+	}
+}
+
 func TestStreamResponseGeminiChat2OpenAIAttachesUsageMetadata(t *testing.T) {
 	t.Parallel()
 

@@ -76,6 +76,8 @@ const (
 	ContextKeyStreamFailureSent    ContextKey = "stream_failure_sent"
 	ContextKeyResponseStreamStatus ContextKey = "response_stream_status"
 
+	ContextKeyResponsesSanitizeAudit ContextKey = "responses_sanitize_audit"
+
 	// ContextKeyAuditLogged marks that the current request has already recorded
 	// a manage/operation audit log inside the handler. When set, the admin-audit
 	// fallback in authHelper (finishAdminAudit) skips its record to avoid

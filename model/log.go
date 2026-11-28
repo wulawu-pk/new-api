@@ -348,7 +348,13 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	if !common.LogConsumeEnabled {
 		return
 	}
-	logger.LogInfo(c, common.LogText("record consume log: userId=%d, params=%s", userId, common.GetJsonString(params)))
+	// The audit names under admin_info.responses_sanitize belong to the stored
+	// record only; they must not appear in routine backend log lines.
+	logParams := params
+	if logParams.Other != nil {
+		logParams.Other = logParams.Other.CloneWithoutAdminKey("responses_sanitize")
+	}
+	logger.LogInfo(c, common.LogText("record consume log: userId=%d, params=%s", userId, common.GetJsonString(logParams)))
 	username := c.GetString("username")
 	requestId := c.GetString(common.RequestIdKey)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)

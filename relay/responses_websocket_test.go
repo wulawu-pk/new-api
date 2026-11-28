@@ -530,6 +530,107 @@ func newTestWebSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn, func(
 	return target, serverConn, cleanup
 }
 
+func TestResponsesWSActiveCallWireEvents(t *testing.T) {
+	client, server, cleanup := newTestWebSocketPair(t)
+	defer cleanup()
+	s := &responsesWSSession{client: server, ctx: context.Background()}
+	state := &responsesWSCallState{inbox: make(chan responsesWSMessage, 4)}
+	create, _, err := normalizeResponsesWSTestMessage([]byte(`{"type":"response.create","model":"gpt-test","instructions":"client","instructions":"second","background":false}`))
+	require.NoError(t, err)
+	for _, raw := range []string{`{"type":"codex.rate_limits"}`, `{"type":"response.created","response":{"instructions":"secret","id":"r"}}`, `{"type":"response.completed","response":{"id":"r","instructions":"secret","status":"completed"}}`} {
+		state.inbox <- responsesWSMessage{kind: websocket.TextMessage, body: []byte(raw)}
+	}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/v1/responses", nil)
+	info := &relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "gpt-test"}, RelayFormat: types.RelayFormatOpenAIResponses, StartTime: time.Now()}
+	oldLog := common.LogConsumeEnabled
+	common.LogConsumeEnabled = false
+	t.Cleanup(func() { common.LogConsumeEnabled = oldLog })
+	require.Nil(t, s.forwardCallEvents(c, state, create, info))
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	_, got, err := client.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, `{"type":"response.created","response":{"id":"r","instructions":"client","background":false}}`, string(got))
+	require.NotNil(t, state.terminal)
+	require.Equal(t, `{"type":"response.completed","response":{"id":"r","status":"completed","instructions":"client","background":false}}`, string(state.terminal.body))
+	require.Equal(t, []string{"codex.rate_limits"}, relaycommon.PeekResponsesSanitizeAudit(c).Map()["dropped_frames"])
+}
+
+func TestResponsesWSTerminalWithUnknownItemStillSettles(t *testing.T) {
+	client, server, cleanup := newTestWebSocketPair(t)
+	defer cleanup()
+	s := &responsesWSSession{client: server, ctx: context.Background()}
+	state := &responsesWSCallState{inbox: make(chan responsesWSMessage, 1)}
+	create, _, err := normalizeResponsesWSTestMessage([]byte(`{"type":"response.create","model":"gpt-test"}`))
+	require.NoError(t, err)
+	// The frame is withheld from the client because of the unknown item type,
+	// but billing and terminal detection must still read the original event.
+	state.inbox <- responsesWSMessage{kind: websocket.TextMessage, body: []byte(`{"type":"response.completed","item":{"type":"future"},"response":{"id":"r"}}`)}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/v1/responses", nil)
+	info := &relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "gpt-test"}, RelayFormat: types.RelayFormatOpenAIResponses, StartTime: time.Now()}
+	oldLog := common.LogConsumeEnabled
+	common.LogConsumeEnabled = false
+	t.Cleanup(func() { common.LogConsumeEnabled = oldLog })
+	require.Nil(t, s.forwardCallEvents(c, state, create, info))
+	require.NotNil(t, state.terminal)
+	require.Empty(t, state.terminal.body)
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(200*time.Millisecond)))
+	_, _, readErr := client.ReadMessage()
+	require.Error(t, readErr, "a withheld frame must not reach the client")
+}
+
+func TestResponsesWSRejectionDropsUpstreamMetadata(t *testing.T) {
+	_, server, cleanup := newTestWebSocketPair(t)
+	defer cleanup()
+	s := &responsesWSSession{client: server, ctx: context.Background()}
+	state := &responsesWSCallState{inbox: make(chan responsesWSMessage, 1)}
+	create, _, err := normalizeResponsesWSTestMessage([]byte(`{"type":"response.create","model":"gpt-test"}`))
+	require.NoError(t, err)
+	state.inbox <- responsesWSMessage{kind: websocket.TextMessage, body: []byte(`{"type":"error","status":400,"error":{"type":"invalid_request_error","code":"bad","message":"boom","metadata":{"upstream":"secret"}}}`)}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/v1/responses", nil)
+	info := &relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "gpt-test"}, RelayFormat: types.RelayFormatOpenAIResponses, StartTime: time.Now()}
+	oldLog := common.LogConsumeEnabled
+	common.LogConsumeEnabled = false
+	t.Cleanup(func() { common.LogConsumeEnabled = oldLog })
+
+	apiErr := s.forwardCallEvents(c, state, create, info)
+	require.NotNil(t, apiErr)
+	require.NotContains(t, apiErr.Error(), "secret")
+	payload, buildErr := buildResponsesWSErrorPayload("e", "s", apiErr)
+	require.NoError(t, buildErr)
+	require.Contains(t, string(payload), "boom")
+	require.NotContains(t, string(payload), "secret")
+}
+
+func TestResponsesWSWrappedEchoUsesFirstRequest(t *testing.T) {
+	message := []byte(`{"type":"response.create","response":{"model":"gpt-test","instructions":"first"},"response":{"model":"gpt-test","instructions":"second"}}`)
+	create, _, err := normalizeResponsesWSTestMessage(message)
+	require.NoError(t, err)
+	require.Equal(t, `{"model":"gpt-test","instructions":"first"}`, string(create.Echo))
+}
+
+func TestResponsesWSLateEventsUseNoRequestEcho(t *testing.T) {
+	client, server, closeClient := newTestWebSocketPair(t)
+	defer closeClient()
+	target, peer, closeTarget := newTestWebSocketPair(t)
+	defer closeTarget()
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &responsesWSSession{ctx: ctx, cancel: cancel, client: server, target: target}
+	s.startTargetReader(target)
+	defer func() { s.shutdown(websocket.CloseNormalClosure, ""); s.workers.Wait() }()
+	for _, tc := range []struct{ raw, want string }{{`{"type":"codex.rate_limits"}`, ``}, {`{"type":"response.created","response":{"id":"late","instructions":"private"},"private":1}`, `{"type":"response.created","response":{"id":"late"}}`}} {
+		require.NoError(t, peer.WriteMessage(websocket.TextMessage, []byte(tc.raw)))
+		if tc.want != "" {
+			require.NoError(t, client.SetReadDeadline(time.Now().Add(3*time.Second)))
+			_, got, err := client.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, tc.want, string(got))
+		}
+	}
+}
+
 func TestResponsesWSMessageSizeLimit(t *testing.T) {
 	previous := constant.MaxRequestBodyMB
 	constant.MaxRequestBodyMB = 1
