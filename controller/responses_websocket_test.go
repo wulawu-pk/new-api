@@ -509,6 +509,51 @@ func readResponsesWSTestEvent(t *testing.T, client *websocket.Conn) map[string]a
 	return event
 }
 
+// responsesExpectedClientFrame is the client-visible projection of an upstream
+// frame: the whitelisted fields plus the request echo the test client sent.
+func responsesExpectedClientFrame(t *testing.T, event string) string {
+	t.Helper()
+	var value map[string]any
+	require.NoError(t, common.UnmarshalJsonStr(event, &value))
+	if response, ok := value["response"].(map[string]any); ok {
+		response["max_output_tokens"] = float64(1)
+	}
+	data, err := common.Marshal(value)
+	require.NoError(t, err)
+	return string(data)
+}
+
+func responsesClientEventType(t *testing.T, event string) string {
+	t.Helper()
+	var value struct {
+		Type string `json:"type"`
+	}
+	require.NoError(t, common.UnmarshalJsonStr(event, &value))
+	return value.Type
+}
+
+// responsesSSEPayload reassembles the data lines of one named SSE frame.
+func responsesSSEPayload(t *testing.T, body, eventType string) string {
+	t.Helper()
+	for chunk := range strings.SplitSeq(body, "\n\n") {
+		var data []string
+		name := ""
+		for line := range strings.SplitSeq(chunk, "\n") {
+			if after, ok := strings.CutPrefix(line, "event: "); ok {
+				name = after
+			}
+			if after, ok := strings.CutPrefix(line, "data: "); ok {
+				data = append(data, after)
+			}
+		}
+		if name == eventType && len(data) > 0 {
+			return strings.Join(data, "\n")
+		}
+	}
+	t.Fatalf("no %q frame in %q", eventType, body)
+	return ""
+}
+
 func assertResponsesWSAccounting(t *testing.T, fixture *responsesWSBillingTest, expectedQuotas []int) {
 	t.Helper()
 	var logs []model.Log
@@ -941,13 +986,13 @@ func TestResponsesStreamOutcomesPreserveAccounting(t *testing.T) {
 					require.NoError(t, err)
 					require.NoError(t, response.Body.Close())
 					assert.Equal(t, http.StatusOK, response.StatusCode)
-					assert.Contains(t, string(body), terminal)
+					assert.JSONEq(t, responsesExpectedClientFrame(t, terminal), responsesSSEPayload(t, string(body), responsesClientEventType(t, terminal)), "the terminal frame keeps the accounting fields")
 				} else {
 					require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"planner","model":"ws-billing","input":"hi","max_output_tokens":1}`)))
 					for _, expected := range events {
 						actual, err := common.Marshal(readResponsesWSTestEvent(t, fixture.client))
 						require.NoError(t, err)
-						assert.JSONEq(t, expected, string(actual), "upstream frames must be delivered once and unchanged")
+						assert.JSONEq(t, responsesExpectedClientFrame(t, expected), string(actual), "upstream frames must be delivered once, projected through the public schema")
 					}
 				}
 				quotas := []int{1000}
