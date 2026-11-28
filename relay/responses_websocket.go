@@ -22,6 +22,7 @@ import (
 	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
 	"github.com/QuantumNous/new-api/pkg/wsmanager"
 	relaychannel "github.com/QuantumNous/new-api/relay/channel"
+	openaichannel "github.com/QuantumNous/new-api/relay/channel/openai"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/relaykit/dto"
@@ -402,6 +403,12 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 			if err := common.Unmarshal(incoming.body, &event); err != nil {
 				info.StreamStatus.RecordError("invalid upstream websocket event")
 			} else {
+				// Billing reads upstream tool counts from inside usage
+				// (usage.x_tools, usage.server_side_tool_usage_details), so the
+				// accumulator keeps the raw bytes; the client only ever sees the
+				// allow-listed rebuild of response.usage.
+				billingBody := incoming.body
+				incoming.body = openaichannel.SanitizeResponsesEventUsage(incoming.body)
 				if event.Type != "error" && event.StreamID != "" && event.StreamID != create.StreamID {
 					if err := s.writeClient(incoming.kind, incoming.body); err != nil {
 						s.shutdown(websocket.CloseInternalServerErr, "")
@@ -438,7 +445,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 							}
 							info.StreamStatus.MarkFailed(code, rejection.Error.Type, rejection.Status)
 						}
-						accumulator.Observe(&event.ResponsesStreamResponse, incoming.body)
+						accumulator.Observe(&event.ResponsesStreamResponse, billingBody)
 						info.StreamStatus.SetEndReason(relaycommon.StreamEndReasonDone, nil)
 						s.lastResponseID = responseID
 						state.terminal = &incoming
@@ -469,7 +476,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 						responseID = event.Response.ID
 					}
 				}
-				accumulator.Observe(&event.ResponsesStreamResponse, incoming.body)
+				accumulator.Observe(&event.ResponsesStreamResponse, billingBody)
 			}
 			switch event.Type {
 			case "response.completed", "response.done", "response.incomplete", "response.failed", "response.cancelled", "response.canceled":
@@ -662,7 +669,7 @@ func (s *responsesWSSession) startTargetReader(target *websocket.Conn) {
 				s.shutdown(code, "upstream connection closed")
 				return
 			}
-			if writeErr := s.writeClient(kind, body); writeErr != nil {
+			if writeErr := s.writeClient(kind, openaichannel.SanitizeResponsesEventUsage(body)); writeErr != nil {
 				s.shutdown(websocket.CloseInternalServerErr, "")
 				return
 			}

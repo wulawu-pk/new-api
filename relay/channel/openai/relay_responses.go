@@ -39,8 +39,8 @@ func OaiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 	info.ObserveResponseModel(responsesResponse.Model)
 	responseBody = rewriteSGLangResponsesCreatedAt(info, responseBody, "created_at", responsesResponse.CreatedAt)
 
-	// 写入新的 response body
-	service.IOCopyBytesGracefully(c, resp, responseBody)
+	// 写入新的 response body（usage 只留公开字段，计费已在上面读原始字节）
+	service.IOCopyBytesGracefully(c, resp, SanitizeResponsesResponseUsage(responseBody))
 
 	// compute usage
 	usage := &dto.Usage{}
@@ -90,7 +90,8 @@ func OaiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 			data = string(rewriteSGLangResponsesCreatedAt(info, []byte(data), "response.created_at", streamResponse.Response.CreatedAt))
 		}
 		accumulator.Observe(&streamResponse, common.StringToByteSlice(data))
-		if err := helper.ResponseChunkData(c, streamResponse, data); err != nil {
+		// 计费读上面的原始字节；客户端只看到白名单重建后的 usage
+		if err := helper.ResponseChunkData(c, streamResponse, sanitizeResponsesEventData(data)); err != nil {
 			sr.Stop(err)
 			return
 		}
