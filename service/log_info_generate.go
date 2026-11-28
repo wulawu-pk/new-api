@@ -156,7 +156,14 @@ func GenerateTextOtherInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, m
 	appendBillingInfo(relayInfo, other)
 	appendParamOverrideInfo(relayInfo, other)
 	appendStreamStatus(relayInfo, other)
+	appendResponsesSanitizeAudit(ctx, other)
 	return other
+}
+
+func appendResponsesSanitizeAudit(ctx *gin.Context, other *model.LogOther) {
+	if fields := relaycommon.PeekResponsesSanitizeAudit(ctx).Map(); fields != nil {
+		other.SetAdmin("responses_sanitize", fields)
+	}
 }
 
 // AppendResponseModelLogInfo records the upstream model declarations observed on

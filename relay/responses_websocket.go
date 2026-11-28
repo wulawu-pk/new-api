@@ -204,7 +204,7 @@ func (s *responsesWSSession) runRequest(state *responsesWSCallState, message []b
 		}
 		s.clientWriteMu.Lock()
 		s.stateMu.Lock()
-		if outgoing != nil {
+		if outgoing != nil && len(outgoing.body) > 0 {
 			if err := s.client.SetWriteDeadline(s.clientWriteBudget.Deadline(time.Now(), len(outgoing.body))); err != nil {
 				state.closeCode = websocket.CloseInternalServerErr
 			} else if err := s.client.WriteMessage(outgoing.kind, outgoing.body); err != nil {
@@ -371,6 +371,12 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 		}
 	}
 
+	return s.forwardCallEvents(c, state, create, info)
+}
+
+func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesWSCallState, create responsesWSCreateRequest, info *relaycommon.RelayInfo) *types.NewAPIError {
+	echo := openaichannel.ExtractResponsesEchoFieldsFromBytes(create.Body)
+	audit := relaycommon.GetResponsesSanitizeAudit(c)
 	accumulator := service.NewResponsesUsageAccumulator(info)
 	info.StreamStatus = relaycommon.NewStreamStatus()
 	info.StreamStatus.RequireTerminal()
@@ -401,18 +407,25 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 				StreamID string `json:"stream_id"`
 			}
 			if err := common.Unmarshal(incoming.body, &event); err != nil {
+				incoming.body = openaichannel.SanitizeResponsesEvent(incoming.body, nil, audit)
 				info.StreamStatus.RecordError("invalid upstream websocket event")
 			} else {
-				// Billing reads upstream tool counts from inside usage
-				// (usage.x_tools, usage.server_side_tool_usage_details), so the
-				// accumulator keeps the raw bytes; the client only ever sees the
-				// allow-listed rebuild of response.usage.
+				// The client sees only the public projection. Correlation and billing
+				// continue to inspect the original event.
 				billingBody := incoming.body
-				incoming.body = openaichannel.SanitizeResponsesEventUsage(incoming.body)
 				if event.Type != "error" && event.StreamID != "" && event.StreamID != create.StreamID {
+					incoming.body = openaichannel.SanitizeResponsesEvent(billingBody, nil, nil)
+					if len(incoming.body) == 0 {
+						continue
+					}
 					if err := s.writeClient(incoming.kind, incoming.body); err != nil {
 						s.shutdown(websocket.CloseInternalServerErr, "")
 					}
+					continue
+				}
+				incoming.body = openaichannel.SanitizeResponsesEvent(billingBody, echo, audit)
+				if len(incoming.body) == 0 {
+					// A private or unknown frame is withheld from the client.
 					continue
 				}
 				// A repeated terminal from the previous response must never finish
@@ -422,7 +435,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 				}
 				if event.Type == "error" {
 					var rejection responsesWSErrorEvent
-					_ = common.Unmarshal(incoming.body, &rejection)
+					_ = common.Unmarshal(billingBody, &rejection)
 					if rejection.ResponseID != "" && rejection.ResponseID == s.lastResponseID {
 						continue
 					}
@@ -669,7 +682,11 @@ func (s *responsesWSSession) startTargetReader(target *websocket.Conn) {
 				s.shutdown(code, "upstream connection closed")
 				return
 			}
-			if writeErr := s.writeClient(kind, openaichannel.SanitizeResponsesEventUsage(body)); writeErr != nil {
+			body = openaichannel.SanitizeResponsesEvent(body, nil, nil)
+			if len(body) == 0 {
+				continue
+			}
+			if writeErr := s.writeClient(kind, body); writeErr != nil {
 				s.shutdown(websocket.CloseInternalServerErr, "")
 				return
 			}
@@ -725,6 +742,9 @@ func (s *responsesWSSession) writeTarget(kind int, message []byte) error {
 }
 
 func (s *responsesWSSession) writeClient(kind int, message []byte) error {
+	if len(message) == 0 {
+		return nil
+	} // Withheld frames must not become empty WebSocket messages.
 	s.clientWriteMu.Lock()
 	defer s.clientWriteMu.Unlock()
 	if err := s.client.SetWriteDeadline(s.clientWriteBudget.Deadline(time.Now(), len(message))); err != nil {

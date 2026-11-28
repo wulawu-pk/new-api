@@ -82,7 +82,7 @@ func GeminiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *h
 	if err != nil {
 		return nil, types.NewOpenAIError(err, types.ErrorCodeJsonMarshalFailed, http.StatusInternalServerError)
 	}
-	responseBody = scrubUsageAt(responseBody, "usage")
+	responseBody = helper.SanitizeResponsesUsageAt(responseBody, "usage")
 	service.IOCopyBytesGracefully(c, resp, responseBody)
 	return &usage, nil
 }
@@ -108,7 +108,7 @@ func GeminiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, r
 			streamErr = types.NewOpenAIError(err, types.ErrorCodeJsonMarshalFailed, http.StatusInternalServerError)
 			return false
 		}
-		data = scrubUsageAt(scrubUsageAt(data, "response.usage"), "usage")
+		data = helper.SanitizeResponsesUsageAt(data, "response.usage")
 		if err := helper.ResponseChunkData(c, dto.ResponsesStreamResponse{Type: event.Type}, string(data)); err != nil {
 			if info.StreamStatus != nil {
 				info.StreamStatus.SetEndReason(relaycommon.StreamEndReasonClientGone, err)

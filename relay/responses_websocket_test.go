@@ -530,6 +530,52 @@ func newTestWebSocketPair(t *testing.T) (*websocket.Conn, *websocket.Conn, func(
 	return target, serverConn, cleanup
 }
 
+func TestResponsesWSActiveCallWireEvents(t *testing.T) {
+	client, server, cleanup := newTestWebSocketPair(t)
+	defer cleanup()
+	s := &responsesWSSession{client: server, ctx: context.Background()}
+	state := &responsesWSCallState{inbox: make(chan responsesWSMessage, 4)}
+	create, _, err := normalizeResponsesWSTestMessage([]byte(`{"type":"response.create","model":"gpt-test","instructions":"client"}`))
+	require.NoError(t, err)
+	for _, raw := range []string{`{"type":"codex.rate_limits"}`, `{"type":"response.created","response":{"instructions":"secret","id":"r"}}`, `{"type":"response.completed","response":{"id":"r","instructions":"secret","status":"completed"}}`} {
+		state.inbox <- responsesWSMessage{kind: websocket.TextMessage, body: []byte(raw)}
+	}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/v1/responses", nil)
+	info := &relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{UpstreamModelName: "gpt-test"}, RelayFormat: types.RelayFormatOpenAIResponses, StartTime: time.Now()}
+	oldLog := common.LogConsumeEnabled
+	common.LogConsumeEnabled = false
+	t.Cleanup(func() { common.LogConsumeEnabled = oldLog })
+	require.Nil(t, s.forwardCallEvents(c, state, create, info))
+	require.NoError(t, client.SetReadDeadline(time.Now().Add(time.Second)))
+	_, got, err := client.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, `{"type":"response.created","response":{"id":"r","instructions":"client"}}`, string(got))
+	require.NotNil(t, state.terminal)
+	require.Equal(t, `{"type":"response.completed","response":{"id":"r","status":"completed","instructions":"client"}}`, string(state.terminal.body))
+	require.Equal(t, []string{"codex.rate_limits"}, relaycommon.PeekResponsesSanitizeAudit(c).Map()["dropped_frames"])
+}
+
+func TestResponsesWSLateEventsUseNoRequestEcho(t *testing.T) {
+	client, server, closeClient := newTestWebSocketPair(t)
+	defer closeClient()
+	target, peer, closeTarget := newTestWebSocketPair(t)
+	defer closeTarget()
+	ctx, cancel := context.WithCancel(context.Background())
+	s := &responsesWSSession{ctx: ctx, cancel: cancel, client: server, target: target}
+	s.startTargetReader(target)
+	defer func() { s.shutdown(websocket.CloseNormalClosure, ""); s.workers.Wait() }()
+	for _, tc := range []struct{ raw, want string }{{`{"type":"codex.rate_limits"}`, ``}, {`{"type":"response.created","response":{"id":"late","instructions":"private"},"private":1}`, `{"type":"response.created","response":{"id":"late"}}`}} {
+		require.NoError(t, peer.WriteMessage(websocket.TextMessage, []byte(tc.raw)))
+		if tc.want != "" {
+			require.NoError(t, client.SetReadDeadline(time.Now().Add(3*time.Second)))
+			_, got, err := client.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, tc.want, string(got))
+		}
+	}
+}
+
 func TestResponsesWSMessageSizeLimit(t *testing.T) {
 	previous := constant.MaxRequestBodyMB
 	constant.MaxRequestBodyMB = 1

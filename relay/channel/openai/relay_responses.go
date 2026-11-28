@@ -37,10 +37,6 @@ func OaiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 	}
 
 	info.ObserveResponseModel(responsesResponse.Model)
-	responseBody = rewriteSGLangResponsesCreatedAt(info, responseBody, "created_at", responsesResponse.CreatedAt)
-
-	// 写入新的 response body（usage 只留公开字段，计费已在上面读原始字节）
-	service.IOCopyBytesGracefully(c, resp, SanitizeResponsesResponseUsage(responseBody))
 
 	// compute usage
 	usage := &dto.Usage{}
@@ -64,6 +60,9 @@ func OaiResponsesHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 	}
 	imageCounter.Commit(info)
 
+	responseBody = rewriteSGLangResponsesCreatedAt(info, responseBody, "created_at", responsesResponse.CreatedAt)
+	service.IOCopyBytesGracefully(c, resp, SanitizeResponsesResponse(responseBody, ExtractResponsesEchoFields(c, info), relaycommon.GetResponsesSanitizeAudit(c)))
+
 	return usage, nil
 }
 
@@ -76,6 +75,8 @@ func OaiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 	defer service.CloseResponseBodyGracefully(resp)
 
 	accumulator := service.NewResponsesUsageAccumulator(info)
+	echo := ExtractResponsesEchoFields(c, info)
+	audit := relaycommon.GetResponsesSanitizeAudit(c)
 
 	helper.StreamScannerHandler(c, resp, info, func(data string, sr *helper.StreamResult) {
 
@@ -86,14 +87,17 @@ func OaiResponsesStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp
 			sr.Error(err)
 			return
 		}
+		raw := common.StringToByteSlice(data)
+		accumulator.Observe(&streamResponse, raw)
 		if streamResponse.Response != nil {
-			data = string(rewriteSGLangResponsesCreatedAt(info, []byte(data), "response.created_at", streamResponse.Response.CreatedAt))
+			raw = rewriteSGLangResponsesCreatedAt(info, raw, "response.created_at", streamResponse.Response.CreatedAt)
 		}
-		accumulator.Observe(&streamResponse, common.StringToByteSlice(data))
-		// 计费读上面的原始字节；客户端只看到白名单重建后的 usage
-		if err := helper.ResponseChunkData(c, streamResponse, sanitizeResponsesEventData(data)); err != nil {
-			sr.Stop(err)
-			return
+		if client := SanitizeResponsesEvent(raw, echo, audit); len(client) > 0 {
+			clientEvent := dto.ResponsesStreamResponse{Type: gjson.GetBytes(client, "type").String()}
+			if err := helper.ResponseChunkData(c, clientEvent, string(client)); err != nil {
+				sr.Stop(err)
+				return
+			}
 		}
 		if (streamResponse.Type == "response.completed" || streamResponse.Type == "response.done") &&
 			streamResponse.Response != nil && info.StreamStatus.ResponseOutcome() == string(relaycommon.ResponseOutcomeCompleted) {
