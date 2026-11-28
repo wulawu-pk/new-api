@@ -1,0 +1,1 @@
+{"model":"claude-test","system":[{"type":"text","text":"rule one"},{"type":"text","text":"rule two"}],"messages":[{"role":"user","content":"hi"}],"max_tokens":64}
