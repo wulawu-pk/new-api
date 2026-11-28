@@ -2,6 +2,7 @@ package oairesponses
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -195,8 +196,9 @@ func responsesInputContentToClaudeMediaMessages(c context.Context, content any) 
 			text := kitutil.Interface2String(contentPart["text"])
 			if text != "" {
 				parts = append(parts, dto.ClaudeMediaMessage{
-					Type: "text",
-					Text: kitutil.GetPointer(text),
+					Type:         "text",
+					Text:         kitutil.GetPointer(text),
+					CacheControl: partCacheControl(contentPart),
 				})
 			}
 		case "input_image", "input_file", "input_audio", "input_video":
@@ -224,10 +226,33 @@ func responsesInputContentToClaudeMediaMessages(c context.Context, content any) 
 				})
 				continue
 			}
+			block.CacheControl = partCacheControl(contentPart)
 			parts = append(parts, block)
 		}
 	}
 	return parts, nil
+}
+
+// partCacheControl keeps the cache_control annotation a Responses content part
+// carries so the Claude block marks the same prompt-cache breakpoint. OpenAI
+// clients (OpenRouter and others) put it on the part; the raw JSON is forwarded
+// unchanged, and an absent or unreadable value stays nil.
+func partCacheControl(part map[string]any) json.RawMessage {
+	value := part["cache_control"]
+	if value == nil {
+		return nil
+	}
+	if raw, ok := value.(json.RawMessage); ok {
+		if len(raw) == 0 {
+			return nil
+		}
+		return raw
+	}
+	raw, err := kitutil.Marshal(value)
+	if err != nil || len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	return json.RawMessage(raw)
 }
 
 func responsesFunctionCallItemToClaudeToolUse(item map[string]any) dto.ClaudeMediaMessage {

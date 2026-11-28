@@ -742,6 +742,27 @@ func (m *Message) IsStringContent() bool {
 	return false
 }
 
+// mediaContentCacheControl keeps the cache_control annotation a content part
+// carries. OpenAI-compatible clients (OpenRouter and others) mark prompt cache
+// breakpoints this way, so the raw JSON is forwarded unchanged rather than
+// rebuilt here; an absent or unreadable value stays nil.
+func mediaContentCacheControl(value any) json.RawMessage {
+	if value == nil {
+		return nil
+	}
+	if raw, ok := value.(json.RawMessage); ok {
+		if len(raw) == 0 {
+			return nil
+		}
+		return raw
+	}
+	raw, err := kitutil.Marshal(value)
+	if err != nil || len(raw) == 0 || string(raw) == "null" {
+		return nil
+	}
+	return json.RawMessage(raw)
+}
+
 func (m *Message) ParseContent() []MediaContent {
 	if m.Content == nil {
 		return nil
@@ -791,12 +812,15 @@ func (m *Message) ParseContent() []MediaContent {
 			continue
 		}
 
+		cacheControl := mediaContentCacheControl(contentItem["cache_control"])
+
 		switch contentType {
 		case ContentTypeText:
 			if text, ok := contentItem["text"].(string); ok {
 				contentList = append(contentList, MediaContent{
-					Type: ContentTypeText,
-					Text: text,
+					Type:         ContentTypeText,
+					Text:         text,
+					CacheControl: cacheControl,
 				})
 			}
 
@@ -819,8 +843,9 @@ func (m *Message) ParseContent() []MediaContent {
 				}
 			}
 			contentList = append(contentList, MediaContent{
-				Type:     ContentTypeImageURL,
-				ImageUrl: temp,
+				Type:         ContentTypeImageURL,
+				ImageUrl:     temp,
+				CacheControl: cacheControl,
 			})
 
 		case ContentTypeInputAudio:
@@ -833,8 +858,9 @@ func (m *Message) ParseContent() []MediaContent {
 						Format: format,
 					}
 					contentList = append(contentList, MediaContent{
-						Type:       ContentTypeInputAudio,
-						InputAudio: temp,
+						Type:         ContentTypeInputAudio,
+						InputAudio:   temp,
+						CacheControl: cacheControl,
 					})
 				}
 			}
@@ -847,6 +873,7 @@ func (m *Message) ParseContent() []MediaContent {
 						File: &MessageFile{
 							FileId: fileId,
 						},
+						CacheControl: cacheControl,
 					})
 				} else {
 					fileName, ok1 := fileData["filename"].(string)
@@ -858,6 +885,7 @@ func (m *Message) ParseContent() []MediaContent {
 								FileName: fileName,
 								FileData: fileDataStr,
 							},
+							CacheControl: cacheControl,
 						})
 					}
 				}
@@ -869,6 +897,7 @@ func (m *Message) ParseContent() []MediaContent {
 					VideoUrl: &MessageVideoUrl{
 						Url: videoUrl,
 					},
+					CacheControl: cacheControl,
 				})
 			}
 		}

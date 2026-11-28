@@ -1,0 +1,1 @@
+{"model":"claude-test","messages":[{"role":"user","content":[{"type":"text","text":"weather?"}]},{"role":"assistant","content":[{"type":"tool_use","id":"call_1","name":"lookup","input":{"city":"Oslo"}}]},{"role":"user","content":[{"type":"tool_result","content":"rain","tool_use_id":"call_1"}]}],"max_tokens":64}

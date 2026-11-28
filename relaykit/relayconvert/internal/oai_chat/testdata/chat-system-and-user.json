@@ -1,0 +1,1 @@
+{"model":"claude-test","system":[{"type":"text","text":"be nice"}],"messages":[{"role":"user","content":"hi"},{"role":"assistant","content":"hello"},{"role":"user","content":"go on"}],"max_tokens":64}
