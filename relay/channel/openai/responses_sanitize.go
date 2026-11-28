@@ -71,15 +71,114 @@ func ExtractResponsesEchoFields(c *gin.Context, info *relaycommon.RelayInfo) *Re
 		}
 	}
 	if info != nil {
-		switch info.Request.(type) {
-		case *dto.OpenAIResponsesRequest, *dto.OpenAIResponsesCompactionRequest:
-			raw, err := common.Marshal(info.Request)
-			if err == nil {
-				return ExtractResponsesEchoFieldsFromBytes(raw)
-			}
+		switch req := info.Request.(type) {
+		case *dto.OpenAIResponsesRequest:
+			return responsesEchoFromRequest(req)
+		case *dto.OpenAIResponsesCompactionRequest:
+			return compactionEchoFromRequest(req)
 		}
 	}
 	return nil
+}
+
+// echoMembersBuilder collects only the echo fields the client explicitly sent.
+// The typed fallback must not serialize the whole request: its input can carry
+// large inline images or files that no echo field needs.
+type echoMembersBuilder struct{ members bytes.Buffer }
+
+func (b *echoMembersBuilder) addRaw(name string, raw []byte) {
+	if len(raw) == 0 {
+		return
+	}
+	if b.members.Len() > 0 {
+		b.members.WriteByte(',')
+	}
+	b.members.WriteByte('"')
+	b.members.WriteString(name)
+	b.members.WriteByte('"')
+	b.members.WriteByte(':')
+	b.members.Write(raw)
+}
+
+func (b *echoMembersBuilder) addValue(name string, value any) {
+	data, err := common.Marshal(value)
+	if err == nil {
+		b.addRaw(name, data)
+	}
+}
+
+func (b *echoMembersBuilder) result() *ResponsesEchoFields {
+	if b.members.Len() == 0 {
+		return nil
+	}
+	return &ResponsesEchoFields{members: b.members.Bytes()}
+}
+
+func responsesEchoFromRequest(req *dto.OpenAIResponsesRequest) *ResponsesEchoFields {
+	if req == nil {
+		return nil
+	}
+	var b echoMembersBuilder
+	b.addRaw("instructions", req.Instructions)
+	b.addRaw("safety_identifier", req.SafetyIdentifier)
+	b.addRaw("user", req.User)
+	b.addRaw("prompt_cache_key", req.PromptCacheKey)
+	b.addRaw("prompt_cache_retention", req.PromptCacheRetention)
+	b.addRaw("metadata", req.Metadata)
+	b.addRaw("store", req.Store)
+	b.addRaw("tools", req.Tools)
+	b.addRaw("tool_choice", req.ToolChoice)
+	b.addRaw("text", req.Text)
+	b.addRaw("truncation", req.Truncation)
+	b.addRaw("parallel_tool_calls", req.ParallelToolCalls)
+	b.addRaw("prompt", req.Prompt)
+	b.addRaw("conversation", req.Conversation)
+	b.addRaw("context_management", req.ContextManagement)
+	if req.MaxOutputTokens != nil {
+		b.addValue("max_output_tokens", *req.MaxOutputTokens)
+	}
+	if req.TopLogProbs != nil {
+		b.addValue("top_logprobs", *req.TopLogProbs)
+	}
+	if req.MaxToolCalls != nil {
+		b.addValue("max_tool_calls", *req.MaxToolCalls)
+	}
+	if req.Temperature != nil {
+		b.addValue("temperature", *req.Temperature)
+	}
+	if req.TopP != nil {
+		b.addValue("top_p", *req.TopP)
+	}
+	if req.Reasoning != nil {
+		b.addValue("reasoning", req.Reasoning)
+	}
+	if req.PreviousResponseID != "" {
+		b.addValue("previous_response_id", req.PreviousResponseID)
+	}
+	if req.ServiceTier != "" {
+		b.addValue("service_tier", req.ServiceTier)
+	}
+	return b.result()
+}
+
+func compactionEchoFromRequest(req *dto.OpenAIResponsesCompactionRequest) *ResponsesEchoFields {
+	if req == nil {
+		return nil
+	}
+	var b echoMembersBuilder
+	b.addRaw("instructions", req.Instructions)
+	b.addRaw("tools", req.Tools)
+	b.addRaw("parallel_tool_calls", req.ParallelToolCalls)
+	b.addRaw("prompt_cache_key", req.PromptCacheKey)
+	b.addRaw("prompt_cache_retention", req.PromptCacheRetention)
+	b.addRaw("text", req.Text)
+	if req.Reasoning != nil {
+		b.addValue("reasoning", req.Reasoning)
+	}
+	if req.ServiceTier != "" {
+		b.addValue("service_tier", req.ServiceTier)
+	}
+	return b.result()
 }
 
 var responseSchemas = map[string]responseSchema{
@@ -88,9 +187,9 @@ var responseSchemas = map[string]responseSchema{
 	"event":         fields("type sequence_number item_id output_index content_index summary_index annotation_index delta text refusal arguments input name call_id code message param obfuscation partial_image_b64 partial_image_index logprobs:[]logprob status event_id stream_id response_id response:response item:item part:part annotation:annotation error:eventError"),
 	"errorEvent":    fields("type sequence_number status event_id stream_id response_id code message param error:eventError"),
 	"responseError": fields("code message"), "incomplete": fields("reason"), "eventError": fields("type code message param"),
-	"annotation": fields("type url title start_index end_index file_id filename index container_id"), "logprob": fields("token bytes:raw logprob top_logprobs:[]token"), "token": fields("token bytes:raw logprob"),
-	"webAction": fields("type query queries:raw url pattern sources:[]source"), "source": fields("type url"), "result": fields("file_id filename score text attributes:raw"), "codeOutput": fields("type logs url"), "tool": fields("name description input_schema:raw annotations:raw"),
-	"shellAction": fields("type command:raw commands:raw timeout_ms working_directory env:raw user max_output_length"), "operation": fields("type path diff"), "computerAction": fields("type x y button keys:raw text scroll_x scroll_y path:raw ms"), "check": fields("id code message"),
+	"annotation": fields("type url title start_index end_index file_id filename index container_id"), "logprob": fields("token bytes:[]num logprob:num top_logprobs:[]token"), "token": fields("token bytes:[]num logprob:num"),
+	"webAction": fields("type query queries:[]str url pattern sources:[]source"), "source": fields("type url"), "result": fields("file_id filename score:num text attributes:raw"), "codeOutput": fields("type logs url"), "tool": fields("name description input_schema:raw annotations:raw"),
+	"shellAction": fields("type command:[]str commands:[]str timeout_ms:num working_directory env:raw user max_output_length:num"), "operation": fields("type path diff"), "computerAction": fields("type x:num y:num button keys:[]str text scroll_x:num scroll_y:num path:[]point ms:num"), "check": fields("id code message"), "point": fields("x:num y:num"),
 }
 var itemSchemas = map[string]responseSchema{
 	"message": fields("id type status role content:[]part"), "reasoning": fields("id type status summary:[]reasonPart content:[]reasonPart encrypted_content"), "compaction": fields("id type encrypted_content"),
@@ -148,6 +247,18 @@ func (w *responseWriter) value(v gjson.Result, kind string) bool {
 	switch kind {
 	case "", "raw":
 		if kind == "" && v.Type == gjson.JSON {
+			return false
+		}
+		w.WriteString(v.Raw)
+		return true
+	case "str":
+		if v.Type != gjson.String {
+			return false
+		}
+		w.WriteString(v.Raw)
+		return true
+	case "num":
+		if v.Type != gjson.Number {
 			return false
 		}
 		w.WriteString(v.Raw)

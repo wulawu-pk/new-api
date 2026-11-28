@@ -49,8 +49,11 @@ type responsesWSCreateEvent struct {
 }
 
 type responsesWSCreateRequest struct {
-	Request  dto.OpenAIResponsesRequest
-	Body     []byte
+	Request dto.OpenAIResponsesRequest
+	Body    []byte
+	// Echo is the client's original request bytes (the wrapped request when the
+	// envelope wraps one), used only to read response-echo fields.
+	Echo     []byte
 	Generate common.RawMessage
 	StreamID string
 }
@@ -375,7 +378,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 }
 
 func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesWSCallState, create responsesWSCreateRequest, info *relaycommon.RelayInfo) *types.NewAPIError {
-	echo := openaichannel.ExtractResponsesEchoFieldsFromBytes(create.Body)
+	echo := openaichannel.ExtractResponsesEchoFieldsFromBytes(create.Echo)
 	audit := relaycommon.GetResponsesSanitizeAudit(c)
 	accumulator := service.NewResponsesUsageAccumulator(info)
 	info.StreamStatus = relaycommon.NewStreamStatus()
@@ -402,12 +405,14 @@ func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesW
 				return nil
 			}
 			info.SetFirstResponseTime()
+			withheld := false
 			var event struct {
 				dto.ResponsesStreamResponse
 				StreamID string `json:"stream_id"`
 			}
 			if err := common.Unmarshal(incoming.body, &event); err != nil {
 				incoming.body = openaichannel.SanitizeResponsesEvent(incoming.body, nil, audit)
+				withheld = len(incoming.body) == 0
 				info.StreamStatus.RecordError("invalid upstream websocket event")
 			} else {
 				// The client sees only the public projection. Correlation and billing
@@ -424,10 +429,9 @@ func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesW
 					continue
 				}
 				incoming.body = openaichannel.SanitizeResponsesEvent(billingBody, echo, audit)
-				if len(incoming.body) == 0 {
-					// A private or unknown frame is withheld from the client.
-					continue
-				}
+				// A private or unknown frame is withheld from the client, but it
+				// still feeds correlation, billing and terminal detection below.
+				withheld = len(incoming.body) == 0
 				// A repeated terminal from the previous response must never finish
 				// a subsequent request on this persistent connection.
 				if event.Response != nil && event.Response.ID != "" && event.Response.ID == s.lastResponseID {
@@ -441,8 +445,10 @@ func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesW
 					}
 					terminal, ambiguous, controlError := responsesWSErrorEndsRequest(rejection, create.StreamID, responseID, sentControl)
 					if !terminal {
-						if err := s.writeClient(incoming.kind, incoming.body); err != nil {
-							s.shutdown(websocket.CloseInternalServerErr, "")
+						if !withheld {
+							if err := s.writeClient(incoming.kind, incoming.body); err != nil {
+								s.shutdown(websocket.CloseInternalServerErr, "")
+							}
 						}
 						// Only a control error in this stream resolves its pending control.
 						if controlError {
@@ -501,8 +507,10 @@ func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesW
 				ConsumeResponsesQuota(c, info, accumulator.Finish())
 				return nil
 			}
-			if err := s.writeClient(incoming.kind, incoming.body); err != nil {
-				s.shutdown(websocket.CloseInternalServerErr, "")
+			if !withheld {
+				if err := s.writeClient(incoming.kind, incoming.body); err != nil {
+					s.shutdown(websocket.CloseInternalServerErr, "")
+				}
 			}
 			if accepted && pendingControl != nil {
 				if err := s.writeTarget(websocket.TextMessage, pendingControl); err != nil {
@@ -847,11 +855,12 @@ func newResponsesWSInvalidRequestError(err error) *types.NewAPIError {
 // The message is decoded once more as a raw map (the body source) and once as
 // the typed request; the envelope is not parsed again.
 func normalizeResponsesWSCreateEvent(message []byte, event responsesWSCreateEvent, streamID string) (responsesWSCreateRequest, error) {
-	create := responsesWSCreateRequest{StreamID: streamID, Generate: event.Generate}
+	create := responsesWSCreateRequest{StreamID: streamID, Generate: event.Generate, Echo: message}
 	// Decode the wrapped request on its own so outer fields cannot enter the HTTP body.
 	source := message
 	if len(event.Request) > 0 {
 		source = event.Request
+		create.Echo = event.Request
 	}
 	var raw map[string]common.RawMessage
 	if err := common.Unmarshal(source, &raw); err != nil {

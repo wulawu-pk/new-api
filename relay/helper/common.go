@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -228,11 +229,32 @@ func ResponseChunkData(c *gin.Context, resp dto.ResponsesStreamResponse, data st
 	if err := event.Render(c.Writer); err != nil {
 		return err
 	}
-	event.Data = fmt.Sprintf("data: %s", data)
+	event.Data = formatSSEEventData(data)
 	if err := event.Render(c.Writer); err != nil {
 		return err
 	}
 	return FlushWriter(c)
+}
+
+// formatSSEEventData prefixes every physical line with "data: ". A JSON value
+// that carries literal newlines (a pretty-printed client echo, for example)
+// would otherwise end the SSE data field early and truncate the frame.
+func formatSSEEventData(data string) string {
+	if !strings.ContainsAny(data, "\r\n") {
+		return "data: " + data
+	}
+	normalized := strings.ReplaceAll(data, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	var b strings.Builder
+	b.Grow(len(normalized) + 6*strings.Count(normalized, "\n") + 6)
+	for i, line := range strings.Split(normalized, "\n") {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString("data: ")
+		b.WriteString(line)
+	}
+	return b.String()
 }
 
 func StringData(c *gin.Context, str string) error {

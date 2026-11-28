@@ -216,6 +216,83 @@ func TestResponsesUsageTypeErrorsAreOmitted(t *testing.T) {
 	}
 }
 
+func TestResponsesSSEEchoWithNewlinesStaysOneFrame(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	oldTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = oldTimeout })
+
+	// A client may send a pretty-printed request; echoed values then carry
+	// literal newlines and must still produce one well-formed SSE frame.
+	const clientBody = "{\n  \"model\": \"gpt-5.1\",\n  \"tools\": [\n    {\"type\": \"function\", \"name\": \"f\"}\n  ]\n}"
+	const upstream = `{"type":"response.created","sequence_number":0,"response":{"id":"r","instructions":"private","tools":[{"type":"leak"}]}}`
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil)
+	c.Set(common.RequestIdKey, "responses-sse-newlines")
+	storage, err := common.CreateBodyStorage([]byte(clientBody))
+	require.NoError(t, err)
+	defer storage.Close()
+	c.Set(common.KeyBodyStorage, storage)
+	info := &relaycommon.RelayInfo{
+		RelayFormat:     types.RelayFormatOpenAIResponses,
+		OriginModelName: "gpt-5.1",
+		IsStream:        true,
+		DisablePing:     true,
+		StartTime:       time.Now(),
+		ChannelMeta:     &relaycommon.ChannelMeta{UpstreamModelName: "gpt-5.1"},
+		Request:         &dto.OpenAIResponsesRequest{Model: "gpt-5.1"},
+	}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader("data: " + upstream + "\n\ndata: [DONE]\n\n")),
+		Header:     http.Header{"Content-Type": []string{"text/event-stream"}},
+	}
+
+	_, apiErr := OaiResponsesStreamHandler(c, info, resp)
+	require.Nil(t, apiErr)
+
+	out := w.Body.String()
+	payloads := sseDataPayloads(t, out)
+	require.Len(t, payloads, 1)
+	require.True(t, gjson.Valid(payloads[0]), "reassembled frame must stay valid JSON: %q", payloads[0])
+	require.Equal(t, gjson.Get(clientBody, "tools").Raw, gjson.Get(payloads[0], "response.tools").Raw)
+	require.False(t, gjson.Get(payloads[0], "response.instructions").Exists())
+	require.NotContains(t, out, `{"type":"leak"}`)
+}
+
+// sseDataPayloads reassembles each SSE frame's data lines the way a client
+// does, so a payload that spans several "data:" lines is still one JSON value.
+func sseDataPayloads(t *testing.T, body string) []string {
+	t.Helper()
+	var payloads []string
+	for chunk := range strings.SplitSeq(body, "\n\n") {
+		if chunk == "" {
+			continue
+		}
+		var data []string
+		for line := range strings.SplitSeq(chunk, "\n") {
+			switch {
+			case strings.HasPrefix(line, "event: "):
+			case strings.HasPrefix(line, "data: "):
+				data = append(data, strings.TrimPrefix(line, "data: "))
+			default:
+				t.Fatalf("unexpected stream line %q in frame %q", line, chunk)
+			}
+		}
+		require.NotEmpty(t, data, "frame without data: %q", chunk)
+		payloads = append(payloads, strings.Join(data, "\n"))
+	}
+	return payloads
+}
+
+func TestWebSearchActionDropsNonStringQueries(t *testing.T) {
+	raw := `{"output":[{"type":"web_search_call","action":{"type":"search","queries":["ok",{"private":1},"also"],"private":"x"}}]}`
+	out := SanitizeResponsesResponse([]byte(raw), nil, nil)
+	require.JSONEq(t, `{"output":[{"type":"web_search_call","action":{"type":"search","queries":["ok","also"]}}]}`, string(out))
+}
+
 // The sanitized copy is what the client reads; billing keeps reading the
 // upstream bytes, so the reported token counts must not move.
 func TestOaiResponsesHandlersForwardOnlyPublicUsage(t *testing.T) {
@@ -391,7 +468,7 @@ func TestResponsesEchoSources(t *testing.T) {
 		name         string
 		stored, want string
 		info         *relaycommon.RelayInfo
-	}{{"original", `{"instructions":"raw\u0020request","store":false}`, `{"instructions":"raw\u0020request","store":false}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{Instructions: []byte(`"fallback"`)}}}, {"original omitted", `{}`, `{}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{Instructions: []byte(`"fallback"`)}}}, {"invalid cache", `{`, `{"instructions":"fallback"}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{Instructions: []byte(`"fallback"`)}}}, {"compact dto", "", `{"instructions":null}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesCompactionRequest{Instructions: []byte(`null`)}}}, {"empty dto", "", `{}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{}}}} {
+	}{{"original", `{"instructions":"raw\u0020request","store":false}`, `{"instructions":"raw\u0020request","store":false}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{Instructions: []byte(`"fallback"`)}}}, {"original omitted", `{}`, `{}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{Instructions: []byte(`"fallback"`)}}}, {"invalid cache", `{`, `{"instructions":"fallback"}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{Instructions: []byte(`"fallback"`)}}}, {"compact dto", "", `{"instructions":null}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesCompactionRequest{Instructions: []byte(`null`)}}}, {"input excluded", "", `{"instructions":"fallback"}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{Instructions: []byte(`"fallback"`), Input: []byte(`"a large input"`)}}}, {"empty dto", "", `{}`, &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{}}}} {
 		t.Run(tc.name, func(t *testing.T) {
 			c, _ := gin.CreateTestContext(httptest.NewRecorder())
 			if tc.stored != "" {

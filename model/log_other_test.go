@@ -7,6 +7,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCloneWithoutAdminKeyKeepsTheStoredRecord(t *testing.T) {
+	var other LogOther
+	require.True(t, other.SetAdmin("responses_sanitize", map[string]any{"dropped_fields": []string{"phase"}}))
+	require.True(t, other.SetAdmin("use_channel", []string{"channel-a"}))
+
+	view := other.CloneWithoutAdminKey("responses_sanitize")
+	viewAdmin, ok := view.Snapshot()["admin_info"].(map[string]any)
+	require.True(t, ok)
+	assert.NotContains(t, viewAdmin, "responses_sanitize")
+	assert.Contains(t, viewAdmin, "use_channel")
+
+	storedAdmin, ok := other.Snapshot()["admin_info"].(map[string]any)
+	require.True(t, ok)
+	assert.Contains(t, storedAdmin, "responses_sanitize")
+}
+
 func TestLogOtherScopesAndMerges(t *testing.T) {
 	var other LogOther
 

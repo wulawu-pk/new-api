@@ -85,93 +85,73 @@ func sanitizeUsageAt(payload []byte, path string, schema usageSchema) []byte {
 	if !ok {
 		return payload
 	}
-	// Parse starts Raw at the opening brace. Preserve any leading whitespace.
-	if root.Index != 0 {
-		return append(bytes.Clone(payload[:root.Index]), rewritten...)
+	// Keep the bytes around the root object. gjson's root Raw runs to the end
+	// of the payload, so trailing whitespace is recovered from its tail.
+	raw := root.Raw
+	end := len(raw)
+	for end > 0 && raw[end-1] <= ' ' {
+		end--
 	}
-	return rewritten
+	out := make([]byte, 0, root.Index+len(rewritten)+len(raw)-end)
+	out = append(out, payload[:root.Index]...)
+	out = append(out, rewritten...)
+	return append(out, raw[end:]...)
 }
 
-// Copy untouched byte spans around the rewritten member, including whitespace.
-// Discard later occurrences along the selected path for last-key-wins clients.
+// rewriteUsageMember rebuilds the parent object with the member at path
+// rebuilt from the allow-list. The first occurrence wins and later duplicates
+// are dropped, so a last-key-wins client cannot read an unsanitized copy. A
+// null member stays null; a member of the wrong type is omitted.
 func rewriteUsageMember(obj gjson.Result, path string, schema usageSchema) ([]byte, bool) {
 	if !obj.IsObject() {
 		return nil, false
 	}
 	key, rest, nested := strings.Cut(path, ".")
 	var b bytes.Buffer
-	var matched, omit bool
-	var cursor, previousEnd int
-	obj.ForEach(func(k, v gjson.Result) bool {
-		start := v.Index - obj.Index
-		end := start + len(v.Raw)
-		if k.String() == key {
-			if !matched {
-				if v.Type == gjson.Null {
-					// A null member is the upstream's real state; keep it.
-					return false
-				}
-				if !v.IsObject() {
-					// Type errors are omitted rather than forwarded.
-					omit = true
-					return false
-				}
-				var replacement []byte
-				if nested {
-					var ok bool
-					replacement, ok = rewriteUsageMember(v, rest, schema)
-					if !ok {
-						return false
-					}
-				} else {
-					replacement = rebuildUsage(v, schema, nil)
-				}
-				b.WriteString(obj.Raw[:start])
-				b.Write(replacement)
-				matched = true
-			} else {
-				b.WriteString(obj.Raw[cursor:previousEnd])
-			}
-			cursor = end
-		}
-		previousEnd = end
-		return true
-	})
-	if omit {
-		return dropUsageMember(obj, key)
-	}
-	if !matched {
-		return nil, false
-	}
-	b.WriteString(obj.Raw[cursor:])
-	return b.Bytes(), true
-}
-
-// dropUsageMember rebuilds the parent object without the first key member.
-// Only a malformed usage member reaches this path, so the byte spans of the
-// remaining members are preserved without their original whitespace.
-func dropUsageMember(obj gjson.Result, key string) ([]byte, bool) {
-	var b bytes.Buffer
 	b.WriteByte('{')
-	dropped := false
 	first := true
+	matched := false
 	obj.ForEach(func(k, v gjson.Result) bool {
-		if !dropped && k.String() == key {
-			dropped = true
+		if k.String() != key {
+			writeUsageMember(&b, &first, k.Raw, v.Raw)
 			return true
 		}
-		if !first {
-			b.WriteByte(',')
+		if matched {
+			return true
 		}
-		first = false
-		b.WriteString(k.Raw)
-		b.WriteByte(':')
-		b.WriteString(v.Raw)
+		matched = true
+		switch {
+		case v.Type == gjson.Null:
+			// A null member is the upstream's real state; keep it.
+			writeUsageMember(&b, &first, k.Raw, "null")
+		case !v.IsObject():
+			// Type errors are omitted rather than forwarded.
+		case nested:
+			inner, ok := rewriteUsageMember(v, rest, schema)
+			if !ok {
+				// The caller resolved the whole path, so keep the member if a
+				// malformed duplicate made the resolution ambiguous.
+				inner = []byte(v.Raw)
+			}
+			writeUsageMember(&b, &first, k.Raw, string(inner))
+		default:
+			writeUsageMember(&b, &first, k.Raw, string(rebuildUsage(v, schema, nil)))
+		}
 		return true
 	})
-	if !dropped {
+	if !matched {
 		return nil, false
 	}
 	b.WriteByte('}')
 	return b.Bytes(), true
+}
+
+func writeUsageMember(b *bytes.Buffer, first *bool, key, value string) {
+	if !*first {
+		b.WriteByte(',')
+	}
+	*first = false
+	b.WriteString(key)
+	b.WriteByte(':')
+	b.WriteString(value)
 }

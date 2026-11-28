@@ -200,6 +200,25 @@ func (o *LogOther) JSONString() string {
 	return o.jsonString()
 }
 
+// CloneWithoutAdminKey returns a view with one admin-only key removed. Routine
+// backend log lines use it so privileged audit names stay in the stored record
+// only. The original is unchanged.
+func (o *LogOther) CloneWithoutAdminKey(key string) *LogOther {
+	if o == nil {
+		return nil
+	}
+	clone := &LogOther{public: o.public, rootInfo: o.rootInfo, auditInfo: o.auditInfo}
+	if o.adminInfo != nil {
+		clone.adminInfo = make(map[string]any, len(o.adminInfo))
+		for name, value := range o.adminInfo {
+			if name != key {
+				clone.adminInfo[name] = value
+			}
+		}
+	}
+	return clone
+}
+
 // Snapshot returns a detached top-level view for tests and read-only
 // inspection. Mutating it cannot add or replace fields in LogOther.
 func (o *LogOther) Snapshot() map[string]any {
