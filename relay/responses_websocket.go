@@ -380,6 +380,9 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 
 func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesWSCallState, create responsesWSCreateRequest, info *relaycommon.RelayInfo) *types.NewAPIError {
 	echo := openaichannel.ExtractResponsesEchoFieldsFromBytes(create.Echo)
+	if c != nil && c.Request != nil {
+		echo = echo.AllowCodexTurnState(c.Request.UserAgent())
+	}
 	audit := relaycommon.GetResponsesSanitizeAudit(c)
 	accumulator := service.NewResponsesUsageAccumulator(info)
 	info.StreamStatus = relaycommon.NewStreamStatus()

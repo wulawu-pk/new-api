@@ -13,6 +13,7 @@ import (
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -565,6 +566,65 @@ func TestResponseOutputTypeMatrix(t *testing.T) {
 		}
 	}
 }
+func TestResponsesCodexTurnState(t *testing.T) {
+	const state = `"a\u002Fb\/c+=="`
+	const meta = `{"type":"codex.response.metadata","headers":{"x-models-etag":"private-etag","x-codex-turn-state":` + state + `,"other-header":1},"plan_type":"private-plan","balance":19,"rate_limits":{},"sequence_number":9007199254740993}`
+	const projected = `{"type":"codex.response.metadata","headers":{"x-codex-turn-state":` + state + `},"sequence_number":9007199254740993}`
+	const limits = `{"type":"codex.rate_limits","plan_type":"private-plan","balance":19,"credits":{},"rate_limits":{}}`
+	for _, tc := range []struct {
+		name, ua string
+		allow    bool
+	}{
+		{"codex", "codex_cli_rs/0.160.0 (...) ", true}, {"mixed case", "  Codex_CLI_rs/x ", true},
+		{"curl", "curl/8.5.0", false}, {"openai", "OpenAI/Python 2.54.0", false},
+		{"anthropic", "Anthropic/Python 0.125.0", false}, {"empty", "", false}, {"embedded", "other/codex_cli", false},
+		{"length limit", "codex_cli" + strings.Repeat("x", 1024-len("codex_cli")), true},
+		{"too long", "codex_cli" + strings.Repeat("x", 1025-len("codex_cli")), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest("POST", "/v1/responses", nil)
+			c.Request.Header.Set("User-Agent", tc.ua)
+			info := &relaycommon.RelayInfo{Request: &dto.OpenAIResponsesRequest{}, ChannelMeta: &relaycommon.ChannelMeta{}}
+			echo := ExtractResponsesEchoFields(c, info)
+			audit := relaycommon.GetResponsesSanitizeAudit(c)
+			got := SanitizeResponsesEvent([]byte(meta), echo, audit)
+			if tc.allow {
+				require.True(t, gjson.ValidBytes(got))
+				require.Equal(t, projected, string(got))
+				log := service.GenerateTextOtherInfo(c, info, 1, 1, 1, 0, 1, 0, 1).JSONString()
+				require.Equal(t, 1, strings.Count(log, "x-models-etag"))
+				require.Contains(t, gjson.Get(log, "admin_info.responses_sanitize.dropped_fields").Raw, `"x-models-etag"`)
+				require.Contains(t, audit.Map()["dropped_fields"], "other-header")
+				require.NotContains(t, log, "private-etag")
+			} else {
+				require.Empty(t, got)
+				require.Contains(t, audit.Map()["dropped_frames"], "codex.response.metadata")
+			}
+			for _, frame := range []string{limits, `{"type":"response.metadata"}`, `{"type":"responsesapi.websocket_timing"}`, `{"type":"future"}`} {
+				require.Empty(t, SanitizeResponsesEvent([]byte(frame), echo, audit))
+				require.Contains(t, audit.Map()["dropped_frames"], gjson.Get(frame, "type").String())
+			}
+			for _, frame := range []string{`{"type":"response.created","response":{"id":"r"}}`, ` { "type":"response.output_text.delta", "delta":"a\u0021" } `, `{"type":"response.completed","response":{"status":"completed"}}`} {
+				require.Equal(t, frame, string(SanitizeResponsesEvent([]byte(frame), echo, nil)))
+			}
+		})
+	}
+	require.Empty(t, SanitizeResponsesEvent([]byte(meta), nil, nil)) // Late WebSocket event.
+}
+
+func TestResponsesCodexTurnStateRequiresString(t *testing.T) {
+	echo := ExtractResponsesEchoFieldsFromBytes([]byte(`{}`)).AllowCodexTurnState("codex_cli")
+	for _, headers := range []string{`null`, `[]`, `{}`, `{"x-codex-turn-state":""}`, `{"x-codex-turn-state":7}`, `{"x-codex-turn-state":{"balance":1}}`} {
+		audit := relaycommon.NewResponsesSanitizeAudit()
+		frame := `{"type":"codex.response.metadata","headers":` + headers + `}`
+		require.Empty(t, SanitizeResponsesEvent([]byte(frame), echo, audit), frame)
+		require.Contains(t, audit.Map()["dropped_frames"], "codex.response.metadata")
+	}
+	const frame = `{"type":"codex.response.metadata","headers":{"x-codex-turn-state":"state"}}`
+	require.Equal(t, frame, string(SanitizeResponsesEvent([]byte(frame), echo, nil)))
+}
+
 func TestResponsesScalarFrameFastPath(t *testing.T) {
 	for _, raw := range []string{` { "type":"response.output_text.delta", "item_id":"i", "delta":"abc" } `, `{"sequence_number":9487526782598712,"type":"response.done"}`} {
 		payload := []byte(raw)

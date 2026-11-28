@@ -32,7 +32,25 @@ func fields(spec string) responseSchema {
 
 var echoSchema = fields("instructions safety_identifier user prompt_cache_key prompt_cache_retention metadata store tools tool_choice temperature top_p text reasoning truncation max_output_tokens parallel_tool_calls top_logprobs max_tool_calls prompt background previous_response_id conversation context_management service_tier")
 
-type ResponsesEchoFields struct{ members []byte }
+type ResponsesEchoFields struct {
+	members        []byte
+	codexTurnState bool
+}
+
+func (echo *ResponsesEchoFields) AllowCodexTurnState(userAgent string) *ResponsesEchoFields {
+	const prefix = "codex_cli"
+	const maxUserAgentBytes = 1024
+	ua := strings.TrimSpace(userAgent)
+	allow := len(userAgent) <= maxUserAgentBytes && len(ua) >= len(prefix) && strings.EqualFold(ua[:len(prefix)], prefix)
+	if echo == nil {
+		if !allow {
+			return nil
+		}
+		echo = &ResponsesEchoFields{}
+	}
+	echo.codexTurnState = allow
+	return echo
+}
 
 func ExtractResponsesEchoFieldsFromBytes(body []byte) *ResponsesEchoFields {
 	if !gjson.ValidBytes(body) {
@@ -57,28 +75,33 @@ func ExtractResponsesEchoFieldsFromBytes(body []byte) *ResponsesEchoFields {
 		}
 		return true
 	})
-	return &ResponsesEchoFields{b.Bytes()}
+	return &ResponsesEchoFields{members: b.Bytes()}
 }
 func ExtractResponsesEchoFields(c *gin.Context, info *relaycommon.RelayInfo) *ResponsesEchoFields {
+	var userAgent string
 	if c != nil {
+		if c.Request != nil {
+			userAgent = c.Request.UserAgent()
+		}
 		v, _ := c.Get(common.KeyBodyStorage)
 		if storage, ok := v.(common.BodyStorage); ok && !storage.IsDisk() {
 			if raw, err := storage.Bytes(); err == nil {
 				if echo := ExtractResponsesEchoFieldsFromBytes(raw); echo != nil {
-					return echo
+					return echo.AllowCodexTurnState(userAgent)
 				}
 			}
 		}
 	}
+	var echo *ResponsesEchoFields
 	if info != nil {
 		switch req := info.Request.(type) {
 		case *dto.OpenAIResponsesRequest:
-			return responsesEchoFromRequest(req)
+			echo = responsesEchoFromRequest(req)
 		case *dto.OpenAIResponsesCompactionRequest:
-			return compactionEchoFromRequest(req)
+			echo = compactionEchoFromRequest(req)
 		}
 	}
-	return nil
+	return echo.AllowCodexTurnState(userAgent)
 }
 
 // echoMembersBuilder collects only the echo fields the client explicitly sent.
@@ -181,7 +204,10 @@ func compactionEchoFromRequest(req *dto.OpenAIResponsesCompactionRequest) *Respo
 	return b.result()
 }
 
+var codexMetadataSchema = fields("type sequence_number:num headers:codexHeaders")
+
 var responseSchemas = map[string]responseSchema{
+	"codexHeaders":  fields("x-codex-turn-state:str"),
 	"response":      fields("id object created_at completed_at status model output:[]item usage:usage error:responseError incomplete_details:incomplete"),
 	"compact":       fields("id object created_at output:[]item usage:usage error:responseError"),
 	"event":         fields("type sequence_number item_id output_index content_index summary_index annotation_index delta text refusal arguments input name call_id code message param obfuscation partial_image_b64 partial_image_index logprobs:[]logprob status event_id stream_id response_id response:response item:item part:part annotation:annotation error:eventError"),
@@ -358,6 +384,14 @@ func sanitizeResponseRoot(payload []byte, kind string, echo *ResponsesEchoFields
 	if kind == "event" {
 		name := obj.Get("type").String()
 		if !allowedEvents[name] {
+			if name == "codex.response.metadata" && echo != nil && echo.codexTurnState {
+				state := obj.Get("headers").Get("x-codex-turn-state")
+				if state.Type == gjson.String && state.Str != "" {
+					w := responseWriter{audit: audit}
+					w.object(obj, codexMetadataSchema, false)
+					return w.Bytes()
+				}
+			}
 			audit.AddDroppedFrame(name)
 			return nil
 		}
