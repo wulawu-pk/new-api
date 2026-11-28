@@ -194,8 +194,8 @@ var responseSchemas = map[string]responseSchema{
 var itemSchemas = map[string]responseSchema{
 	"message": fields("id type status role content:[]part"), "reasoning": fields("id type status summary:[]reasonPart content:[]reasonPart encrypted_content"), "compaction": fields("id type encrypted_content"),
 	"function_call": fields("id type status call_id name namespace arguments"), "function_call_output": fields("id type status call_id output:raw"), "custom_tool_call": fields("id type status call_id name namespace input"), "custom_tool_call_output": fields("id type status call_id output:raw"),
-	"web_search_call": fields("id type status action:webAction"), "file_search_call": fields("id type status queries:raw results:[]result"), "image_generation_call": fields("id type status result revised_prompt quality size background output_format"), "code_interpreter_call": fields("id type status container_id code outputs:[]codeOutput"),
-	"mcp_call": fields("id type status server_label name arguments output:raw error:raw approval_request_id"), "mcp_list_tools": fields("id type server_label tools:[]tool error:raw"), "mcp_approval_request": fields("id type server_label name arguments"), "mcp_approval_response": fields("id type approval_request_id approve reason"),
+	"web_search_call": fields("id type status action:webAction"), "file_search_call": fields("id type status queries:[]str results:[]result"), "image_generation_call": fields("id type status result revised_prompt quality size background output_format"), "code_interpreter_call": fields("id type status container_id code outputs:[]codeOutput"),
+	"mcp_call": fields("id type status server_label name arguments:raw output:raw error:raw approval_request_id"), "mcp_list_tools": fields("id type server_label tools:[]tool error:raw"), "mcp_approval_request": fields("id type server_label name arguments:raw"), "mcp_approval_response": fields("id type approval_request_id approve reason"),
 	"local_shell_call": fields("id type status call_id action:shellAction"), "shell_call": fields("id type status call_id action:shellAction"), "local_shell_call_output": fields("id type status call_id output:raw max_output_length"), "shell_call_output": fields("id type status call_id output:raw max_output_length"),
 	"apply_patch_call": fields("id type status call_id operation:operation"), "apply_patch_call_output": fields("id type status call_id output:raw"), "computer_call": fields("id type status call_id action:computerAction pending_safety_checks:[]check"), "computer_call_output": fields("id type status call_id output:raw acknowledged_safety_checks:[]check"), "item_reference": fields("id type"),
 }
@@ -222,7 +222,7 @@ type responseWriter struct {
 	audit *relaycommon.ResponsesSanitizeAudit
 }
 
-func (w *responseWriter) value(v gjson.Result, kind string) bool {
+func (w *responseWriter) value(v gjson.Result, kind, field string) bool {
 	if element, ok := strings.CutPrefix(kind, "[]"); ok {
 		if !v.IsArray() {
 			return false
@@ -234,10 +234,13 @@ func (w *responseWriter) value(v gjson.Result, kind string) bool {
 			if !first {
 				w.WriteByte(',')
 			}
-			if w.value(entry, element) {
+			if w.value(entry, element, field) {
 				first = false
 			} else {
 				w.Truncate(start)
+				if field != "" {
+					w.audit.AddDroppedField(field)
+				}
 			}
 			return true
 		})
@@ -310,7 +313,7 @@ func (w *responseWriter) member(k, v gjson.Result, f responseField, seen *uint64
 	}
 	w.WriteString(k.Raw)
 	w.WriteByte(':')
-	if !w.value(v, f.kind) {
+	if !w.value(v, f.kind, k.String()) {
 		w.Truncate(start)
 		w.audit.AddDroppedField(k.String())
 	}

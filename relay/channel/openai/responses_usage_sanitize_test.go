@@ -289,8 +289,24 @@ func sseDataPayloads(t *testing.T, body string) []string {
 
 func TestWebSearchActionDropsNonStringQueries(t *testing.T) {
 	raw := `{"output":[{"type":"web_search_call","action":{"type":"search","queries":["ok",{"private":1},"also"],"private":"x"}}]}`
-	out := SanitizeResponsesResponse([]byte(raw), nil, nil)
+	audit := relaycommon.NewResponsesSanitizeAudit()
+	out := SanitizeResponsesResponse([]byte(raw), nil, audit)
 	require.JSONEq(t, `{"output":[{"type":"web_search_call","action":{"type":"search","queries":["ok","also"]}}]}`, string(out))
+	require.Contains(t, audit.Map()["dropped_fields"], "queries")
+}
+
+func TestStructuredItemFields(t *testing.T) {
+	for _, tc := range []struct {
+		name, raw, want string
+	}{
+		{"file search queries", `{"output":[{"type":"file_search_call","queries":["ok",{"private":1}],"results":[]}]}`, `{"output":[{"type":"file_search_call","queries":["ok"],"results":[]}]}`},
+		{"mcp arguments stay free-form", `{"output":[{"type":"mcp_call","arguments":{"q":1,"private":"x"}}]}`, `{"output":[{"type":"mcp_call","arguments":{"q":1,"private":"x"}}]}`},
+		{"mcp approval arguments array", `{"output":[{"type":"mcp_approval_request","arguments":[1,2]}]}`, `{"output":[{"type":"mcp_approval_request","arguments":[1,2]}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, string(SanitizeResponsesResponse([]byte(tc.raw), nil, nil)))
+		})
+	}
 }
 
 // The sanitized copy is what the client reads; billing keeps reading the

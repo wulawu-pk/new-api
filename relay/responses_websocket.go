@@ -31,6 +31,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/tidwall/gjson"
 )
 
 const responsesWSEventTypeResponseCreate = "response.create"
@@ -474,12 +475,25 @@ func (s *responsesWSSession) forwardCallEvents(c *gin.Context, state *responsesW
 						ConsumeResponsesQuota(c, info, accumulator.Finish())
 						return nil
 					}
-					if rejection.Error == nil {
+					// Build the client-visible rejection from the sanitized frame,
+					// never from the raw error object: WithOpenAIError folds
+					// error.metadata into the message.
+					publicRejection := rejection
+					if len(incoming.body) > 0 {
+						var cleaned responsesWSErrorEvent
+						if err := common.Unmarshal(incoming.body, &cleaned); err == nil {
+							publicRejection = cleaned
+						}
+					}
+					if publicRejection.Status == 0 {
+						publicRejection.Status = rejection.Status
+					}
+					if publicRejection.Error == nil {
 						// An error frame without an error object still describes the
 						// rejected request; keep the client-facing type stable.
-						rejection.Error = &types.OpenAIError{Type: "invalid_request_error", Message: event.Message, Code: event.Code}
+						publicRejection.Error = &types.OpenAIError{Type: "invalid_request_error", Message: event.Message, Code: event.Code}
 					}
-					rejected := types.WithOpenAIError(*rejection.Error, rejection.Status, types.ErrOptionWithSkipRetry())
+					rejected := types.WithOpenAIError(*publicRejection.Error, publicRejection.Status, types.ErrOptionWithSkipRetry())
 					if rejected.StatusCode < 400 || rejected.StatusCode > 599 {
 						rejected.StatusCode = http.StatusBadRequest
 					}
@@ -854,13 +868,36 @@ func newResponsesWSInvalidRequestError(err error) *types.NewAPIError {
 // response.create whose envelope the read loop already parsed and validated.
 // The message is decoded once more as a raw map (the body source) and once as
 // the typed request; the envelope is not parsed again.
+// firstResponsesWSWrappedRequest returns the first wrapped request member of
+// the envelope. The typed envelope keeps the last duplicate, but a client's
+// echo fields must come from the first occurrence, the same rule the echo
+// extractor applies.
+func firstResponsesWSWrappedRequest(message, fallback []byte) []byte {
+	root := gjson.ParseBytes(message)
+	if !root.IsObject() {
+		return fallback
+	}
+	var found []byte
+	root.ForEach(func(k, v gjson.Result) bool {
+		if k.String() == "response" {
+			found = []byte(v.Raw)
+			return false
+		}
+		return true
+	})
+	if found != nil {
+		return found
+	}
+	return fallback
+}
+
 func normalizeResponsesWSCreateEvent(message []byte, event responsesWSCreateEvent, streamID string) (responsesWSCreateRequest, error) {
 	create := responsesWSCreateRequest{StreamID: streamID, Generate: event.Generate, Echo: message}
 	// Decode the wrapped request on its own so outer fields cannot enter the HTTP body.
 	source := message
 	if len(event.Request) > 0 {
 		source = event.Request
-		create.Echo = event.Request
+		create.Echo = firstResponsesWSWrappedRequest(message, event.Request)
 	}
 	var raw map[string]common.RawMessage
 	if err := common.Unmarshal(source, &raw); err != nil {

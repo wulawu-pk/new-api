@@ -18,6 +18,7 @@ func TestWireUsageSchema(t *testing.T) {
 		{"null then duplicate", `{"usage":null,"usage":{"billing_usage":{"claude_usage":1}}}`, `{"usage":null}`, SanitizeChatUsageBytes},
 		{"type then duplicate", `{"usage":[],"usage":{"billing_usage":{"claude_usage":1}}}`, `{}`, SanitizeChatUsageBytes},
 		{"nested duplicate parent", `{"response":{"usage":null},"response":{"usage":{"billing_usage":{"claude_usage":1}}}}`, `{"response":{"usage":null}}`, func(p []byte) []byte { return SanitizeResponsesUsageAt(p, "response.usage") }},
+		{"nested missing stays byte-identical", "{\n \"response\" : {\"id\":\"r\"},\n \"type\":\"x\"}", "{\n \"response\" : {\"id\":\"r\"},\n \"type\":\"x\"}", func(p []byte) []byte { return SanitizeResponsesUsageAt(p, "response.usage") }},
 		{"invalid", `{"usage":{`, `{"usage":{`, SanitizeChatUsageBytes}, {"absent", "", "", SanitizeChatUsageBytes}, {"null", `{"usage":null}`, `{"usage":null}`, SanitizeChatUsageBytes}, {"type", `{"usage":[]}`, `{}`, SanitizeChatUsageBytes}, {"nested type", `{"response":{"usage":0,"id":1}}`, `{"response":{"id":1}}`, func(p []byte) []byte { return SanitizeResponsesUsageAt(p, "response.usage") }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

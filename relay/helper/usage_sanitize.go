@@ -111,6 +111,8 @@ func rewriteUsageMember(obj gjson.Result, path string, schema usageSchema) ([]by
 	b.WriteByte('{')
 	first := true
 	matched := false
+	abort := false
+	parentCount := -1
 	obj.ForEach(func(k, v gjson.Result) bool {
 		if k.String() != key {
 			writeUsageMember(&b, &first, k.Raw, v.Raw)
@@ -129,8 +131,15 @@ func rewriteUsageMember(obj gjson.Result, path string, schema usageSchema) ([]by
 		case nested:
 			inner, ok := rewriteUsageMember(v, rest, schema)
 			if !ok {
-				// The caller resolved the whole path, so keep the member if a
-				// malformed duplicate made the resolution ambiguous.
+				// Nothing to rewrite under a single parent: keep the payload
+				// byte-for-byte. A duplicate parent still has to be dropped.
+				if parentCount < 0 {
+					parentCount = countUsageKey(obj, key)
+				}
+				if parentCount <= 1 {
+					abort = true
+					return false
+				}
 				inner = []byte(v.Raw)
 			}
 			writeUsageMember(&b, &first, k.Raw, string(inner))
@@ -139,11 +148,22 @@ func rewriteUsageMember(obj gjson.Result, path string, schema usageSchema) ([]by
 		}
 		return true
 	})
-	if !matched {
+	if abort || !matched {
 		return nil, false
 	}
 	b.WriteByte('}')
 	return b.Bytes(), true
+}
+
+func countUsageKey(obj gjson.Result, key string) int {
+	count := 0
+	obj.ForEach(func(k, _ gjson.Result) bool {
+		if k.String() == key {
+			count++
+		}
+		return true
+	})
+	return count
 }
 
 func writeUsageMember(b *bytes.Buffer, first *bool, key, value string) {
